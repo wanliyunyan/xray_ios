@@ -22,14 +22,15 @@ final class PacketTunnelManager: ObservableObject {
     }
     
     init() {
-        Task(priority: .userInitiated) {
-            cancel.removeAll()
-            manager = await loadTunnelProviderManager()
-            
+        cancel.removeAll()
+        Task {
+            self.manager = await self.loadTunnelProviderManager()
             NotificationCenter.default
                 .publisher(for: .NEVPNStatusDidChange)
                 .receive(on: DispatchQueue.main)
-                .sink { [unowned self] _ in objectWillChange.send() }
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
                 .store(in: &cancel)
         }
     }
@@ -64,7 +65,10 @@ final class PacketTunnelManager: ObservableObject {
     }
     
     func start() async throws {
-        try manager?.connection.startVPNTunnel(options: [
+        guard let manager = self.manager else {
+            throw NSError(domain: "VPN Manager 未初始化", code: 0, userInfo: nil)
+        }
+        try manager.connection.startVPNTunnel(options: [
             "config": Constant.xrayConfig as NSString
         ])
     }

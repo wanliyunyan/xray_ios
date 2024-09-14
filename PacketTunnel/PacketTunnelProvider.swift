@@ -10,7 +10,6 @@ import LibXray
 import Tun2SocksKit
 import os
 
-
 // 定义一个 Swift 中的结构体，用于运行 Xray 配置
 struct RunXrayRequest: Codable {
     var datDir: String?
@@ -60,6 +59,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             // 启动 SOCKS5 隧道
             try self.startSocks5Tunnel()
         } catch {
+            os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
             throw error
         }
     }
@@ -96,9 +96,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             // 启动 文档是这么写的 但是不知道为什么没有打印
             Socks5Tunnel.run(withConfig: .string(content: Constant.socks5Config)) { code in
                 if code == 0 {
-                    print("Tun2Socks 启动成功")
+                    os_log("Tun2Socks 启动成功")
                 } else {
-                    print("Tun2Socks 启动失败，错误代码: \(code)")
+                    os_log("Tun2Socks 启动失败，错误代码: %{public}d", code)
                 }
             }
         }
@@ -118,30 +118,13 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     // 创建配置文件
     private func createConfigFile(with content: String, fileName: String = "config.json") throws -> URL {
-        // 获取默认的文件管理器实例，用于处理文件操作。
         let manager = FileManager.default
-        
-        // 获取应用沙盒中的 "Documents" 目录的 URL。
-        // ".documentDirectory" 表示 Documents 目录，".userDomainMask" 限定为用户的主目录下。
         let documentDirectory = manager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        
-        // 在 "Documents" 目录中创建一个文件路径，并追加文件名。
         let fileUrl = documentDirectory.appendingPathComponent(fileName)
         
-        // 检查文件是否已经存在。如果文件不存在，则创建它。
-        if !manager.fileExists(atPath: fileUrl.path) {
-            // 使用初始数据创建文件。`createFile` 返回一个布尔值，表示文件是否创建成功。
-            let createSuccess = manager.createFile(atPath: fileUrl.path, contents: nil, attributes: nil)
-            
-            // 输出文件创建结果到调试控制台，方便开发者确认文件是否成功创建。
-            debugPrint("文件创建结果: \(createSuccess)")
-        }
+        // 直接写入内容，若文件不存在会自动创建
+        try content.write(to: fileUrl, atomically: true, encoding: .utf8)
         
-        // 将传入的内容写入文件，覆盖已有内容。
-        // `atomically` 参数指定是否应将内容写入临时文件，并在写入成功后替换原文件，以确保文件完整性。
-        try content.write(to: fileUrl, atomically: false, encoding: .utf8)
-        
-        // 返回文件的 URL，以便调用者可以进一步操作该文件。
         return fileUrl
     }
 }
