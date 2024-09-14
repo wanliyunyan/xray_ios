@@ -49,7 +49,6 @@ final class PacketTunnelManager: ObservableObject {
                 let configuration = NETunnelProviderProtocol()
                 configuration.providerBundleIdentifier = Constant.tunnelName
                 configuration.serverAddress = "localhost"
-                configuration.providerConfiguration = [:]
                 configuration.excludeLocalNetworks = true
                 
                 let manager = NETunnelProviderManager()
