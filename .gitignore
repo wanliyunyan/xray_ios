@@ -3,6 +3,8 @@
 build/
 DerivedData/
 *.xcworkspace
+*.xccheckout
+*.moved-aside
 *.xcuserstate
 xcuserdata/
 *.xcodeproj/*.pbxuser
@@ -13,6 +15,7 @@ xcuserdata/
 # Swift Package Manager
 #
 .build/
+.swiftpm/
 Package.resolved
 
 # CocoaPods
@@ -30,12 +33,14 @@ Carthage/Checkouts/
 Dependencies/
 AccioPackages/
 
-# Flutter
+# SwiftLint
 #
-.flutter-plugins
-.packages
-.flutter-plugins-dependencies
-flutter_export_environment.sh
+.swiftlint.yml
+.swiftlint
+
+# SwiftFormat
+#
+.swiftformat
 
 # Fastlane
 #
@@ -43,19 +48,14 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/
 fastlane/test_output/
-fastlane/readme.md
+fastlane/README.md
 
 # Archives
 #
 *.xcarchive
 
-# Derived data
-#
-DerivedData/
-
 # Personal settings
 #
-*.plist
 *.xcuserdatad/
 
 # App data
@@ -76,7 +76,31 @@ DerivedData/
 *.log
 .DS_Store
 .env
+*.xcuserstate
 
-# SwiftPM
+# Simulator devices
 #
-.swiftpm/xcode/xcshareddata/IDEWorkspaceChecks.plist
+.DerivedData/
+
+# Bundle artifacts
+#
+*.xcassets/
+
+# Playground files
+#
+timeline.xctimeline
+playground.xcworkspace
+
+# SwiftUI Previews
+#
+*.swiftsourceinfo
+
+# SwiftPM Packages
+#
+Packages/
+
+# Logs
+#
+*.log
+
+# mac​⬤
