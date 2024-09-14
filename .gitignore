@@ -1,0 +1,82 @@
+# Xcode
+#
+build/
+DerivedData/
+*.xcworkspace
+*.xcuserstate
+xcuserdata/
+*.xcodeproj/*.pbxuser
+*.xcodeproj/*.mode1v3
+*.xcodeproj/*.mode2v3
+*.xcodeproj/*.perspectivev3
+
+# Swift Package Manager
+#
+.build/
+Package.resolved
+
+# CocoaPods
+#
+Pods/
+Podfile.lock
+
+# Carthage
+#
+Carthage/Build/
+Carthage/Checkouts/
+
+# Accio dependency manager
+#
+Dependencies/
+AccioPackages/
+
+# Flutter
+#
+.flutter-plugins
+.packages
+.flutter-plugins-dependencies
+flutter_export_environment.sh
+
+# Fastlane
+#
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+fastlane/readme.md
+
+# Archives
+#
+*.xcarchive
+
+# Derived data
+#
+DerivedData/
+
+# Personal settings
+#
+*.plist
+*.xcuserdatad/
+
+# App data
+#
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Temporary files
+#
+*.tmp
+*.swp
+*.lock
+
+# Other
+#
+*.orig
+*.log
+.DS_Store
+.env
+
+# SwiftPM
+#
+.swiftpm/xcode/xcshareddata/IDEWorkspaceChecks.plist

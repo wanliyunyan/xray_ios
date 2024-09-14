@@ -1,0 +1,10 @@
+//
+//  Config.xcconfig
+//  Xray
+//
+//  Created by pan on 2024/9/14.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+APP_ID = com.app.Xray
