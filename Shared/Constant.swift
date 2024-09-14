@@ -26,31 +26,7 @@ public extension Constant {
             "port": "10808",
             "listen": "127.0.0.1",
             "protocol": "socks"
-        }],
-        "outbounds": [
-            {
-                "tag": "proxy",
-                "protocol": "vless",
-                "settings": {
-                    "vnext": [{
-                        "address": "address",
-                        "port": 6689,
-                        "users": [{
-                            "encryption": "none",
-                            "id": "30a8fe2b-7fd0-48bb-a03f-434c8e24e152"
-                        }]
-                    }]
-                }
-            },
-            {
-                "tag": "direct",
-                "protocol": "freedom"
-            },
-            {
-                "tag": "block",
-                "protocol": "blackhole"
-            }
-        ]
+        }]
     }
     """
     

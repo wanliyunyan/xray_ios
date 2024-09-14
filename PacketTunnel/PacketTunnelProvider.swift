@@ -65,22 +65,50 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
     
     // 启动 Xray 核心的方法
-    private func startXray(config:String) throws {
+    private func startXray(config: String) throws {
+        // 将传入的 config 字符串进行 Base64 编码并转换为 Xray JSON
+        guard let configData = config.data(using: .utf8) else { return }
+        let base64EncodedConfig = configData.base64EncodedString()
+        let xrayJsonString = LibXrayConvertShareLinksToXrayJson(base64EncodedConfig)
 
-        // 创建文件
-        let fileUrl = try createConfigFile(with: config)
+        // 解码 Xray JSON 字符串
+        guard let decodedData = Data(base64Encoded: xrayJsonString),
+              let decodedString = String(data: decodedData, encoding: .utf8),
+              let jsonData = decodedString.data(using: .utf8),
+              let jsonDict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
+              let success = jsonDict["success"] as? Bool, success,
+              let dataDict = jsonDict["data"] as? [String: Any] else {
+            return
+        }
         
-        // 创建一个 RunXrayRequest 对象，用于指定 Xray 核心的运行配置
+        // 将 data 合并到 xrayConfig
+        let xrayConfigString = Constant.xrayConfig
+        guard let xrayConfigData = xrayConfigString.data(using: .utf8),
+              var xrayConfigJson = try? JSONSerialization.jsonObject(with: xrayConfigData, options: []) as? [String: Any] else {
+            return
+        }
+        
+        dataDict.forEach { xrayConfigJson[$0.key] = $0.value }
+
+        // 将合并后的 JSON 转为字符串并创建配置文件
+        guard let mergedConfigData = try? JSONSerialization.data(withJSONObject: xrayConfigJson, options: [.prettyPrinted]),
+              let mergedConfigString = String(data: mergedConfigData, encoding: .utf8) else {
+            return
+        }
+
+        let fileUrl = try createConfigFile(with: mergedConfigString)
+
+        // 创建 RunXrayRequest
         let request = RunXrayRequest(datDir: nil, configPath: fileUrl.path, maxMemory: 0)
         
         // 将 RunXrayRequest 对象编码为 JSON 数据并启动 Xray 核心
         do {
             // 使用 JSONEncoder 编码请求对象为 JSON 数据
             let jsonData = try JSONEncoder().encode(request)
-            
+
             // 将 JSON 数据转换为 Base64 编码的字符串
             let base64String = jsonData.base64EncodedString()
-            
+
             // 将 Base64 编码后的字符串传递给 LibXrayRunXray 方法以启动 Xray 核心
             LibXrayRunXray(base64String)
         } catch {

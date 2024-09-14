@@ -60,7 +60,7 @@ final class PacketTunnelManager: ObservableObject {
                 
                 try await manager.saveToPreferences()
                 try await manager.loadFromPreferences()
-
+                
                 return manager
             }
         } catch {
@@ -69,12 +69,12 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
     
-    func start() async throws {
+    func start(with clipboardContent:String) async throws {
         guard let manager = self.manager else {
             throw NSError(domain: "VPN Manager 未初始化", code: 0, userInfo: nil)
         }
         try manager.connection.startVPNTunnel(options: [
-            "config": Constant.xrayConfig as NSString
+            "config": clipboardContent as NSString
         ])
     }
     
