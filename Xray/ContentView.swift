@@ -5,9 +5,9 @@
 //  Created by pan on 2024/9/14.
 //
 
-import Foundation
 import SwiftUI
 
+@MainActor
 struct ContentView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
@@ -26,6 +26,8 @@ struct ContentView: View {
                 default:
                     ProgressView()
                 }
+            } else {
+                Text("无法获取 VPN 状态")
             }
         }
     }
@@ -35,14 +37,12 @@ struct ContentView: View {
             do {
                 try await packetTunnelManager.start()
             } catch {
-                debugPrint(error.localizedDescription)
+                debugPrint("连接 VPN 失败: \(error.localizedDescription)")
             }
         }
     }
 
     func disconnectVPN() {
-        Task {
-            packetTunnelManager.stop()
-        }
+        packetTunnelManager.stop()
     }
 }

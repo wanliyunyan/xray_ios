@@ -10,7 +10,7 @@ import NetworkExtension
 
 @main
 struct XrayApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+
     @StateObject private var packetTunnelManager = PacketTunnelManager.shared
 
     var body: some Scene {

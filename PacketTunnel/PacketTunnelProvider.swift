@@ -49,7 +49,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         // 应用设置到隧道
         try await self.setTunnelNetworkSettings(settings)
         
-        guard let config = options?["config"] as? NSString as? String else {
+        guard let config = options?["config"] as? String else {
             return
         }
         
@@ -86,20 +86,17 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         } catch {
             // 处理编码过程中可能发生的错误
             NSLog("编码 RunXrayRequest 失败: \(error.localizedDescription)")
+            throw error
         }
     }
     
     // 启动 SOCKS5 隧道的方法
     private func startSocks5Tunnel() throws {
-        // 在全局队列中异步执行 SOCKS5 隧道启动任务
-        DispatchQueue.global(qos: .userInitiated).async {
-            // 启动 文档是这么写的 但是不知道为什么没有打印
-            Socks5Tunnel.run(withConfig: .string(content: Constant.socks5Config)) { code in
-                if code == 0 {
-                    os_log("Tun2Socks 启动成功")
-                } else {
-                    os_log("Tun2Socks 启动失败，错误代码: %{public}d", code)
-                }
+        Socks5Tunnel.run(withConfig: .string(content: Constant.socks5Config)) { code in
+            if code == 0 {
+                os_log("Tun2Socks 启动成功")
+            } else {
+                os_log("Tun2Socks 启动失败，错误代码: %{public}d", code)
             }
         }
     }
@@ -111,18 +108,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         // 停止 Xray 核心
         LibXrayStopXray()
-
-        // 通知系统 VPN 已关闭
-        self.cancelTunnelWithError(nil)
     }
     
     // 创建配置文件
     private func createConfigFile(with content: String, fileName: String = "config.json") throws -> URL {
-        let manager = FileManager.default
-        let documentDirectory = manager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let fileUrl = documentDirectory.appendingPathComponent(fileName)
+        let tempDirectory = FileManager.default.temporaryDirectory
+        let fileUrl = tempDirectory.appendingPathComponent(fileName)
         
-        // 直接写入内容，若文件不存在会自动创建
+        // 写入内容，若文件不存在会自动创建
         try content.write(to: fileUrl, atomically: true, encoding: .utf8)
         
         return fileUrl

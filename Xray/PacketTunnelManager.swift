@@ -25,13 +25,15 @@ final class PacketTunnelManager: ObservableObject {
         cancel.removeAll()
         Task {
             self.manager = await self.loadTunnelProviderManager()
-            NotificationCenter.default
-                .publisher(for: .NEVPNStatusDidChange)
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] _ in
-                    self?.objectWillChange.send()
-                }
-                .store(in: &cancel)
+            if let connection = manager?.connection {
+                NotificationCenter.default
+                    .publisher(for: .NEVPNStatusDidChange, object: connection)
+                    .receive(on: DispatchQueue.main)
+                    .sink { [weak self] _ in
+                        self?.objectWillChange.send()
+                    }
+                    .store(in: &cancel)
+            }
         }
     }
     
@@ -40,12 +42,12 @@ final class PacketTunnelManager: ObservableObject {
             let managers = try await NETunnelProviderManager.loadAllFromPreferences()
             if let firstManager = managers.first(where: {
                 guard let config = $0.protocolConfiguration as? NETunnelProviderProtocol else { return false }
-                return config.providerBundleIdentifier == Constant.TunnelName
+                return config.providerBundleIdentifier == Constant.tunnelName
             }) {
                 return firstManager
             } else {
                 let configuration = NETunnelProviderProtocol()
-                configuration.providerBundleIdentifier = Constant.TunnelName
+                configuration.providerBundleIdentifier = Constant.tunnelName
                 configuration.serverAddress = "localhost"
                 configuration.providerConfiguration = [:]
                 configuration.excludeLocalNetworks = true
@@ -57,9 +59,11 @@ final class PacketTunnelManager: ObservableObject {
 
                 try await manager.saveToPreferences()
                 
+                // 重新加载配置以获取更新的 `manager`
                 return await loadTunnelProviderManager()
             }
         } catch {
+            print("加载 TunnelProviderManager 失败: \(error.localizedDescription)")
             return nil
         }
     }
