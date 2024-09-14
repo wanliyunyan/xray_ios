@@ -11,55 +11,57 @@ import Combine
 @MainActor
 final class PacketTunnelManager: ObservableObject {
     
-    private var cancel: Set<AnyCancellable> = []
+    private var cancellables = Set<AnyCancellable>()
     
     @Published private var manager: NETunnelProviderManager?
     
-    static let shared: PacketTunnelManager = PacketTunnelManager()
+    static let shared = PacketTunnelManager()
     
     var status: NEVPNStatus? {
         manager?.connection.status
     }
     
     init() {
-        cancel.removeAll()
         Task {
-            self.manager = await self.loadTunnelProviderManager()
-            if let connection = manager?.connection {
-                NotificationCenter.default
-                    .publisher(for: .NEVPNStatusDidChange, object: connection)
-                    .receive(on: DispatchQueue.main)
-                    .sink { [weak self] _ in
-                        self?.objectWillChange.send()
-                    }
-                    .store(in: &cancel)
-            }
+            await setupManager()
+        }
+    }
+    
+    private func setupManager() async {
+        self.manager = await loadTunnelProviderManager()
+        
+        if let connection = manager?.connection {
+            NotificationCenter.default.publisher(for: .NEVPNStatusDidChange, object: connection)
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                }
+                .store(in: &cancellables)
         }
     }
     
     private func loadTunnelProviderManager() async -> NETunnelProviderManager? {
         do {
             let managers = try await NETunnelProviderManager.loadAllFromPreferences()
-            if let firstManager = managers.first(where: {
-                guard let config = $0.protocolConfiguration as? NETunnelProviderProtocol else { return false }
-                return config.providerBundleIdentifier == Constant.tunnelName
+            if let existingManager = managers.first(where: {
+                ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == Constant.tunnelName
             }) {
-                return firstManager
+                return existingManager
             } else {
+                let manager = NETunnelProviderManager()
                 let configuration = NETunnelProviderProtocol()
                 configuration.providerBundleIdentifier = Constant.tunnelName
                 configuration.serverAddress = "localhost"
                 configuration.excludeLocalNetworks = true
                 
-                let manager = NETunnelProviderManager()
                 manager.localizedDescription = "Xray"
                 manager.protocolConfiguration = configuration
                 manager.isEnabled = true
-
-                try await manager.saveToPreferences()
                 
-                // 重新加载配置以获取更新的 `manager`
-                return await loadTunnelProviderManager()
+                try await manager.saveToPreferences()
+                try await manager.loadFromPreferences()
+
+                return manager
             }
         } catch {
             print("加载 TunnelProviderManager 失败: \(error.localizedDescription)")
