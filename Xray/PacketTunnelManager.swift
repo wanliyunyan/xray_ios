@@ -69,16 +69,61 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
     
-    func start(with clipboardContent:String) async throws {
+    func start(with clipboardContent:String?) async throws {
+        
+        var configContent: String
+
+        if let clipboardContent = clipboardContent, !clipboardContent.isEmpty {
+            // 如果传入的 clipboardContent 不为空，则使用它，并保存到本地
+            configContent = clipboardContent
+            saveClipboardContentToFile(configContent)
+        } else {
+            // 否则，从本地的 txt 文件中读取
+            guard let savedContent = readClipboardContentFromFile(), !savedContent.isEmpty else {
+                throw NSError(domain: "VPN Manager", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
+            }
+            configContent = savedContent
+        }
+        
         guard let manager = self.manager else {
             throw NSError(domain: "VPN Manager 未初始化", code: 0, userInfo: nil)
         }
         try manager.connection.startVPNTunnel(options: [
-            "config": clipboardContent as NSString
+            "config": configContent as NSString
         ])
     }
     
     func stop() {
         manager?.connection.stopVPNTunnel()
+    }
+    
+    // 从本地的 txt 文件中读取剪贴板内容
+    private func readClipboardContentFromFile() -> String? {
+        let fileName = "clipboardContent.txt"
+        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
+        
+        do {
+            let savedContent = try String(contentsOf: fileURL, encoding: .utf8)
+            print("从文件中读取的剪贴板内容: \(savedContent)")
+            return savedContent
+        } catch {
+            print("读取剪贴板内容失败: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    // 保存剪贴板内容到本地的 txt 文件
+    private func saveClipboardContentToFile(_ clipboardContent: String) {
+        // 定义文件路径，可以将其存放到应用的 Documents 目录
+        let fileName = "clipboardContent.txt"
+        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
+
+        do {
+            // 将字符串写入文件
+            try clipboardContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            print("剪贴板内容已成功保存到文件: \(fileURL.path)")
+        } catch {
+            print("保存剪贴板内容失败: \(error.localizedDescription)")
+        }
     }
 }

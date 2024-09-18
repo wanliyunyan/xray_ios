@@ -55,9 +55,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         
         do {
             // 启动 Xray 核心进程
-            try self.startXray(config: config)
+            try self.startXray(inboundPort: 10808,config: config)
             // 启动 SOCKS5 隧道
-            try self.startSocks5Tunnel()
+            try self.startSocks5Tunnel(serverPort: 10808)
         } catch {
             os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
             throw error
@@ -65,35 +65,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
     
     // 启动 Xray 核心的方法
-    private func startXray(config: String) throws {
-        // 将传入的 config 字符串进行 Base64 编码并转换为 Xray JSON
-        guard let configData = config.data(using: .utf8) else { return }
-        let base64EncodedConfig = configData.base64EncodedString()
-        let xrayJsonString = LibXrayConvertShareLinksToXrayJson(base64EncodedConfig)
-
-        // 解码 Xray JSON 字符串
-        guard let decodedData = Data(base64Encoded: xrayJsonString),
-              let decodedString = String(data: decodedData, encoding: .utf8),
-              let jsonData = decodedString.data(using: .utf8),
-              let jsonDict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
-              let success = jsonDict["success"] as? Bool, success,
-              let dataDict = jsonDict["data"] as? [String: Any] else {
-            return
-        }
+    private func startXray(inboundPort:Int,config: String) throws {
         
-        // 将 data 合并到 xrayConfig
-        let xrayConfigString = Constant.xrayConfig
-        guard let xrayConfigData = xrayConfigString.data(using: .utf8),
-              var xrayConfigJson = try? JSONSerialization.jsonObject(with: xrayConfigData, options: []) as? [String: Any] else {
-            return
-        }
+        // 生成合并后的配置数据
+        let configData = try Configuration().buildConfigurationData(inboundPort: inboundPort, config: config)
         
-        dataDict.forEach { xrayConfigJson[$0.key] = $0.value }
-
-        // 将合并后的 JSON 转为字符串并创建配置文件
-        guard let mergedConfigData = try? JSONSerialization.data(withJSONObject: xrayConfigJson, options: [.prettyPrinted]),
-              let mergedConfigString = String(data: mergedConfigData, encoding: .utf8) else {
-            return
+        // 将配置数据转换为字符串
+        guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
+            throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
         }
 
         let fileUrl = try createConfigFile(with: mergedConfigString)
@@ -119,8 +98,25 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
     
     // 启动 SOCKS5 隧道的方法
-    private func startSocks5Tunnel() throws {
-        Socks5Tunnel.run(withConfig: .string(content: Constant.socks5Config)) { code in
+    private func startSocks5Tunnel(serverPort port: Int) throws {
+        let socks5Config = """
+        tunnel:
+          mtu: 1500
+
+        socks5:
+          port: \(port)
+          address: 127.0.0.1
+          udp: 'udp'
+
+        misc:
+          task-stack-size: 20480
+          connect-timeout: 5000
+          read-write-timeout: 60000
+          log-file: stderr
+          log-level: debug
+          limit-nofile: 65535
+        """
+        Socks5Tunnel.run(withConfig: .string(content: socks5Config)) { code in
             if code == 0 {
                 os_log("Tun2Socks 启动成功")
             } else {
@@ -147,5 +143,54 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         try content.write(to: fileUrl, atomically: true, encoding: .utf8)
         
         return fileUrl
+    }
+}
+
+struct Configuration {
+
+    func buildConfigurationData(inboundPort: Int, config: String) throws -> Data {
+        var configuration: [String: Any] = [:]
+        configuration["inbounds"] = [try self.buildInbound(inboundPort: inboundPort)]
+        
+        // 获取 dataDict
+        let dataDict = try self.buildOutInbound(config: config)
+        
+        // 合并 inbound 和 dataDict
+        dataDict.forEach { configuration[$0.key] = $0.value }
+        
+        return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
+    }
+    
+    private func buildInbound(inboundPort: Int) throws -> [String: Any] {
+        var inbound: [String: Any] = [:]
+        inbound["listen"] = "127.0.0.1"
+        inbound["protocol"] = "socks"
+        inbound["settings"] = [
+            "udp": true,
+            "auth": "noauth"
+        ]
+        inbound["port"] = inboundPort
+        return inbound
+    }
+
+    private func buildOutInbound(config: String) throws -> [String: Any] {
+        // 将传入的 config 字符串进行 Base64 编码并转换为 Xray JSON
+        guard let configData = config.data(using: .utf8) else {
+            throw NSError(domain: "InvalidConfig", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的配置字符串"])
+        }
+        let base64EncodedConfig = configData.base64EncodedString()
+        let xrayJsonString = LibXrayConvertShareLinksToXrayJson(base64EncodedConfig)
+
+        // 解码 Xray JSON 字符串
+        guard let decodedData = Data(base64Encoded: xrayJsonString),
+              let decodedString = String(data: decodedData, encoding: .utf8),
+              let jsonData = decodedString.data(using: .utf8),
+              let jsonDict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
+              let success = jsonDict["success"] as? Bool, success,
+              let dataDict = jsonDict["data"] as? [String: Any] else {
+            throw NSError(domain: "InvalidXrayJson", code: -1, userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败"])
+        }
+
+        return dataDict
     }
 }
