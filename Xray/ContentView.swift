@@ -19,88 +19,29 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading) {
             VStack(alignment: .leading) {
-                HStack {
-                    Text("ID:")
-                        .font(.headline)
-                    Text(idText)
-                        .padding()
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Spacer()
-                }
-
-                HStack {
-                    Text("IP地址:")
-                        .font(.headline)
-                    Text(maskIPAddress(ipText))
-                        .padding()
-                    Spacer()
-                }
-
-                HStack {
-                    Text("端口:")
-                        .font(.headline)
-                    Text(portText)
-                        .padding()
-                    Spacer()
-                }
+                InfoRow(label: "ID:", text: idText)
+                InfoRow(label: "IP地址:", text: maskIPAddress(ipText))
+                InfoRow(label: "端口:", text: portText)
 
                 HStack {
                     Text("本机sock5端口")
                         .padding(.leading, 10)
 
-                    // 使用 String 绑定到 TextField
                     TextField("输入端口号", text: $sock5Text)
                         .padding()
-                        .keyboardType(.default) // 允许任何输入
+                        .keyboardType(.default)
                         .background(Color.gray.opacity(0.2))
                         .cornerRadius(8)
                 }
                 .padding(.top, 20)
-
-                if !clipboardText.isEmpty {
-                    Text("剪贴板内容: \(clipboardText)")
-                        .padding()
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(8)
-                }
             }
             .padding()
 
-            Spacer() // Pushes the buttons down to the bottom
+            Spacer() // Pushes the buttons to the bottom
 
             VStack {
-                switch packetTunnelManager.status {
-                case .connected:
-                    Button("断开") {
-                        disconnectVPN()
-                    }
-                    .buttonStyle(ActionButtonStyle(color: .red))
-                case .disconnected:
-                    Button("连接") {
-                        Task {
-                            if let port = Int(sock5Text) {  // 检查端口号是否为有效的整数
-                                do {
-                                    try await connectVPN(clipboardContent: clipboardText, port: port)
-                                } catch {
-                                    print("连接 VPN 失败: \(error.localizedDescription)")
-                                }
-                            } else {
-                                print("端口号无效")
-                            }
-                        }
-                    }
-                    .buttonStyle(ActionButtonStyle(color: .green))
-                case .connecting, .reasserting:
-                    ProgressView("连接中...")
-                case .disconnecting:
-                    ProgressView("断开中...")
-                case .invalid, .none:
-                    Text("无法获取 VPN 状态")
-                @unknown default:
-                    Text("未知状态")
-                }
-
+                vpnControlButton()
+                
                 Button("从剪贴板粘贴") {
                     pasteFromClipboard()
                 }
@@ -111,26 +52,60 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
-            parseDataFromFile()  // 视图加载时执行解析操作
+            parseDataFromFile()
         }
     }
 
-    // 将 connectVPN 方法标记为 async，因为它调用了异步方法
+    // MARK: - VPN Control Button
+    @ViewBuilder
+    private func vpnControlButton() -> some View {
+        switch packetTunnelManager.status {
+        case .connected:
+            Button("断开") {
+                disconnectVPN()
+            }
+            .buttonStyle(ActionButtonStyle(color: .red))
+        case .disconnected:
+            Button("连接") {
+                connectIfValidPort()
+            }
+            .buttonStyle(ActionButtonStyle(color: .green))
+        case .connecting, .reasserting:
+            ProgressView("连接中...")
+        case .disconnecting:
+            ProgressView("断开中...")
+        case .invalid, .none:
+            Text("无法获取 VPN 状态")
+        @unknown default:
+            Text("未知状态")
+        }
+    }
+
+    // MARK: - VPN Connection
+    private func connectIfValidPort() {
+        Task {
+            if let port = Int(sock5Text) {
+                do {
+                    try await connectVPN(clipboardContent: clipboardText, port: port)
+                } catch {
+                    print("连接 VPN 失败: \(error.localizedDescription)")
+                }
+            } else {
+                print("端口号无效")
+            }
+        }
+    }
+
     private func connectVPN(clipboardContent: String, port: Int) async throws {
         var configContent = clipboardContent
 
-        // 如果剪贴板内容为空，则从本地文件读取配置
         if configContent.isEmpty {
             guard let savedContent = readClipboardContentFromFile(), !savedContent.isEmpty else {
                 throw NSError(domain: "VPN Manager", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
             }
             configContent = savedContent
-        } else {
-            // 保存剪贴板内容到本地
-            saveClipboardContentToFile(configContent)
         }
 
-        // 异步调用 packetTunnelManager 的 start 方法
         try await packetTunnelManager.start(config: configContent, port: port)
     }
 
@@ -138,57 +113,31 @@ struct ContentView: View {
         packetTunnelManager.stop()
     }
 
+    // MARK: - File Handling
     private func parseDataFromFile() {
-        let fileName = "clipboardContent.txt"
-        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
+        guard let content = readClipboardContentFromFile() else { return }
 
-        do {
-            let content = try String(contentsOf: fileURL, encoding: .utf8)
-            print("文件内容: \(content)")
-
-            // 解析 vless 格式的字符串
-            if let url = URLComponents(string: content) {
-                if let host = url.host {
-                    ipText = host
-                }
-                
-                if let idQuery = url.user {
-                    idText = idQuery
-                }
-                
-                if let port = url.port {
-                    portText = String(port)
-                }
-            }
-        } catch {
-            print("读取文件失败: \(error.localizedDescription)")
+        if let url = URLComponents(string: content) {
+            ipText = url.host ?? ""
+            idText = url.user ?? ""
+            portText = url.port.map(String.init) ?? ""
         }
     }
-    
-    private func maskIPAddress(_ ipAddress: String) -> String {
-        let components = ipAddress.split(separator: ".")
-        guard components.count == 4 else {
-            return ipAddress // Return the original IP if it's not in the correct format
-        }
-        return "*.*.*." + components[3]
-    }
-    
+
     private func pasteFromClipboard() {
         if let clipboardContent = UIPasteboard.general.string {
             clipboardText = clipboardContent
+            saveClipboardContentToFile(clipboardContent)
         } else {
             clipboardText = "剪贴板没有内容"
         }
     }
-    
+
     private func readClipboardContentFromFile() -> String? {
-        let fileName = "clipboardContent.txt"
-        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
+        let fileURL = getFileURL(fileName: "clipboardContent.txt")
         
         do {
-            let savedContent = try String(contentsOf: fileURL, encoding: .utf8)
-            print("从文件中读取的剪贴板内容: \(savedContent)")
-            return savedContent
+            return try String(contentsOf: fileURL, encoding: .utf8)
         } catch {
             print("读取剪贴板内容失败: \(error.localizedDescription)")
             return nil
@@ -196,14 +145,42 @@ struct ContentView: View {
     }
 
     private func saveClipboardContentToFile(_ clipboardContent: String) {
-        let fileName = "clipboardContent.txt"
-        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
+        let fileURL = getFileURL(fileName: "clipboardContent.txt")
 
         do {
             try clipboardContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            parseDataFromFile()  // Re-parse data if clipboard content changes
             print("剪贴板内容已成功保存到文件: \(fileURL.path)")
         } catch {
             print("保存剪贴板内容失败: \(error.localizedDescription)")
+        }
+    }
+
+    private func getFileURL(fileName: String) -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
+    }
+
+    // MARK: - Mask IP Address
+    private func maskIPAddress(_ ipAddress: String) -> String {
+        let components = ipAddress.split(separator: ".")
+        return components.count == 4 ? "*.*.*." + components[3] : ipAddress
+    }
+}
+
+// MARK: - Reusable View for Rows
+struct InfoRow: View {
+    var label: String
+    var text: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.headline)
+            Text(text)
+                .padding()
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer()
         }
     }
 }
