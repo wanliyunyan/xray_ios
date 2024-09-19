@@ -11,9 +11,23 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
     @State private var clipboardText: String = ""
+    @State private var portText: String = "10808"  // 默认端口号，使用 String 类型
 
     var body: some View {
         VStack {
+            HStack {
+                Text("本机sock5端口")
+                    .padding(.leading, 10)
+
+                // 使用 String 绑定到 TextField
+                TextField("输入端口号", text: $portText)
+                    .padding()
+                    .keyboardType(.default) // 允许任何输入
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(8)
+            }
+            .padding(.top, 20)
+            
             switch packetTunnelManager.status {
             case .connected:
                 Button("断开") {
@@ -22,7 +36,11 @@ struct ContentView: View {
                 .buttonStyle(ActionButtonStyle(color: .red))
             case .disconnected:
                 Button("连接") {
-                    connectVPN(with: clipboardText)  // 将剪贴板内容传入
+                    if let port = Int(portText) {  // 检查端口号是否为有效的整数
+                        connectVPN(clipboardContent: clipboardText, port: port)
+                    } else {
+                        print("端口号无效")
+                    }
                 }
                 .buttonStyle(ActionButtonStyle(color: .green))
             case .connecting, .reasserting:
@@ -35,14 +53,12 @@ struct ContentView: View {
                 Text("未知状态")
             }
 
-            // 增加“从剪贴板粘贴”按钮
             Button("从剪贴板粘贴") {
                 pasteFromClipboard()
             }
             .buttonStyle(ActionButtonStyle(color: .blue))
             .padding(.top, 20)
 
-            // 显示剪贴板中的内容
             if !clipboardText.isEmpty {
                 Text("剪贴板内容: \(clipboardText)")
                     .padding()
@@ -53,11 +69,10 @@ struct ContentView: View {
         .padding()
     }
 
-    // 修改 connectVPN 以传递 clipboardText
-    private func connectVPN(with clipboardContent: String) {
+    private func connectVPN(clipboardContent: String, port: Int) {
         Task {
             do {
-                try await packetTunnelManager.start(with: clipboardContent)  // 传递 clipboardContent
+                try await packetTunnelManager.start(clipboardContent: clipboardContent, port: port)  // 传递剪贴板内容和端口号
             } catch {
                 print("连接 VPN 失败: \(error.localizedDescription)")
             }

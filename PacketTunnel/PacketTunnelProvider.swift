@@ -53,11 +53,15 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         
+        guard let port = options?["port"] as? Int else {
+            return
+        }
+        
         do {
             // 启动 Xray 核心进程
-            try self.startXray(inboundPort: 10808,config: config)
+            try self.startXray(inboundPort: port,config: config)
             // 启动 SOCKS5 隧道
-            try self.startSocks5Tunnel(serverPort: 10808)
+            try self.startSocks5Tunnel(serverPort: port)
         } catch {
             os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
             throw error
@@ -65,7 +69,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
     
     // 启动 Xray 核心的方法
-    private func startXray(inboundPort:Int,config: String) throws {
+    private func startXray(inboundPort:Int = 10808,config: String) throws {
         
         // 生成合并后的配置数据
         let configData = try Configuration().buildConfigurationData(inboundPort: inboundPort, config: config)
@@ -98,7 +102,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
     
     // 启动 SOCKS5 隧道的方法
-    private func startSocks5Tunnel(serverPort port: Int) throws {
+    private func startSocks5Tunnel(serverPort port: Int = 10808) throws {
         let socks5Config = """
         tunnel:
           mtu: 1500
