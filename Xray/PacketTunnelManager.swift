@@ -69,58 +69,19 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
     
-    func start(clipboardContent: String, port: Int) async throws {
-        var configContent = clipboardContent
-
-        // 如果剪贴板内容为空，则从本地文件读取配置
-        if configContent.isEmpty {
-            guard let savedContent = readClipboardContentFromFile(), !savedContent.isEmpty else {
-                throw NSError(domain: "VPN Manager", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
-            }
-            configContent = savedContent
-        } else {
-            // 保存剪贴板内容到本地
-            saveClipboardContentToFile(configContent)
-        }
-        
+    func start(config: String, port: Int) async throws {
         guard let manager = self.manager else {
             throw NSError(domain: "VPN Manager 未初始化", code: 0, userInfo: nil)
         }
 
         // 启动 VPN 并传递配置和端口号
         try manager.connection.startVPNTunnel(options: [
-            "config": configContent as NSString,
+            "config": config as NSString,
             "port": port as NSNumber
         ])
     }
     
     func stop() {
         manager?.connection.stopVPNTunnel()
-    }
-
-    private func readClipboardContentFromFile() -> String? {
-        let fileName = "clipboardContent.txt"
-        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
-        
-        do {
-            let savedContent = try String(contentsOf: fileURL, encoding: .utf8)
-            print("从文件中读取的剪贴板内容: \(savedContent)")
-            return savedContent
-        } catch {
-            print("读取剪贴板内容失败: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
-    private func saveClipboardContentToFile(_ clipboardContent: String) {
-        let fileName = "clipboardContent.txt"
-        let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
-
-        do {
-            try clipboardContent.write(to: fileURL, atomically: true, encoding: .utf8)
-            print("剪贴板内容已成功保存到文件: \(fileURL.path)")
-        } catch {
-            print("保存剪贴板内容失败: \(error.localizedDescription)")
-        }
     }
 }
