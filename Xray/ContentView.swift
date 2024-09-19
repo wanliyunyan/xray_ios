@@ -52,7 +52,7 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
-            parseDataFromFile()
+            loadDataFromUserDefaults()
         }
     }
 
@@ -100,8 +100,8 @@ struct ContentView: View {
         var configContent = clipboardContent
 
         if configContent.isEmpty {
-            guard let savedContent = readClipboardContentFromFile(), !savedContent.isEmpty else {
-                throw NSError(domain: "VPN Manager", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
+            guard let savedContent = loadFromUserDefaults(key: "clipboardContent"), !savedContent.isEmpty else {
+                throw NSError(domain: "ContentView", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
             }
             configContent = savedContent
         }
@@ -113,51 +113,39 @@ struct ContentView: View {
         packetTunnelManager.stop()
     }
 
-    // MARK: - File Handling
-    private func parseDataFromFile() {
-        guard let content = readClipboardContentFromFile() else { return }
-
-        if let url = URLComponents(string: content) {
-            ipText = url.host ?? ""
-            idText = url.user ?? ""
-            portText = url.port.map(String.init) ?? ""
+    // MARK: - UserDefaults Handling
+    private func loadDataFromUserDefaults() {
+        if let content = loadFromUserDefaults(key: "clipboardContent") {
+            parseContent(content)
         }
     }
 
     private func pasteFromClipboard() {
         if let clipboardContent = UIPasteboard.general.string {
             clipboardText = clipboardContent
-            saveClipboardContentToFile(clipboardContent)
+            saveToUserDefaults(value: clipboardContent, key: "clipboardContent")
+            parseContent(clipboardContent)
         } else {
             clipboardText = "剪贴板没有内容"
         }
     }
 
-    private func readClipboardContentFromFile() -> String? {
-        let fileURL = getFileURL(fileName: "clipboardContent.txt")
-        
-        do {
-            return try String(contentsOf: fileURL, encoding: .utf8)
-        } catch {
-            print("读取剪贴板内容失败: \(error.localizedDescription)")
-            return nil
-        }
+    private func saveToUserDefaults(value: String, key: String) {
+        UserDefaults.standard.set(value, forKey: key)
+        print("已保存到 UserDefaults")
     }
 
-    private func saveClipboardContentToFile(_ clipboardContent: String) {
-        let fileURL = getFileURL(fileName: "clipboardContent.txt")
-
-        do {
-            try clipboardContent.write(to: fileURL, atomically: true, encoding: .utf8)
-            parseDataFromFile()  // Re-parse data if clipboard content changes
-            print("剪贴板内容已成功保存到文件: \(fileURL.path)")
-        } catch {
-            print("保存剪贴板内容失败: \(error.localizedDescription)")
-        }
+    private func loadFromUserDefaults(key: String) -> String? {
+        return UserDefaults.standard.string(forKey: key)
     }
 
-    private func getFileURL(fileName: String) -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(fileName)
+    // MARK: - Parsing
+    private func parseContent(_ content: String) {
+        if let url = URLComponents(string: content) {
+            ipText = url.host ?? ""
+            idText = url.user ?? ""
+            portText = url.port.map(String.init) ?? ""
+        }
     }
 
     // MARK: - Mask IP Address
