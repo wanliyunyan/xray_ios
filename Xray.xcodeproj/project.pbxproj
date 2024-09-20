@@ -20,6 +20,7 @@
 		3B2DA9A92C953B2C00E8FCB9 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B2DA9A82C953B2C00E8FCB9 /* LibXray */; };
 		3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
 		3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */; };
+		3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B8050DD2C9D7C0800043697 /* Configuration.swift */; };
 		3BA6A1D72C9D72B500FF9E1A /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3BA6A1D62C9D72B500FF9E1A /* LibXray */; };
 		3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
 		3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1D92C9D756C00FF9E1A /* InfoRow.swift */; };
@@ -71,6 +72,7 @@
 		3B2DA99E2C95398600E8FCB9 /* PacketTunnelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelManager.swift; sourceTree = "<group>"; };
 		3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.9.tbd; path = usr/lib/libresolv.9.tbd; sourceTree = SDKROOT; };
 		3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3B8050DD2C9D7C0800043697 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		3BA6A1D92C9D756C00FF9E1A /* InfoRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoRow.swift; sourceTree = "<group>"; };
 		3BA6A1DB2C9D759D00FF9E1A /* ActionButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonStyle.swift; sourceTree = "<group>"; };
 		3BA6A1DD2C9D75C000FF9E1A /* VPNControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNControlView.swift; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 				3BA6A1DD2C9D75C000FF9E1A /* VPNControlView.swift */,
 				3BA6A1DF2C9D75DF00FF9E1A /* VersionView.swift */,
 				3BA6A1E12C9D779A00FF9E1A /* Util.swift */,
+				3B8050DD2C9D7C0800043697 /* Configuration.swift */,
 			);
 			path = Xray;
 			sourceTree = "<group>";
@@ -288,6 +291,7 @@
 				3B2DA9582C95337E00E8FCB9 /* XrayApp.swift in Sources */,
 				3B2DA99C2C95393600E8FCB9 /* Constant.swift in Sources */,
 				3BA6A1DE2C9D75C000FF9E1A /* VPNControlView.swift in Sources */,
+				3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */,
 				3BA6A1E02C9D75DF00FF9E1A /* VersionView.swift in Sources */,
 				3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */,
 				3BA6A1DC2C9D759D00FF9E1A /* ActionButtonStyle.swift in Sources */,

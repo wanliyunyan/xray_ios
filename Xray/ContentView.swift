@@ -64,7 +64,16 @@ struct ContentView: View {
                 }
                 clipboardText = savedContent
             }
-            try await packetTunnelManager.start(config: clipboardText, port: port)
+            
+            // 生成合并后的配置数据
+            let configData = try Configuration().buildConfigurationData(inboundPort: port, config: clipboardText)
+            
+            // 将配置数据转换为字符串
+            guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
+                throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
+            }
+            
+            try await packetTunnelManager.start(config: mergedConfigString, port: port)
         } catch {
             print("连接 VPN 时出错: \(error.localizedDescription)")
         }

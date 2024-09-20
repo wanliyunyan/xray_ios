@@ -11,7 +11,7 @@ import SwiftUI
 struct ActionButtonStyle: ButtonStyle {
     var color: Color
 
-    func makeBody(configuration: Configuration) -> some View {
+    func makeBody(configuration: ButtonStyleConfiguration) -> some View {
         configuration.label
             .frame(maxWidth: .infinity)
             .padding()
