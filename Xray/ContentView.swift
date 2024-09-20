@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var ipText: String = ""
     @State private var portText: String = ""
     @State private var sock5Text: String = "10808"  // 默认端口号，使用 String 类型
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -37,11 +39,11 @@ struct ContentView: View {
             }
             .padding()
 
-            Spacer() // Pushes the buttons to the bottom
+            Spacer()
 
             VStack {
                 vpnControlButton()
-                
+
                 Button("从剪贴板粘贴") {
                     pasteFromClipboard()
                 }
@@ -53,6 +55,10 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             loadDataFromUserDefaults()
+        }
+        // 使用 alert 显示错误信息
+        .alert(isPresented: $showErrorAlert) {
+            Alert(title: Text("错误"), message: Text(errorMessage), dismissButton: .default(Text("确定")))
         }
     }
 
@@ -88,10 +94,11 @@ struct ContentView: View {
                 do {
                     try await connectVPN(clipboardContent: clipboardText, port: port)
                 } catch {
-                    print("连接 VPN 失败: \(error.localizedDescription)")
+                    // 捕获错误并显示错误信息
+                    showError(error.localizedDescription)
                 }
             } else {
-                print("端口号无效")
+                showError("端口号无效")
             }
         }
     }
@@ -101,6 +108,7 @@ struct ContentView: View {
 
         if configContent.isEmpty {
             guard let savedContent = loadFromUserDefaults(key: "clipboardContent"), !savedContent.isEmpty else {
+                // 抛出自定义错误
                 throw NSError(domain: "ContentView", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
             }
             configContent = savedContent
@@ -121,18 +129,30 @@ struct ContentView: View {
     }
 
     private func pasteFromClipboard() {
-        if let clipboardContent = UIPasteboard.general.string {
+        if let clipboardContent = UIPasteboard.general.string, !clipboardContent.isEmpty {
+            // 从 UserDefaults 加载已存储的内容
+            let storedContent = loadFromUserDefaults(key: "clipboardContent")
+            
+            // 检查 UserDefaults 是否为空
+            if let storedContent = storedContent, !storedContent.isEmpty {
+                // 比较剪贴板内容与存储内容是否相同
+                if clipboardContent == storedContent {
+                    return
+                }
+            }
+            
+            // 如果 UserDefaults 为空或剪贴板内容不同，则保存并解析
             clipboardText = clipboardContent
             saveToUserDefaults(value: clipboardContent, key: "clipboardContent")
             parseContent(clipboardContent)
         } else {
             clipboardText = "剪贴板没有内容"
+            showError("剪贴板没有有效的文本内容")
         }
     }
 
     private func saveToUserDefaults(value: String, key: String) {
         UserDefaults.standard.set(value, forKey: key)
-        print("已保存到 UserDefaults")
     }
 
     private func loadFromUserDefaults(key: String) -> String? {
@@ -152,6 +172,12 @@ struct ContentView: View {
     private func maskIPAddress(_ ipAddress: String) -> String {
         let components = ipAddress.split(separator: ".")
         return components.count == 4 ? "*.*.*." + components[3] : ipAddress
+    }
+
+    // MARK: - Error Handling
+    private func showError(_ message: String) {
+        errorMessage = message
+        showErrorAlert = true
     }
 }
 
