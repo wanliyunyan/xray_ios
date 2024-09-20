@@ -170,8 +170,7 @@ struct Configuration {
         inbound["listen"] = "127.0.0.1"
         inbound["protocol"] = "socks"
         inbound["settings"] = [
-            "udp": true,
-            "auth": "noauth"
+            "udp": true
         ]
         inbound["port"] = inboundPort
         return inbound

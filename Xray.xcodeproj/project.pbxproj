@@ -20,6 +20,13 @@
 		3B2DA9A92C953B2C00E8FCB9 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B2DA9A82C953B2C00E8FCB9 /* LibXray */; };
 		3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
 		3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */; };
+		3BA6A1D72C9D72B500FF9E1A /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3BA6A1D62C9D72B500FF9E1A /* LibXray */; };
+		3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
+		3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1D92C9D756C00FF9E1A /* InfoRow.swift */; };
+		3BA6A1DC2C9D759D00FF9E1A /* ActionButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DB2C9D759D00FF9E1A /* ActionButtonStyle.swift */; };
+		3BA6A1DE2C9D75C000FF9E1A /* VPNControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DD2C9D75C000FF9E1A /* VPNControlView.swift */; };
+		3BA6A1E02C9D75DF00FF9E1A /* VersionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DF2C9D75DF00FF9E1A /* VersionView.swift */; };
+		3BA6A1E22C9D779A00FF9E1A /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1E12C9D779A00FF9E1A /* Util.swift */; };
 		3BCCD0E42C9BF1FB00E531B8 /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3BCCD0E32C9BF1FB00E531B8 /* Tun2SocksKit */; };
 		3BCCD0E62C9BF1FB00E531B8 /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 3BCCD0E52C9BF1FB00E531B8 /* Tun2SocksKitC */; };
 /* End PBXBuildFile section */
@@ -64,6 +71,11 @@
 		3B2DA99E2C95398600E8FCB9 /* PacketTunnelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelManager.swift; sourceTree = "<group>"; };
 		3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.9.tbd; path = usr/lib/libresolv.9.tbd; sourceTree = SDKROOT; };
 		3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3BA6A1D92C9D756C00FF9E1A /* InfoRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoRow.swift; sourceTree = "<group>"; };
+		3BA6A1DB2C9D759D00FF9E1A /* ActionButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionButtonStyle.swift; sourceTree = "<group>"; };
+		3BA6A1DD2C9D75C000FF9E1A /* VPNControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNControlView.swift; sourceTree = "<group>"; };
+		3BA6A1DF2C9D75DF00FF9E1A /* VersionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionView.swift; sourceTree = "<group>"; };
+		3BA6A1E12C9D779A00FF9E1A /* Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Util.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +83,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */,
+				3BA6A1D72C9D72B500FF9E1A /* LibXray in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +133,11 @@
 				3B2DA95B2C95337F00E8FCB9 /* Assets.xcassets */,
 				3B2DA99E2C95398600E8FCB9 /* PacketTunnelManager.swift */,
 				3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */,
+				3BA6A1D92C9D756C00FF9E1A /* InfoRow.swift */,
+				3BA6A1DB2C9D759D00FF9E1A /* ActionButtonStyle.swift */,
+				3BA6A1DD2C9D75C000FF9E1A /* VPNControlView.swift */,
+				3BA6A1DF2C9D75DF00FF9E1A /* VersionView.swift */,
+				3BA6A1E12C9D779A00FF9E1A /* Util.swift */,
 			);
 			path = Xray;
 			sourceTree = "<group>";
@@ -168,6 +187,9 @@
 				3B2DA98F2C95344600E8FCB9 /* PBXTargetDependency */,
 			);
 			name = Xray;
+			packageProductDependencies = (
+				3BA6A1D62C9D72B500FF9E1A /* LibXray */,
+			);
 			productName = Xray;
 			productReference = 3B2DA9542C95337E00E8FCB9 /* Xray.app */;
 			productType = "com.apple.product-type.application";
@@ -261,9 +283,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				3B2DA99F2C95398600E8FCB9 /* PacketTunnelManager.swift in Sources */,
+				3BA6A1E22C9D779A00FF9E1A /* Util.swift in Sources */,
 				3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */,
 				3B2DA9582C95337E00E8FCB9 /* XrayApp.swift in Sources */,
 				3B2DA99C2C95393600E8FCB9 /* Constant.swift in Sources */,
+				3BA6A1DE2C9D75C000FF9E1A /* VPNControlView.swift in Sources */,
+				3BA6A1E02C9D75DF00FF9E1A /* VersionView.swift in Sources */,
+				3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */,
+				3BA6A1DC2C9D759D00FF9E1A /* ActionButtonStyle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -593,6 +620,11 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		3B2DA9A82C953B2C00E8FCB9 /* LibXray */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3B2DA9A72C953B2C00E8FCB9 /* XCRemoteSwiftPackageReference "LibXray" */;
+			productName = LibXray;
+		};
+		3BA6A1D62C9D72B500FF9E1A /* LibXray */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3B2DA9A72C953B2C00E8FCB9 /* XCRemoteSwiftPackageReference "LibXray" */;
 			productName = LibXray;
