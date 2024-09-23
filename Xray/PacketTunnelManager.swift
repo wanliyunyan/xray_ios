@@ -21,6 +21,10 @@ final class PacketTunnelManager: ObservableObject {
         manager?.connection.status
     }
     
+    var connectedDate: Date? {
+        manager?.connection.connectedDate
+    }
+    
     init() {
         Task {
             await setupManager()

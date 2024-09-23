@@ -10,13 +10,10 @@ import NetworkExtension
 
 @main
 struct XrayApp: App {
-
-    @StateObject private var packetTunnelManager = PacketTunnelManager.shared
-
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(packetTunnelManager)
+                .environmentObject(PacketTunnelManager.shared)
         }
     }
 }

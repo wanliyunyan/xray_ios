@@ -9,7 +9,7 @@ import SwiftUI
 
 @MainActor
 struct ContentView: View {
-    @EnvironmentObject var packetTunnelManager: PacketTunnelManager
+    @EnvironmentObject var packetTunnelManager: PacketTunnelManager // 监听 PacketTunnelManager 的状态
     @State private var clipboardText: String = ""
     @State private var idText: String = ""
     @State private var ipText: String = ""
@@ -21,6 +21,8 @@ struct ContentView: View {
                 InfoRow(label: "ID:", text: idText)
                 InfoRow(label: "IP地址:", text: Util.maskIPAddress(ipText))
                 InfoRow(label: "端口:", text: portText)
+                
+                ConnectedDurationView()
             }
             .padding()
 
@@ -30,23 +32,23 @@ struct ContentView: View {
                 await connectVPN(port: port)
             })
 
-            // 从剪贴板粘贴按钮，两侧留白
+            // 从剪贴板粘贴按钮
             HStack {
-                Spacer() // 添加左侧空白
+                Spacer()
                 Button("从剪贴板粘贴") {
                     handlePasteFromClipboard()
                 }
                 .buttonStyle(ActionButtonStyle(color: .blue))
-                .padding(.horizontal) // 为按钮两侧添加适当的内边距
-                Spacer() // 添加右侧空白
+                .padding(.horizontal)
+                Spacer()
             }
             .padding(.top, 20)
 
-            // 版本号居中显示
+            // 版本号显示
             HStack {
-                Spacer() // 左侧空白
-                VersionView() // 版本号视图
-                Spacer() // 右侧空白
+                Spacer()
+                VersionView()
+                Spacer()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -65,10 +67,8 @@ struct ContentView: View {
                 clipboardText = savedContent
             }
             
-            // 生成合并后的配置数据
             let configData = try Configuration().buildConfigurationData(inboundPort: port, config: clipboardText)
             
-            // 将配置数据转换为字符串
             guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
                 throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
             }
