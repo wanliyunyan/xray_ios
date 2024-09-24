@@ -17,10 +17,8 @@ struct VersionView: View {
     var body: some View {
         VStack {
             HStack {
-                Text("版本号:")
-                    .padding(.leading, 10)
+                Text("xray版本号:")
                 Text(versionText)
-                    .padding(.leading, 5)
             }
             .padding(.top, 20)
         }
