@@ -10,9 +10,11 @@ import LibXray
 
 struct Configuration {
 
-    func buildConfigurationData(inboundPort: Int, config: String) throws -> Data {
+    func buildConfigurationData(inboundPort: Int, trafficPort: Int, config: String) throws -> Data {
         var configuration: [String: Any] = [:]
-        configuration["inbounds"] = [try self.buildInbound(inboundPort: inboundPort)]
+        
+        configuration["api"] = self.buildApi()
+        configuration["inbounds"] = self.buildInbound(inboundPort: inboundPort,trafficPort:trafficPort)
         
         // 获取 dataDict
         let dataDict = try self.buildOutInbound(config: config)
@@ -20,20 +22,73 @@ struct Configuration {
         // 合并 inbound 和 dataDict
         dataDict.forEach { configuration[$0.key] = $0.value }
         
+        configuration["policy"] =  self.buildPolicy()
+        configuration["routing"] =  self.buildRoute()
+        configuration["stats"] =  [:]
+        
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
     
-    private func buildInbound(inboundPort: Int) throws -> [String: Any] {
-        var inbound: [String: Any] = [:]
-        inbound["listen"] = "127.0.0.1"
-        inbound["protocol"] = "socks"
-        inbound["settings"] = [
-            "udp": true
+    private func buildInbound(inboundPort: Int,trafficPort: Int = 10085) -> [[String: Any]] {
+        let inbound1: [String: Any] = [
+            "listen": "127.0.0.1",
+            "port": inboundPort,
+            "protocol": "socks",
+            "settings": [
+                "auth": "noauth",
+                "udp": true
+            ],
+            "tag": "socks"
         ]
-        inbound["port"] = inboundPort
-        return inbound
+        
+        let inbound2: [String: Any] = [
+            "listen": "127.0.0.1",
+            "port": trafficPort,
+            "protocol": "dokodemo-door",
+            "settings": [
+                "address": "127.0.0.1"
+            ],
+            "tag": "api"
+        ]
+        
+        return [inbound1, inbound2]
+    }
+    
+    private func buildApi() -> [String: Any] {
+        return [
+            "services": [
+                "StatsService"
+            ],
+            "tag": "api"
+        ]
     }
 
+    private func buildPolicy() -> [String: Any] {
+        return [
+            "system": [
+                "statsInboundDownlink": true,
+                "statsInboundUplink": true,
+                "statsOutboundDownlink": true,
+                "statsOutboundUplink": true
+            ]
+        ]
+    }
+    
+    private func buildRoute() -> [String: Any] {
+        return [
+            "domainStrategy": "IpIfNonMatch",
+            "rules": [
+                [
+                    "inboundTag": [
+                        "api"
+                    ],
+                    "outboundTag": "api",
+                    "type": "field"
+                ]
+            ]
+        ]
+    }
+    
     private func buildOutInbound(config: String) throws -> [String: Any] {
         // 将传入的 config 字符串进行 Base64 编码并转换为 Xray JSON
         guard let configData = config.data(using: .utf8) else {

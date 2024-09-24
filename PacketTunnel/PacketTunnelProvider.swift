@@ -29,7 +29,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         
-        guard let port = options?["port"] as? Int else {
+        guard let sock5Port = options?["sock5Port"] as? Int else {
             return
         }
         
@@ -39,7 +39,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             // 设置隧道网络
             try await setTunnelNetworkSettings()
             // 启动 SOCKS5 隧道
-            try startSocks5Tunnel(serverPort: port)
+            try startSocks5Tunnel(serverPort: sock5Port)
         } catch {
             os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
             throw error

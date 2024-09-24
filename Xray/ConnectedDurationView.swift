@@ -28,7 +28,7 @@ struct ConnectedDurationView: View {
                 Text("00:00")
             }
         } label: {
-            Text("连接时长").font(.headline)
+            Text("连接时长")
         }
     }
     

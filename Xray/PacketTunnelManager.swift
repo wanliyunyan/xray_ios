@@ -73,15 +73,15 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
     
-    func start(config: String, port: Int) async throws {
+    func start(sock5Port: Int, config: String) async throws {
         guard let manager = self.manager else {
             throw NSError(domain: "PacketTunnelManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Manager 未初始化"])
         }
 
         // 启动 VPN 并传递配置和端口号
         try manager.connection.startVPNTunnel(options: [
+            "sock5Port": sock5Port as NSNumber,
             "config": config as NSString,
-            "port": port as NSNumber
         ])
     }
     

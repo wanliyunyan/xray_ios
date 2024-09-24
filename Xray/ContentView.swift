@@ -23,13 +23,17 @@ struct ContentView: View {
                 InfoRow(label: "端口:", text: portText)
                 
                 ConnectedDurationView()
+                
+                if packetTunnelManager.status == .connected{
+                    TrafficStatsView(trafficPort: Constant.trafficPort)
+                }
             }
             .padding()
 
             Spacer()
-
-            VPNControlView(sock5Text: "10808", connectIfValidPort: { port in
-                await connectVPN(port: port)
+            
+            VPNControlView(sock5Text: Constant.sock5Port,trafficPortText: Constant.trafficPort, connectIfValidPort: { sock5Port,trafficPort  in
+                await connectVPN(sock5Port:sock5Port,trafficPort:trafficPort)
             })
 
             // 从剪贴板粘贴按钮
@@ -58,7 +62,7 @@ struct ContentView: View {
     }
 
     // MARK: - VPN Connection
-    private func connectVPN(port: Int) async {
+    private func connectVPN(sock5Port: Int,trafficPort:Int) async {
         do {
             if clipboardText.isEmpty {
                 guard let savedContent = Util.loadFromUserDefaults(key: "clipboardContent"), !savedContent.isEmpty else {
@@ -67,13 +71,13 @@ struct ContentView: View {
                 clipboardText = savedContent
             }
             
-            let configData = try Configuration().buildConfigurationData(inboundPort: port, config: clipboardText)
+            let configData = try Configuration().buildConfigurationData(inboundPort: sock5Port, trafficPort:trafficPort ,config: clipboardText)
             
             guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
                 throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
             }
             
-            try await packetTunnelManager.start(config: mergedConfigString, port: port)
+            try await packetTunnelManager.start(sock5Port: sock5Port, config: mergedConfigString)
         } catch {
             print("连接 VPN 时出错: \(error.localizedDescription)")
         }

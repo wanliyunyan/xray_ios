@@ -15,12 +15,9 @@ struct InfoRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.headline)
             Text(text)
-                .padding()
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Spacer()
         }
     }
 }
