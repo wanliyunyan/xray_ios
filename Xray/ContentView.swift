@@ -18,15 +18,15 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading) {
             VStack(alignment: .leading) {
+                Text("vps信息:").font(.headline)
                 InfoRow(label: "ID:", text: idText)
                 InfoRow(label: "IP地址:", text: Util.maskIPAddress(ipText))
                 InfoRow(label: "端口:", text: portText)
                 
                 ConnectedDurationView()
                 
-                if packetTunnelManager.status == .connected{
-                    TrafficStatsView(trafficPort: Constant.trafficPort)
-                }
+                TrafficStatsView(trafficPort: Constant.trafficPort)
+
             }
             .padding()
 
@@ -38,13 +38,11 @@ struct ContentView: View {
 
             // 从剪贴板粘贴按钮
             HStack {
-                Spacer()
                 Button("从剪贴板粘贴") {
                     handlePasteFromClipboard()
                 }
                 .buttonStyle(ActionButtonStyle(color: .blue))
                 .padding(.horizontal)
-                Spacer()
             }
             .padding(.top, 20)
 

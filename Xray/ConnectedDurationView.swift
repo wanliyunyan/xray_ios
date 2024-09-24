@@ -5,7 +5,6 @@
 //  Created by pan on 2024/9/23.
 //
 
-import Foundation
 import SwiftUI
 
 struct ConnectedDurationView: View {
@@ -13,13 +12,14 @@ struct ConnectedDurationView: View {
     @EnvironmentObject private var packetTunnelManager: PacketTunnelManager
     
     var body: some View {
-        LabeledContent {
+        VStack(alignment: .leading) {
+            Text("连接时长:").font(.headline)  // 标签在上方
+            
             if let status = packetTunnelManager.status, status == .connected {
                 if let connectedDate = packetTunnelManager.connectedDate {
                     TimelineView(.periodic(from: Date(), by: 1.0)) { context in
                         Text(connectedDateString(connectedDate: connectedDate, current: context.date))
-                            .foregroundColor(.secondary)
-                            .monospacedDigit()
+                            .monospacedDigit()  // 时间显示在下方
                     }
                 } else {
                     Text("00:00")
@@ -27,8 +27,6 @@ struct ConnectedDurationView: View {
             } else {
                 Text("00:00")
             }
-        } label: {
-            Text("连接时长")
         }
     }
     

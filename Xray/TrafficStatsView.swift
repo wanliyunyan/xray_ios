@@ -10,8 +10,10 @@ import SwiftUI
 import LibXray
 
 struct TrafficStatsView: View {
+    @EnvironmentObject var packetTunnelManager: PacketTunnelManager // 监听 PacketTunnelManager 的状态
     @State private var downlinkTraffic: String = "0"  // 下行流量
     @State private var uplinkTraffic: String = "0"    // 上行流量
+    @State private var sysStats: [String: String] = [:]  // 用于保存系统统计信息的字典
     @State private var base64TrafficString: String = ""  // 用于保存初始化时的 Base64 编码的 trafficString
     
     // 定时器：每秒执行一次
@@ -21,14 +23,29 @@ struct TrafficStatsView: View {
     
     var body: some View {
         VStack(alignment: .leading) {
+            Text("流量统计:").font(.headline)
             Text("下行流量: \(formatBytes(downlinkTraffic))") // 显示下行流量
             Text("上行流量: \(formatBytes(uplinkTraffic))")    // 显示上行流量
+            Text("系统统计:").font(.headline)
+            Text("协程数量 (Num Goroutines): \(sysStats["NumGoroutine"] ?? "0")")  // NumGoroutine
+            Text("GC 次数 (Num GC): \(sysStats["NumGC"] ?? "无")")  // NumGC
+            Text("当前分配内存 (Alloc): \(formatBytes(sysStats["Alloc"] ?? "0"))")  // Alloc
+            Text("总分配内存 (Total Alloc): \(formatBytes(sysStats["TotalAlloc"] ?? "0"))")  // TotalAlloc
+            Text("系统内存总量 (Sys): \(formatBytes(sysStats["Sys"] ?? "0"))")  // Sys
+            Text("内存分配次数 (Mallocs): \(sysStats["Mallocs"] ?? "0")")  // Mallocs
+            Text("内存释放次数 (Frees): \(sysStats["Frees"] ?? "0")")  // Frees
+            Text("当前存活对象数 (Live Objects): \(sysStats["LiveObjects"] ?? "0")")  // LiveObjects
+            Text("GC 暂停总时间 (Pause Total, ns): \(sysStats["PauseTotalNs"] ?? "0")")  // PauseTotalNs
+            Text("运行时间 (Uptime, s): \(sysStats["Uptime"] ?? "0")")  // Uptime
         }
         .onAppear {
             initializeTrafficString()  // 视图加载时执行一次
         }
         .onReceive(timer) { _ in
-            updateTrafficStats()
+            // 仅在 VPN 连接后获取流量统计
+            if packetTunnelManager.status == .connected {
+                updateTrafficStats()
+            }
         }
     }
     
@@ -59,7 +76,7 @@ struct TrafficStatsView: View {
         }
     }
     
-    // 解析返回的 JSON 数据，并更新流量统计
+    // 解析返回的 JSON 数据，并更新流量统计和系统统计
     private func parseXrayResponse(_ response: String) {
         // 将 JSON 字符串转换为字典
         if let jsonData = response.data(using: .utf8),
@@ -70,38 +87,57 @@ struct TrafficStatsView: View {
             if let success = jsonDict["success"] as? Bool, success {
                 
                 // 解析 data 中的 sysStats 和 stats
-                if let dataDict = jsonDict["data"] as? [String: Any],
-                   let statsBase64 = dataDict["stats"] as? String {
+                if let dataDict = jsonDict["data"] as? [String: Any] {
                     
-                    // 尝试解码 Base64 为 Data
-                    if let statsData = Data(base64Encoded: statsBase64) {
-                        
-                        // 尝试直接将 statsData 解析为 JSON 对象
-                        if let statsJsonObject = try? JSONSerialization.jsonObject(with: statsData, options: []),
-                           let statsDict = statsJsonObject as? [String: Any] {
+                    // 解析 sysStats
+                    if let sysStatsBase64 = dataDict["sysStats"] as? String {
+                        if let sysStatsData = Data(base64Encoded: sysStatsBase64) {
+                            if let sysStatsString = String(data: sysStatsData, encoding: .utf8),
+                               let sysStatsJson = try? JSONSerialization.jsonObject(with: Data(sysStatsString.utf8), options: []) as? [String: Any] {
 
-                            // 在这里可以继续解析 statsDict，提取你需要的流量统计数据
-                            if let statsArray = statsDict["stat"] as? [[String: Any]] {
-                                for stat in statsArray {
-                                    if let name = stat["name"] as? String, let value = stat["value"] as? String {
-                                        if name == "inbound>>>socks>>>traffic>>>uplink" {
-                                            // 更新上行流量
-                                            uplinkTraffic = value  // 将解析到的上行流量赋值到页面
-                                        } else if name == "inbound>>>socks>>>traffic>>>downlink" {
-                                            // 更新下行流量
-                                            downlinkTraffic = value  // 将解析到的下行流量赋值到页面
+                                // 更新系统统计信息
+                                sysStats = sysStatsJson.mapValues { "\($0)" }
+                            } else {
+                                print("无法将 sysStatsData 转换为 JSON 对象")
+                            }
+                        } else {
+                            print("无法将 sysStatsBase64 转换为 Data")
+                        }
+                    }
+                    
+                    // 解析 stats
+                    if let statsBase64 = dataDict["stats"] as? String {
+                        // 尝试解码 Base64 为 Data
+                        if let statsData = Data(base64Encoded: statsBase64) {
+                            
+                            // 尝试直接将 statsData 解析为 JSON 对象
+                            if let statsJsonObject = try? JSONSerialization.jsonObject(with: statsData, options: []),
+                               let statsDict = statsJsonObject as? [String: Any] {
+
+                                // 在这里可以继续解析 statsDict，提取你需要的流量统计数据
+                                if let statsArray = statsDict["stat"] as? [[String: Any]] {
+                                    for stat in statsArray {
+                                        if let name = stat["name"] as? String, let value = stat["value"] as? String {
+                                            if name == "inbound>>>socks>>>traffic>>>uplink" {
+                                                // 更新上行流量
+                                                uplinkTraffic = value  // 将解析到的上行流量赋值到页面
+                                            } else if name == "inbound>>>socks>>>traffic>>>downlink" {
+                                                // 更新下行流量
+                                                downlinkTraffic = value  // 将解析到的下行流量赋值到页面
+                                            }
                                         }
                                     }
                                 }
+                                
+                            } else {
+                                print("无法将 statsData 解析为 JSON")
                             }
-                            
-                        } else {
-                            print("无法将 statsData 解析为 JSON")
-                        }
 
-                    } else {
-                        print("无法将 Base64 字符串转换为 Data")
+                        } else {
+                            print("无法将 Base64 字符串转换为 Data")
+                        }
                     }
+                    
                 } else {
                     print("无法解析 data 中的 sysStats 或 stats")
                 }
