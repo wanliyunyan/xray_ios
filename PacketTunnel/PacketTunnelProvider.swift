@@ -20,35 +20,11 @@ struct RunXrayRequest: Codable {
 // PacketTunnelProvider 是 NEPacketTunnelProvider 的子类，
 // 负责处理网络包的隧道提供。
 class PacketTunnelProvider: NEPacketTunnelProvider {
+    let MTU = 8500
     
     // 开始隧道的方法，会在创建隧道时调用
     override func startTunnel(options: [String : NSObject]? = nil) async throws {
-        // 创建网络设置对象，设置隧道的远程地址
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "254.1.1.1")
-        settings.mtu = 1500
-        
-        // 设置 IPv4 地址、掩码和路由
-        settings.ipv4Settings = {
-            let settings = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.255.0.0"])
-            settings.includedRoutes = [NEIPv4Route.default()]
-            settings.excludedRoutes = [NEIPv4Route(destinationAddress: "0.0.0.0", subnetMask: "255.0.0.0")]
-            return settings
-        }()
-        
-        // 设置 IPv6 地址、掩码和路由
-        settings.ipv6Settings = {
-            let settings = NEIPv6Settings(addresses: ["fd6e:a81b:704f:1211::1"], networkPrefixLengths: [64])
-            settings.includedRoutes = [NEIPv6Route.default()]
-            settings.excludedRoutes = [NEIPv6Route(destinationAddress: "::", networkPrefixLength: 128)]
-            return settings
-        }()
-        
-        // 设置 DNS 服务器
-        settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "114.114.114.114"])
-        
-        // 应用设置到隧道
-        try await self.setTunnelNetworkSettings(settings)
-        
+
         guard let config = options?["config"] as? String else {
             return
         }
@@ -59,9 +35,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         
         do {
             // 启动 Xray 核心进程
-            try self.startXray(config: config)
+            try startXray(config: config)
+            // 设置隧道网络
+            try await setTunnelNetworkSettings()
             // 启动 SOCKS5 隧道
-            try self.startSocks5Tunnel(serverPort: port)
+            try startSocks5Tunnel(serverPort: port)
         } catch {
             os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
             throw error
@@ -74,7 +52,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let fileUrl = try createConfigFile(with: config)
 
         // 创建 RunXrayRequest
-        let request = RunXrayRequest(datDir: nil, configPath: fileUrl.path, maxMemory: 0)
+        let request = RunXrayRequest(datDir: nil, configPath: fileUrl.path, maxMemory: 24 * 1024 * 1024)
         
         // 将 RunXrayRequest 对象编码为 JSON 数据并启动 Xray 核心
         do {
@@ -97,7 +75,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private func startSocks5Tunnel(serverPort port: Int = 10808) throws {
         let socks5Config = """
         tunnel:
-          mtu: 1500
+          mtu: \(MTU)
 
         socks5:
           port: \(port)
@@ -121,6 +99,34 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
     
+    func setTunnelNetworkSettings() async throws {
+        // 创建网络设置对象，设置隧道的远程地址
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "254.1.1.1")
+        settings.mtu = NSNumber(integerLiteral: MTU)
+        
+        // 设置 IPv4 地址、掩码和路由
+        settings.ipv4Settings = {
+            let settings = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.255.0.0"])
+            settings.includedRoutes = [NEIPv4Route.default()]
+            settings.excludedRoutes = [NEIPv4Route(destinationAddress: "0.0.0.0", subnetMask: "255.0.0.0")]
+            return settings
+        }()
+        
+        // 设置 IPv6 地址、掩码和路由
+        settings.ipv6Settings = {
+            let settings = NEIPv6Settings(addresses: ["fd6e:a81b:704f:1211::1"], networkPrefixLengths: [64])
+            settings.includedRoutes = [NEIPv6Route.default()]
+            settings.excludedRoutes = [NEIPv6Route(destinationAddress: "::", networkPrefixLength: 128)]
+            return settings
+        }()
+        
+        // 设置 DNS 服务器
+        settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "114.114.114.114"])
+        
+        // 应用设置到隧道
+        try await self.setTunnelNetworkSettings(settings)
+    }
+    
     // 停止隧道的方法 没发现这个方法有什么用处
     override func stopTunnel(with reason: NEProviderStopReason) async {
         // 停止 SOCKS5 隧道
@@ -132,8 +138,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     // 创建配置文件
     private func createConfigFile(with content: String, fileName: String = "config.json") throws -> URL {
-        let tempDirectory = FileManager.default.temporaryDirectory
-        let fileUrl = tempDirectory.appendingPathComponent(fileName)
+        let fileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         
         // 写入内容，若文件不存在会自动创建
         try content.write(to: fileUrl, atomically: true, encoding: .utf8)
