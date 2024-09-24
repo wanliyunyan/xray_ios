@@ -104,3 +104,5 @@ Packages/
 *.log
 
 # mac​⬤
+/Xray.xcodeproj/xcshareddata/xcschemes/PacketTunnel.xcscheme
+/Xray.xcodeproj/xcshareddata/xcschemes/Xray.xcscheme
