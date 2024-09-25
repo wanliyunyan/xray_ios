@@ -3,3 +3,6 @@
 
 ## 界面
 ![img.png](img.png)
+
+## 测试机型
+我只有 iphone 15 plus，测试了 ios 17.6.1 和 18
