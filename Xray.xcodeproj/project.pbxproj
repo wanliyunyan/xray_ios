@@ -17,12 +17,14 @@
 		3B2DA99C2C95393600E8FCB9 /* Constant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA99B2C95393600E8FCB9 /* Constant.swift */; };
 		3B2DA99D2C95393600E8FCB9 /* Constant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA99B2C95393600E8FCB9 /* Constant.swift */; };
 		3B2DA99F2C95398600E8FCB9 /* PacketTunnelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA99E2C95398600E8FCB9 /* PacketTunnelManager.swift */; };
-		3B2DA9A92C953B2C00E8FCB9 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B2DA9A82C953B2C00E8FCB9 /* LibXray */; };
 		3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
 		3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */; };
+		3B3A0D0E2CA3BBBD00CD46C0 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D0D2CA3BBBD00CD46C0 /* LibXray */; };
+		3B3A0D102CA3BBC900CD46C0 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D0F2CA3BBC900CD46C0 /* LibXray */; };
+		3B3A0D132CA3BBDD00CD46C0 /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */; };
+		3B3A0D152CA3BBDD00CD46C0 /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */; };
 		3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B8050DD2C9D7C0800043697 /* Configuration.swift */; };
 		3B99F5162CA11A8A00CDC946 /* ConnectedDurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99F5152CA11A8A00CDC946 /* ConnectedDurationView.swift */; };
-		3BA6A1D72C9D72B500FF9E1A /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3BA6A1D62C9D72B500FF9E1A /* LibXray */; };
 		3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
 		3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1D92C9D756C00FF9E1A /* InfoRow.swift */; };
 		3BA6A1DC2C9D759D00FF9E1A /* ActionButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DB2C9D759D00FF9E1A /* ActionButtonStyle.swift */; };
@@ -30,8 +32,6 @@
 		3BA6A1E02C9D75DF00FF9E1A /* VersionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DF2C9D75DF00FF9E1A /* VersionView.swift */; };
 		3BA6A1E22C9D779A00FF9E1A /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1E12C9D779A00FF9E1A /* Util.swift */; };
 		3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */; };
-		3BCCD0E42C9BF1FB00E531B8 /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3BCCD0E32C9BF1FB00E531B8 /* Tun2SocksKit */; };
-		3BCCD0E62C9BF1FB00E531B8 /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 3BCCD0E52C9BF1FB00E531B8 /* Tun2SocksKitC */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,8 +89,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3B3A0D0E2CA3BBBD00CD46C0 /* LibXray in Frameworks */,
 				3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */,
-				3BA6A1D72C9D72B500FF9E1A /* LibXray in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,11 +98,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3BCCD0E42C9BF1FB00E531B8 /* Tun2SocksKit in Frameworks */,
+				3B3A0D132CA3BBDD00CD46C0 /* Tun2SocksKit in Frameworks */,
+				3B3A0D102CA3BBC900CD46C0 /* LibXray in Frameworks */,
+				3B3A0D152CA3BBDD00CD46C0 /* Tun2SocksKitC in Frameworks */,
 				3B2DA9882C95344600E8FCB9 /* NetworkExtension.framework in Frameworks */,
-				3BCCD0E62C9BF1FB00E531B8 /* Tun2SocksKitC in Frameworks */,
 				3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */,
-				3B2DA9A92C953B2C00E8FCB9 /* LibXray in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -197,7 +197,7 @@
 			);
 			name = Xray;
 			packageProductDependencies = (
-				3BA6A1D62C9D72B500FF9E1A /* LibXray */,
+				3B3A0D0D2CA3BBBD00CD46C0 /* LibXray */,
 			);
 			productName = Xray;
 			productReference = 3B2DA9542C95337E00E8FCB9 /* Xray.app */;
@@ -217,9 +217,9 @@
 			);
 			name = PacketTunnel;
 			packageProductDependencies = (
-				3B2DA9A82C953B2C00E8FCB9 /* LibXray */,
-				3BCCD0E32C9BF1FB00E531B8 /* Tun2SocksKit */,
-				3BCCD0E52C9BF1FB00E531B8 /* Tun2SocksKitC */,
+				3B3A0D0F2CA3BBC900CD46C0 /* LibXray */,
+				3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */,
+				3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */,
 			);
 			productName = PacketTunnel;
 			productReference = 3B2DA9852C95344600E8FCB9 /* PacketTunnel.appex */;
@@ -253,8 +253,8 @@
 			);
 			mainGroup = 3B2DA94B2C95337E00E8FCB9;
 			packageReferences = (
-				3B2DA9A72C953B2C00E8FCB9 /* XCRemoteSwiftPackageReference "LibXray" */,
-				3BCCD0E22C9BF1FB00E531B8 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */,
+				3B3A0D0C2CA3BBBD00CD46C0 /* XCRemoteSwiftPackageReference "LibXray" */,
+				3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */,
 			);
 			productRefGroup = 3B2DA9552C95337E00E8FCB9 /* Products */;
 			projectDirPath = "";
@@ -612,15 +612,15 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		3B2DA9A72C953B2C00E8FCB9 /* XCRemoteSwiftPackageReference "LibXray" */ = {
+		3B3A0D0C2CA3BBBD00CD46C0 /* XCRemoteSwiftPackageReference "LibXray" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/wanliyunyan/LibXray";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 3.0.2;
+				minimumVersion = 3.1.0;
 			};
 		};
-		3BCCD0E22C9BF1FB00E531B8 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
+		3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/EbrahimTahernejad/Tun2SocksKit";
 			requirement = {
@@ -631,24 +631,24 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		3B2DA9A82C953B2C00E8FCB9 /* LibXray */ = {
+		3B3A0D0D2CA3BBBD00CD46C0 /* LibXray */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 3B2DA9A72C953B2C00E8FCB9 /* XCRemoteSwiftPackageReference "LibXray" */;
+			package = 3B3A0D0C2CA3BBBD00CD46C0 /* XCRemoteSwiftPackageReference "LibXray" */;
 			productName = LibXray;
 		};
-		3BA6A1D62C9D72B500FF9E1A /* LibXray */ = {
+		3B3A0D0F2CA3BBC900CD46C0 /* LibXray */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 3B2DA9A72C953B2C00E8FCB9 /* XCRemoteSwiftPackageReference "LibXray" */;
+			package = 3B3A0D0C2CA3BBBD00CD46C0 /* XCRemoteSwiftPackageReference "LibXray" */;
 			productName = LibXray;
 		};
-		3BCCD0E32C9BF1FB00E531B8 /* Tun2SocksKit */ = {
+		3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 3BCCD0E22C9BF1FB00E531B8 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
+			package = 3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
 			productName = Tun2SocksKit;
 		};
-		3BCCD0E52C9BF1FB00E531B8 /* Tun2SocksKitC */ = {
+		3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 3BCCD0E22C9BF1FB00E531B8 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
+			package = 3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
 			productName = Tun2SocksKitC;
 		};
 /* End XCSwiftPackageProductDependency section */
