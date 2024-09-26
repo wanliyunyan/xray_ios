@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3B103DE32CA531240006AD0E /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B103DE22CA531240006AD0E /* LibXray */; };
+		3B103DE52CA531320006AD0E /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B103DE42CA531320006AD0E /* LibXray */; };
 		3B2DA9582C95337E00E8FCB9 /* XrayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA9572C95337E00E8FCB9 /* XrayApp.swift */; };
 		3B2DA95C2C95337F00E8FCB9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3B2DA95B2C95337F00E8FCB9 /* Assets.xcassets */; };
 		3B2DA9882C95344600E8FCB9 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9872C95344600E8FCB9 /* NetworkExtension.framework */; };
@@ -21,8 +23,6 @@
 		3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */; };
 		3B3A0D132CA3BBDD00CD46C0 /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */; };
 		3B3A0D152CA3BBDD00CD46C0 /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */; };
-		3B5C50232CA4144E0083525A /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B5C50222CA4144E0083525A /* LibXray */; };
-		3B5C50252CA414650083525A /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B5C50242CA414650083525A /* LibXray */; };
 		3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B8050DD2C9D7C0800043697 /* Configuration.swift */; };
 		3B99F5162CA11A8A00CDC946 /* ConnectedDurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99F5152CA11A8A00CDC946 /* ConnectedDurationView.swift */; };
 		3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
@@ -89,7 +89,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3B5C50232CA4144E0083525A /* LibXray in Frameworks */,
+				3B103DE32CA531240006AD0E /* LibXray in Frameworks */,
 				3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -101,7 +101,7 @@
 				3B3A0D132CA3BBDD00CD46C0 /* Tun2SocksKit in Frameworks */,
 				3B3A0D152CA3BBDD00CD46C0 /* Tun2SocksKitC in Frameworks */,
 				3B2DA9882C95344600E8FCB9 /* NetworkExtension.framework in Frameworks */,
-				3B5C50252CA414650083525A /* LibXray in Frameworks */,
+				3B103DE52CA531320006AD0E /* LibXray in Frameworks */,
 				3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -197,7 +197,7 @@
 			);
 			name = Xray;
 			packageProductDependencies = (
-				3B5C50222CA4144E0083525A /* LibXray */,
+				3B103DE22CA531240006AD0E /* LibXray */,
 			);
 			productName = Xray;
 			productReference = 3B2DA9542C95337E00E8FCB9 /* Xray.app */;
@@ -219,7 +219,7 @@
 			packageProductDependencies = (
 				3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */,
 				3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */,
-				3B5C50242CA414650083525A /* LibXray */,
+				3B103DE42CA531320006AD0E /* LibXray */,
 			);
 			productName = PacketTunnel;
 			productReference = 3B2DA9852C95344600E8FCB9 /* PacketTunnel.appex */;
@@ -254,7 +254,7 @@
 			mainGroup = 3B2DA94B2C95337E00E8FCB9;
 			packageReferences = (
 				3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */,
-				3B5C50212CA4144E0083525A /* XCRemoteSwiftPackageReference "LibXray" */,
+				3B103DE12CA531240006AD0E /* XCRemoteSwiftPackageReference "LibXray" */,
 			);
 			productRefGroup = 3B2DA9552C95337E00E8FCB9 /* Products */;
 			projectDirPath = "";
@@ -478,7 +478,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -514,7 +514,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -544,7 +544,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -574,7 +574,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -612,6 +612,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		3B103DE12CA531240006AD0E /* XCRemoteSwiftPackageReference "LibXray" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aimalygin/LibXray";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.1;
+			};
+		};
 		3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/EbrahimTahernejad/Tun2SocksKit";
@@ -620,17 +628,19 @@
 				minimumVersion = 4.7.5;
 			};
 		};
-		3B5C50212CA4144E0083525A /* XCRemoteSwiftPackageReference "LibXray" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/wanliyunyan/LibXray";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.1.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		3B103DE22CA531240006AD0E /* LibXray */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3B103DE12CA531240006AD0E /* XCRemoteSwiftPackageReference "LibXray" */;
+			productName = LibXray;
+		};
+		3B103DE42CA531320006AD0E /* LibXray */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3B103DE12CA531240006AD0E /* XCRemoteSwiftPackageReference "LibXray" */;
+			productName = LibXray;
+		};
 		3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
@@ -640,16 +650,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
 			productName = Tun2SocksKitC;
-		};
-		3B5C50222CA4144E0083525A /* LibXray */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3B5C50212CA4144E0083525A /* XCRemoteSwiftPackageReference "LibXray" */;
-			productName = LibXray;
-		};
-		3B5C50242CA414650083525A /* LibXray */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3B5C50212CA4144E0083525A /* XCRemoteSwiftPackageReference "LibXray" */;
-			productName = LibXray;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
