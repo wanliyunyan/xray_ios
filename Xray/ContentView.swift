@@ -74,7 +74,7 @@ struct ContentView: View {
             guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
                 throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
             }
-            
+//            print(mergedConfigString)
             try await packetTunnelManager.start(sock5Port: sock5Port, config: mergedConfigString)
         } catch {
             print("连接 VPN 时出错: \(error.localizedDescription)")

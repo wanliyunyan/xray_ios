@@ -13,7 +13,7 @@ struct Configuration {
     func buildConfigurationData(inboundPort: Int, trafficPort: Int, config: String) throws -> Data {
         var configuration: [String: Any] = [:]
         
-        configuration["api"] = self.buildApi()
+        configuration["metrics"] = self.buildMetrics()
         configuration["inbounds"] = self.buildInbound(inboundPort: inboundPort,trafficPort:trafficPort)
         
         // 获取 dataDict
@@ -48,18 +48,15 @@ struct Configuration {
             "settings": [
                 "address": "127.0.0.1"
             ],
-            "tag": "api"
+            "tag": "metricsIn"
         ]
         
         return [inbound1, inbound2]
     }
     
-    private func buildApi() -> [String: Any] {
+    private func buildMetrics() -> [String: Any] {
         return [
-            "services": [
-                "StatsService"
-            ],
-            "tag": "api"
+            "tag" : "metricsOut"
         ]
     }
 
@@ -80,9 +77,9 @@ struct Configuration {
             "rules": [
                 [
                     "inboundTag": [
-                        "api"
+                        "metricsIn"
                     ],
-                    "outboundTag": "api",
+                    "outboundTag": "metricsOut",
                     "type": "field"
                 ]
             ]
