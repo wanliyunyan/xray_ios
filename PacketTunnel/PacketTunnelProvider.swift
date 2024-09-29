@@ -25,17 +25,17 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     // 开始隧道的方法，会在创建隧道时调用
     override func startTunnel(options: [String : NSObject]? = nil) async throws {
 
-        guard let config = options?["config"] as? String else {
+        guard let sock5Port = options?["sock5Port"] as? Int else {
             return
         }
-        
-        guard let sock5Port = options?["sock5Port"] as? Int else {
+
+        guard let path = options?["path"] as? String else {
             return
         }
         
         do {
             // 启动 Xray 核心进程
-            try startXray(config: config)
+            try startXray(path:path)
             // 设置隧道网络
             try await setTunnelNetworkSettings()
             // 启动 SOCKS5 隧道
@@ -47,12 +47,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
     
     // 启动 Xray 核心的方法
-    private func startXray(config: String) throws {
-
-        let fileUrl = try createConfigFile(with: config)
+    private func startXray(path:String) throws {
 
         // 创建 RunXrayRequest
-        let request = RunXrayRequest(datDir: nil, configPath: fileUrl.path, maxMemory: 24 * 1024 * 1024)
+        let request = RunXrayRequest(datDir: nil, configPath: path, maxMemory: 24 * 1024 * 1024)
         
         // 将 RunXrayRequest 对象编码为 JSON 数据并启动 Xray 核心
         do {
@@ -134,16 +132,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         // 停止 Xray 核心
         LibXrayStopXray()
-    }
-    
-    // 创建配置文件
-    private func createConfigFile(with content: String, fileName: String = "config.json") throws -> URL {
-        let fileUrl = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-        
-        // 写入内容，若文件不存在会自动创建
-        try content.write(to: fileUrl, atomically: true, encoding: .utf8)
-        
-        return fileUrl
     }
 }
 
