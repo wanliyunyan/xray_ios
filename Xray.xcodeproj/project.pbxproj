@@ -32,6 +32,7 @@
 		3BA6A1E02C9D75DF00FF9E1A /* VersionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DF2C9D75DF00FF9E1A /* VersionView.swift */; };
 		3BA6A1E22C9D779A00FF9E1A /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1E12C9D779A00FF9E1A /* Util.swift */; };
 		3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */; };
+		3BCF8AEB2CA8E5C400723541 /* ShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +83,7 @@
 		3BA6A1DF2C9D75DF00FF9E1A /* VersionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionView.swift; sourceTree = "<group>"; };
 		3BA6A1E12C9D779A00FF9E1A /* Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Util.swift; sourceTree = "<group>"; };
 		3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatsView.swift; sourceTree = "<group>"; };
+		3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -147,6 +149,7 @@
 				3B8050DD2C9D7C0800043697 /* Configuration.swift */,
 				3B99F5152CA11A8A00CDC946 /* ConnectedDurationView.swift */,
 				3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */,
+				3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */,
 			);
 			path = Xray;
 			sourceTree = "<group>";
@@ -302,6 +305,7 @@
 				3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */,
 				3BA6A1E02C9D75DF00FF9E1A /* VersionView.swift in Sources */,
 				3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */,
+				3BCF8AEB2CA8E5C400723541 /* ShareButton.swift in Sources */,
 				3BA6A1DC2C9D759D00FF9E1A /* ActionButtonStyle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
