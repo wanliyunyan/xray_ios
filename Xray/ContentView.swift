@@ -40,10 +40,16 @@ struct ContentView: View {
                 TrafficStatsView(trafficPort: Constant.trafficPort)
                 
                 // 显示 Ping 速度，并根据速度值设置颜色
-                Text("Ping 网速: \(pingSpeed) ms")
-                    .font(.headline)
-                    .padding(.top, 20)
-                    .foregroundColor(pingSpeedColor(pingSpeed)) // 动态设置颜色
+                HStack {
+                    Text("Ping 网速:")  // 黑色文本
+                        .font(.headline)
+                    Text("\(pingSpeed)")  // 动态颜色文本
+                        .font(.headline)
+                        .foregroundColor(pingSpeedColor(pingSpeed))
+                    Text("ms")  // 黑色文本
+                        .font(.headline)
+                }
+                .padding(.top, 20)
             }
             .padding()
 
