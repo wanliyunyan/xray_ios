@@ -29,7 +29,7 @@ struct Configuration {
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
     
-    private func buildInbound(inboundPort: Int,trafficPort: Int = 10085) -> [[String: Any]] {
+    private func buildInbound(inboundPort: Int,trafficPort: Int) -> [[String: Any]] {
         let inbound1: [String: Any] = [
             "listen": "127.0.0.1",
             "port": inboundPort,

@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var idText: String = ""
     @State private var ipText: String = ""
     @State private var portText: String = ""
+    @State private var path: String = ""
     @State private var isShowingShareModal = false // 控制弹窗显示
     @State private var showClipboardEmptyAlert = false // 用于控制显示空剪贴板的提示
     @State private var pingSpeed: Int = 0  // 用于显示网速的状态
@@ -39,17 +40,7 @@ struct ContentView: View {
 
                 TrafficStatsView(trafficPort: Constant.trafficPort)
                 
-                // 显示 Ping 速度，并根据速度值设置颜色
-                HStack {
-                    Text("Ping 网速:")  // 黑色文本
-                        .font(.headline)
-                    Text("\(pingSpeed)")  // 动态颜色文本
-                        .font(.headline)
-                        .foregroundColor(pingSpeedColor(pingSpeed))
-                    Text("ms")  // 黑色文本
-                        .font(.headline)
-                }
-                .padding(.top, 20)
+                PingView().environmentObject(PacketTunnelManager.shared)
             }
             .padding()
 
@@ -114,21 +105,6 @@ struct ContentView: View {
             }
 
             let fileUrl = try Util.createConfigFile(with: mergedConfigString)
-            
-            // 创建并发送 Ping 请求
-            let pingRequest = createPingRequest(configPath: fileUrl.path, sock5Port: sock5Port)
-            let pingBase64String = try JSONEncoder().encode(pingRequest).base64EncodedString()
-            
-            let pingResponseBase64 = LibXrayPing(pingBase64String)
-            
-            // 解析 Base64 响应
-            if let pingResult = decodePingResponse(base64String: pingResponseBase64) {
-                DispatchQueue.main.async {
-                    pingSpeed = pingResult  // 更新 UI 显示网速
-                }
-            } else {
-                print("Ping 解码失败")
-            }
 
             // 启动 VPN
             try await packetTunnelManager.start(sock5Port: sock5Port, path: fileUrl.path)
@@ -164,47 +140,4 @@ struct ContentView: View {
         }
     }
 
-    private func createPingRequest(configPath: String, sock5Port: Int) -> PingRequest {
-        return PingRequest(
-            datDir: nil,
-            configPath: configPath,
-            timeout: 30,
-            url: "https://www.google.com",
-            proxy: "socks5://127.0.0.1:\(sock5Port)"
-        )
-    }
-    
-    // 解码 Base64 响应并提取 "data" 字段中的网速
-    private func decodePingResponse(base64String: String) -> Int? {
-        guard let decodedData = Data(base64Encoded: base64String),
-              let decodedString = String(data: decodedData, encoding: .utf8),
-              let jsonData = decodedString.data(using: .utf8) else {
-            print("Base64 解码或转换为 JSON 失败")
-            return nil
-        }
-        
-        do {
-            if let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
-               let success = jsonObject["success"] as? Bool, success,
-               let data = jsonObject["data"] as? Int {
-                return data  // 返回网速
-            }
-        } catch {
-            print("解析 JSON 失败: \(error.localizedDescription)")
-        }
-        
-        return nil
-    }
-
-    // 根据 pingSpeed 值返回对应的颜色
-    private func pingSpeedColor(_ pingSpeed: Int) -> Color {
-        switch pingSpeed {
-        case ..<1000:
-            return .green
-        case 1000..<5000:
-            return .yellow
-        default:
-            return .red
-        }
-    }
 }
