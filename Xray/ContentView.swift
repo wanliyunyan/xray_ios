@@ -38,7 +38,7 @@ struct ContentView: View {
 
                 ConnectedDurationView()
 
-                TrafficStatsView(trafficPort: Constant.trafficPort)
+                TrafficStatsView()
                 
                 PingView().environmentObject(PacketTunnelManager.shared)
             }
@@ -63,8 +63,8 @@ struct ContentView: View {
             .padding(.horizontal)
             .padding(.top, 20)
 
-            VPNControlView(sock5Text: Constant.sock5Port, trafficPortText: Constant.trafficPort) { sock5Port, trafficPort in
-                await connectVPN(sock5Port: sock5Port, trafficPort: trafficPort)
+            VPNControlView() { 
+                await connectVPN()
             }
             
             // 版本号显示
@@ -77,6 +77,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             loadDataFromUserDefaults()
+            fetchFreePorts()
         }
         // 弹出 ShareButton 作为模态视图
         .sheet(isPresented: $isShowingShareModal) {
@@ -89,7 +90,7 @@ struct ContentView: View {
     }
 
     // MARK: - VPN Connection
-    private func connectVPN(sock5Port: Int, trafficPort: Int) async {
+    private func connectVPN() async {
         do {
             if clipboardText.isEmpty {
                 guard let savedContent = Util.loadFromUserDefaults(key: "clipboardContent"), !savedContent.isEmpty else {
@@ -98,7 +99,7 @@ struct ContentView: View {
                 clipboardText = savedContent
             }
 
-            let configData = try Configuration().buildConfigurationData(inboundPort: sock5Port, trafficPort: trafficPort, config: clipboardText)
+            let configData = try Configuration().buildConfigurationData(config: clipboardText)
 
             guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
                 throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
@@ -107,7 +108,7 @@ struct ContentView: View {
             let fileUrl = try Util.createConfigFile(with: mergedConfigString)
 
             // 启动 VPN
-            try await packetTunnelManager.start(sock5Port: sock5Port, path: fileUrl.path)
+            try await packetTunnelManager.start(path: fileUrl.path)
         } catch {
             print("连接 VPN 时出错: \(error.localizedDescription)")
         }
@@ -137,6 +138,38 @@ struct ContentView: View {
         } else {
             print("剪贴板内容为空")
             showClipboardEmptyAlert = true // 剪贴板为空时显示提示
+        }
+    }
+    
+    // MARK: - Fetch Free Ports
+    private func fetchFreePorts() {
+        // 调用 LibXray 获取 2 个可用端口的 Base64 字符串
+        let freePortsBase64String = LibXrayGetFreePorts(2)
+
+        // 解码 Base64 字符串
+        guard let decodedData = Data(base64Encoded: freePortsBase64String),
+              let decodedString = String(data: decodedData, encoding: .utf8) else {
+            print("Base64 解码失败")
+            return
+        }
+
+        // 解析 JSON
+        do {
+            if let jsonObject = try JSONSerialization.jsonObject(with: Data(decodedString.utf8), options: []) as? [String: Any],
+               let success = jsonObject["success"] as? Bool, success, // 检查 success 是否为 true
+               let data = jsonObject["data"] as? [String: Any],
+               let ports = data["ports"] as? [Int], ports.count == 2 {
+                
+                // 保存端口到 UserDefaults
+                Util.saveToUserDefaults(value: String(ports[0]), key: "sock5Port")
+                Util.saveToUserDefaults(value: String(ports[1]), key: "trafficPort")
+                
+                print("获取到的端口: \(ports[0]), \(ports[1])")
+            } else {
+                print("解析 JSON 失败或未找到所需字段")
+            }
+        } catch {
+            print("JSON 解析错误: \(error.localizedDescription)")
         }
     }
 

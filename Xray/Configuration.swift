@@ -10,7 +10,16 @@ import LibXray
 
 struct Configuration {
 
-    func buildConfigurationData(inboundPort: Int, trafficPort: Int, config: String) throws -> Data {
+    func buildConfigurationData(config: String) throws -> Data {
+        
+        // 从 UserDefaults 加载端口并尝试转换为 Int
+        guard let inboundPortString = Util.loadFromUserDefaults(key: "sock5Port"),
+              let trafficPortString = Util.loadFromUserDefaults(key: "trafficPort"),
+              let inboundPort = Int(inboundPortString),
+              let trafficPort = Int(trafficPortString) else {
+            throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
+        }
+
         var configuration: [String: Any] = [:]
         
         configuration["metrics"] = self.buildMetrics()
@@ -29,7 +38,7 @@ struct Configuration {
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
     
-    private func buildInbound(inboundPort: Int,trafficPort: Int) -> [[String: Any]] {
+    private func buildInbound(inboundPort: Int = Constant.sock5Port ,trafficPort: Int = Constant.trafficPort) -> [[String: Any]] {
         let inbound1: [String: Any] = [
             "listen": "127.0.0.1",
             "port": inboundPort,

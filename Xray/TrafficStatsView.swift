@@ -49,8 +49,6 @@ struct TrafficStatsView: View {
     // 定时器：每秒执行一次
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
-    var trafficPort: String
-    
     var body: some View {
         VStack(alignment: .leading) {
             Text("流量统计:").font(.headline)
@@ -89,7 +87,11 @@ struct TrafficStatsView: View {
 //            Text("GC 调试启用 Debug GC: \(debugGC ? "是 Yes" : "否 No")")
         }
         .onAppear {
-            initializeTrafficString()  // 视图加载时执行一次
+            do {
+                try initializeTrafficString()  // 处理可能抛出的错误
+            } catch {
+                print("初始化流量字符串失败: \(error.localizedDescription)")
+            }
         }
         .onReceive(timer) { _ in
             // 仅在 VPN 连接后获取流量统计
@@ -101,7 +103,13 @@ struct TrafficStatsView: View {
     }
     
     // 初始化 trafficString 并进行 Base64 编码，仅执行一次
-    private func initializeTrafficString() {
+    private func initializeTrafficString() throws {
+        
+        guard let trafficPortString = Util.loadFromUserDefaults(key: "trafficPort"),
+              let trafficPort = Int(trafficPortString) else {
+            throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
+        }
+        
         if let trafficString = "http://127.0.0.1:\(trafficPort)/debug/vars".data(using: .utf8) {
             base64TrafficString = trafficString.base64EncodedString()
         } else {

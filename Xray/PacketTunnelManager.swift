@@ -73,11 +73,17 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
     
-    func start(sock5Port: Int, path:String) async throws {
+    func start(path:String) async throws {
         guard let manager = self.manager else {
             throw NSError(domain: "PacketTunnelManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Manager 未初始化"])
         }
 
+        // 从 UserDefaults 加载端口并尝试转换为 Int
+        guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
+              let sock5Port = Int(sock5PortString)  else {
+            throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
+        }
+        
         // 启动 VPN 并传递配置和端口号
         try manager.connection.startVPNTunnel(options: [
             "sock5Port": sock5Port as NSNumber,

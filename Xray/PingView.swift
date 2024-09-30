@@ -1,8 +1,8 @@
 //
-//  Ping.swift
+//  PingvVew.swift
 //  Xray
 //
-//  Created by pan on 2024/9/29.
+//  Created by pan on 2024/9/30.
 //
 
 import Foundation
@@ -13,55 +13,60 @@ import LibXray
 struct PingView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager // 引入 PacketTunnelManager
     @State private var pingSpeed: Int = 0
-    private let timer = Timer.publish(every: 10.0, on: .main, in: .common).autoconnect()
+    @State private var isPingFetched: Bool = false // 全局变量，初始为 false
 
-    // 接收两个参数：path 和端口号
-    let configPath: String
-    let sock5Port: Int
-    
     var body: some View {
         VStack {
-            Text("Ping网速:")
-            Text("\(pingSpeed) ms")
-                .foregroundColor(pingSpeedColor(pingSpeed))
-                .font(.headline)
-        }
-        .onReceive(timer) { _ in
-            if packetTunnelManager.status == .connected {
-                DispatchQueue.global(qos: .background).async {
-                    requestPing()
+            // 显示 Ping 信息
+            if isPingFetched  {
+                HStack {
+                    Text("Ping网速:")
+                    Text("\(pingSpeed)").foregroundColor(pingSpeedColor(pingSpeed)).font(.headline)
+                    Text("ms").foregroundColor(.black).font(.headline) //
                 }
+            } else {
+                if(packetTunnelManager.status == .disconnected){
+                    Text("点击获取网速")
+                        .foregroundColor(.blue)
+                        .onTapGesture {
+                            requestPing() // 点击时调用 requestPing
+                        }
+                }
+                
             }
         }
+        .padding(.top, 20)
     }
 
     // Ping 请求逻辑
     private func requestPing() {
         do {
-
             guard let savedContent = Util.loadFromUserDefaults(key: "clipboardContent"), !savedContent.isEmpty else {
                 throw NSError(domain: "ContentView", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
             }
 
-
-            let configData = try Configuration().buildConfigurationData(inboundPort: 10808, trafficPort: 49227, config: savedContent)
+            let configData = try Configuration().buildConfigurationData(config: savedContent)
 
             guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
                 throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
             }
 
             let fileUrl = try Util.createConfigFile(with: mergedConfigString)
-
+                    
+            guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
+                  let sock5PortString = Int(sock5PortString) else {
+                throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
+            }
+            
             // 创建并发送 Ping 请求
-            let pingRequest = try createPingRequest(configPath: configPath, sock5Port: sock5Port)
+            let pingRequest = try createPingRequest(configPath: fileUrl.path(), sock5Port: sock5PortString)
             let pingBase64String = try JSONEncoder().encode(pingRequest).base64EncodedString()
             
             // 调用 LibXrayPing 并处理响应
             let pingResponseBase64 = LibXrayPing(pingBase64String)
             if let pingResult = decodePingResponse(base64String: pingResponseBase64) {
-                DispatchQueue.main.async {
-                    self.pingSpeed = pingResult // 在主线程更新 UI
-                }
+                self.pingSpeed = pingResult
+                self.isPingFetched = true
             } else {
                 print("Ping 解码失败")
             }
