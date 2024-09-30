@@ -27,6 +27,8 @@ struct ContentView: View {
     @State private var isShowingShareModal = false // 控制弹窗显示
     @State private var showClipboardEmptyAlert = false // 用于控制显示空剪贴板的提示
     @State private var pingSpeed: Int = 0  // 用于显示网速的状态
+    @State private var sock5Port: String = "" // 新增，用于显示 sock5Port
+    @State private var trafficPort: String = "" // 新增，用于显示 trafficPort
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -39,6 +41,11 @@ struct ContentView: View {
                 ConnectedDurationView()
 
                 TrafficStatsView()
+            
+                Text("本机端口:").font(.headline)
+                Text("Sock5端口: \(sock5Port)")
+                Text("流量端口: \(trafficPort)")
+
                 
                 PingView().environmentObject(PacketTunnelManager.shared)
             }
@@ -63,7 +70,7 @@ struct ContentView: View {
             .padding(.horizontal)
             .padding(.top, 20)
 
-            VPNControlView() { 
+            VPNControlView() {
                 await connectVPN()
             }
             
@@ -163,6 +170,10 @@ struct ContentView: View {
                 // 保存端口到 UserDefaults
                 Util.saveToUserDefaults(value: String(ports[0]), key: "sock5Port")
                 Util.saveToUserDefaults(value: String(ports[1]), key: "trafficPort")
+
+                // 更新 @State 变量，显示在页面上
+                sock5Port = String(ports[0])
+                trafficPort = String(ports[1])
                 
                 print("获取到的端口: \(ports[0]), \(ports[1])")
             } else {
@@ -172,5 +183,4 @@ struct ContentView: View {
             print("JSON 解析错误: \(error.localizedDescription)")
         }
     }
-
 }

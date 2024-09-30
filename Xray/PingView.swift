@@ -22,7 +22,7 @@ struct PingView: View {
                 HStack {
                     Text("Ping网速:")
                     Text("\(pingSpeed)").foregroundColor(pingSpeedColor(pingSpeed)).font(.headline)
-                    Text("ms").foregroundColor(.black).font(.headline) //
+                    Text("ms").foregroundColor(.black) //
                 }
             } else {
                 if(packetTunnelManager.status == .disconnected){
