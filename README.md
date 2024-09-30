@@ -3,9 +3,9 @@
 
 ## 界面
 <div style="display: flex; justify-content: space-between;">
-    <img src="img1.png" alt="Image 1" style="width: 30%;"/>
-    <img src="img2.png" alt="Image 2" style="width: 30%;"/>
-    <img src="img3.png" alt="Image 3" style="width: 30%;"/>
+    <img src="./1.png" alt="Image 1" style="width: 30%;"/>
+    <img src="./2.png" alt="Image 2" style="width: 30%;"/>
+    <img src="./3.png" alt="Image 3" style="width: 30%;"/>
 </div>
 
 ## 测试机型
