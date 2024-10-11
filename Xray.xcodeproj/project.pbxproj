@@ -19,8 +19,6 @@
 		3B2DA99F2C95398600E8FCB9 /* PacketTunnelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA99E2C95398600E8FCB9 /* PacketTunnelManager.swift */; };
 		3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
 		3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */; };
-		3B3A0D132CA3BBDD00CD46C0 /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */; };
-		3B3A0D152CA3BBDD00CD46C0 /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */; };
 		3B3EE0D72CA6A0EF00541BF8 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3EE0D62CA6A0EF00541BF8 /* LibXray */; };
 		3B3EE0D92CA6A0F800541BF8 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3EE0D82CA6A0F800541BF8 /* LibXray */; };
 		3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B8050DD2C9D7C0800043697 /* Configuration.swift */; };
@@ -35,6 +33,8 @@
 		3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */; };
 		3BCF8AEB2CA8E5C400723541 /* ShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */; };
 		3BF632AC2CB8CF4000FB040B /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */; };
+		3BF632AF2CB8D8E900FB040B /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3BF632AE2CB8D8E900FB040B /* Tun2SocksKit */; };
+		3BF632B12CB8D8E900FB040B /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 3BF632B02CB8D8E900FB040B /* Tun2SocksKitC */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -104,9 +104,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3B3A0D132CA3BBDD00CD46C0 /* Tun2SocksKit in Frameworks */,
-				3B3A0D152CA3BBDD00CD46C0 /* Tun2SocksKitC in Frameworks */,
+				3BF632AF2CB8D8E900FB040B /* Tun2SocksKit in Frameworks */,
 				3B2DA9882C95344600E8FCB9 /* NetworkExtension.framework in Frameworks */,
+				3BF632B12CB8D8E900FB040B /* Tun2SocksKitC in Frameworks */,
 				3B3EE0D92CA6A0F800541BF8 /* LibXray in Frameworks */,
 				3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */,
 			);
@@ -226,9 +226,9 @@
 			);
 			name = PacketTunnel;
 			packageProductDependencies = (
-				3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */,
-				3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */,
 				3B3EE0D82CA6A0F800541BF8 /* LibXray */,
+				3BF632AE2CB8D8E900FB040B /* Tun2SocksKit */,
+				3BF632B02CB8D8E900FB040B /* Tun2SocksKitC */,
 			);
 			productName = PacketTunnel;
 			productReference = 3B2DA9852C95344600E8FCB9 /* PacketTunnel.appex */;
@@ -262,8 +262,8 @@
 			);
 			mainGroup = 3B2DA94B2C95337E00E8FCB9;
 			packageReferences = (
-				3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */,
 				3B3EE0D52CA6A0EF00541BF8 /* XCRemoteSwiftPackageReference "LibXray" */,
+				3BF632AD2CB8D8E900FB040B /* XCRemoteSwiftPackageReference "Tun2SocksKit" */,
 			);
 			productRefGroup = 3B2DA9552C95337E00E8FCB9 /* Products */;
 			projectDirPath = "";
@@ -624,14 +624,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/EbrahimTahernejad/Tun2SocksKit";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 4.7.5;
-			};
-		};
 		3B3EE0D52CA6A0EF00541BF8 /* XCRemoteSwiftPackageReference "LibXray" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/wanliyunyan/LibXray";
@@ -640,19 +632,17 @@
 				minimumVersion = 3.1.0;
 			};
 		};
+		3BF632AD2CB8D8E900FB040B /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/EbrahimTahernejad/Tun2SocksKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.7.6;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		3B3A0D122CA3BBDD00CD46C0 /* Tun2SocksKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
-			productName = Tun2SocksKit;
-		};
-		3B3A0D142CA3BBDD00CD46C0 /* Tun2SocksKitC */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3B3A0D112CA3BBDD00CD46C0 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
-			productName = Tun2SocksKitC;
-		};
 		3B3EE0D62CA6A0EF00541BF8 /* LibXray */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3B3EE0D52CA6A0EF00541BF8 /* XCRemoteSwiftPackageReference "LibXray" */;
@@ -662,6 +652,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 3B3EE0D52CA6A0EF00541BF8 /* XCRemoteSwiftPackageReference "LibXray" */;
 			productName = LibXray;
+		};
+		3BF632AE2CB8D8E900FB040B /* Tun2SocksKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3BF632AD2CB8D8E900FB040B /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
+			productName = Tun2SocksKit;
+		};
+		3BF632B02CB8D8E900FB040B /* Tun2SocksKitC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3BF632AD2CB8D8E900FB040B /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
+			productName = Tun2SocksKitC;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
