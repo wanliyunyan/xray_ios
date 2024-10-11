@@ -4,13 +4,6 @@
 ## LibXrayPing
 启动**xray**以后，就不能使用**LibXrayPing**方法，程序会崩，所以连接中的时候隐藏了**点击获取网速**，同时**LibXrayPing**方法只能用一次，具体原因参考[issue](https://github.com/XTLS/libXray/issues/43)
 
-## 界面
-<div style="display: flex; justify-content: space-between;">
-    <img src="./1.png" alt="Image 1" style="width: 30%;"/>
-    <img src="./2.png" alt="Image 2" style="width: 30%;"/>
-    <img src="./3.png" alt="Image 3" style="width: 30%;"/>
-</div>
-
 ## 测试机型
 iphone 15 plus，系统 ios 17.6.1 和 18  
 iphone 12，系统 ios 17.6.1
