@@ -34,6 +34,7 @@
 		3BAD4E2C2CAA747A006868C3 /* PingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BAD4E2B2CAA747A006868C3 /* PingView.swift */; };
 		3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */; };
 		3BCF8AEB2CA8E5C400723541 /* ShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */; };
+		3BF632AC2CB8CF4000FB040B /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +87,7 @@
 		3BAD4E2B2CAA747A006868C3 /* PingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingView.swift; sourceTree = "<group>"; };
 		3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatsView.swift; sourceTree = "<group>"; };
 		3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareButton.swift; sourceTree = "<group>"; };
+		3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeScannerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,6 +155,7 @@
 				3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */,
 				3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */,
 				3BAD4E2B2CAA747A006868C3 /* PingView.swift */,
+				3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */,
 			);
 			path = Xray;
 			sourceTree = "<group>";
@@ -311,6 +314,7 @@
 				3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */,
 				3BCF8AEB2CA8E5C400723541 /* ShareButton.swift in Sources */,
 				3BA6A1DC2C9D759D00FF9E1A /* ActionButtonStyle.swift in Sources */,
+				3BF632AC2CB8CF4000FB040B /* QRCodeScannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

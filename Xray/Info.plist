@@ -4,5 +4,7 @@
 <dict>
     <key>APP_ID</key>
     <string>${APP_ID}</string>
+    <key>NSCameraUsageDescription</key>
+    <string>我们需要访问摄像头来扫描二维码</string>
 </dict>
 </plist>

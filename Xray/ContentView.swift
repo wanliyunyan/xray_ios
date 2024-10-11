@@ -19,16 +19,18 @@ struct PingRequest: Codable {
 @MainActor
 struct ContentView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
-    @State private var clipboardText: String = ""
-    @State private var idText: String = ""
-    @State private var ipText: String = ""
-    @State private var portText: String = ""
-    @State private var path: String = ""
+    @State private var clipboardText: String = "" // 剪切板
+    @State private var idText: String = "" // id
+    @State private var ipText: String = "" // ip
+    @State private var portText: String = "" // 端口
+    @State private var path: String = "" // 配置地址
     @State private var isShowingShareModal = false // 控制弹窗显示
     @State private var showClipboardEmptyAlert = false // 用于控制显示空剪贴板的提示
     @State private var pingSpeed: Int = 0  // 用于显示网速的状态
-    @State private var sock5Port: String = "" // 新增，用于显示 sock5Port
-    @State private var trafficPort: String = "" // 新增，用于显示 trafficPort
+    @State private var sock5Port: String = "" // 显示 sock5Port
+    @State private var trafficPort: String = "" // 显示 trafficPort
+    @State private var scannedCode: String? = nil // 扫描到的二维码内容
+    @State private var isShowingScanner = false // 控制二维码扫描器显示
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -41,31 +43,55 @@ struct ContentView: View {
                 ConnectedDurationView()
 
                 TrafficStatsView()
-            
+
                 Text("本机端口:").font(.headline)
                 Text("Sock5端口: \(sock5Port)")
                 Text("流量端口: \(trafficPort)")
 
-                
                 PingView().environmentObject(PacketTunnelManager.shared)
             }
             .padding()
 
             Spacer()
 
-            // 剪贴板和分享配置按钮
             HStack {
-                Button("从剪贴板粘贴") {
+                Button(action: {
                     handlePasteFromClipboard()
+                }) {
+                    HStack {
+                        Image(systemName: "clipboard") // 使用剪贴板图标
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                        Text("粘贴") // 添加汉字说明
+                    }
                 }
-                .buttonStyle(ActionButtonStyle(color: .blue))
 
                 Spacer() // 在按钮之间添加空隙
 
-                Button("分享配置") {
-                    isShowingShareModal = true
+                Button(action: {
+                    isShowingScanner = true
+                }) {
+                    HStack {
+                        Image(systemName: "qrcode.viewfinder") // 使用二维码扫描图标
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                        Text("扫描") // 添加汉字说明
+                    }
                 }
-                .buttonStyle(ActionButtonStyle(color: .yellow))
+
+                Spacer() // 在按钮之间添加空隙
+
+                Button(action: {
+                    isShowingShareModal = true
+                }) {
+                    HStack {
+                        Image(systemName: "square.and.arrow.up") // 使用分享图标
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                        Text("分享") // 添加汉字说明
+                    }
+                }
+
             }
             .padding(.horizontal)
             .padding(.top, 20)
@@ -73,7 +99,7 @@ struct ContentView: View {
             VPNControlView() {
                 await connectVPN()
             }
-            
+
             // 版本号显示
             HStack {
                 Spacer()
@@ -93,6 +119,19 @@ struct ContentView: View {
         // 提示剪贴板为空
         .alert(isPresented: $showClipboardEmptyAlert) {
             Alert(title: Text("剪贴板为空"), message: Text("没有从剪贴板获取到内容"), dismissButton: .default(Text("确定")))
+        }
+        // 弹出二维码扫描器
+        .sheet(isPresented: $isShowingScanner) {
+            QRCodeScannerView(scannedCode: $scannedCode)
+                .onChange(of: scannedCode) { _, newState in
+                    if let code = newState {
+                        print(code)
+                        clipboardText = code
+                        Util.saveToUserDefaults(value: clipboardText, key: "clipboardContent")
+                        Util.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
+                        isShowingScanner = false // 扫描完成后立即关闭弹窗
+                    }
+                }
         }
     }
 
@@ -147,34 +186,26 @@ struct ContentView: View {
             showClipboardEmptyAlert = true // 剪贴板为空时显示提示
         }
     }
-    
+
     // MARK: - Fetch Free Ports
     private func fetchFreePorts() {
-        // 调用 LibXray 获取 2 个可用端口的 Base64 字符串
         let freePortsBase64String = LibXrayGetFreePorts(2)
 
-        // 解码 Base64 字符串
         guard let decodedData = Data(base64Encoded: freePortsBase64String),
               let decodedString = String(data: decodedData, encoding: .utf8) else {
             print("Base64 解码失败")
             return
         }
 
-        // 解析 JSON
         do {
             if let jsonObject = try JSONSerialization.jsonObject(with: Data(decodedString.utf8), options: []) as? [String: Any],
-               let success = jsonObject["success"] as? Bool, success, // 检查 success 是否为 true
+               let success = jsonObject["success"] as? Bool, success,
                let data = jsonObject["data"] as? [String: Any],
                let ports = data["ports"] as? [Int], ports.count == 2 {
-                
-                // 保存端口到 UserDefaults
                 Util.saveToUserDefaults(value: String(ports[0]), key: "sock5Port")
                 Util.saveToUserDefaults(value: String(ports[1]), key: "trafficPort")
-
-                // 更新 @State 变量，显示在页面上
                 sock5Port = String(ports[0])
                 trafficPort = String(ports[1])
-                
                 print("获取到的端口: \(ports[0]), \(ports[1])")
             } else {
                 print("解析 JSON 失败或未找到所需字段")
