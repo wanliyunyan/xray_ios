@@ -49,9 +49,11 @@ struct ContentView: View {
                 Text("流量端口: \(trafficPort)")
 
                 PingView().environmentObject(PacketTunnelManager.shared)
+                
+                DownloadView()
             }
             .padding()
-
+            
             Spacer()
 
             HStack {
@@ -214,4 +216,5 @@ struct ContentView: View {
             print("JSON 解析错误: \(error.localizedDescription)")
         }
     }
+
 }

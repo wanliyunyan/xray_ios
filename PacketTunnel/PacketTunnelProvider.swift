@@ -50,7 +50,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private func startXray(path:String) throws {
 
         // 创建 RunXrayRequest
-        let request = RunXrayRequest(datDir: nil, configPath: path, maxMemory: 24 * 1024 * 1024)
+        let request = RunXrayRequest(datDir: Constant.assetDirectory.path, configPath: path, maxMemory: 24 * 1024 * 1024)
         
         // 将 RunXrayRequest 对象编码为 JSON 数据并启动 Xray 核心
         do {
