@@ -17,11 +17,15 @@ struct RunXrayRequest: Codable {
     var maxMemory: Int64?
 }
 
-// PacketTunnelProvider 是 NEPacketTunnelProvider 的子类，
-// 负责处理网络包的隧道提供。
+struct LoadGeoDataRequest: Codable {
+    var datDir: String
+    var name: String
+    var geoType: String
+}
+
 class PacketTunnelProvider: NEPacketTunnelProvider {
     let MTU = 8500
-    
+
     // 开始隧道的方法，会在创建隧道时调用
     override func startTunnel(options: [String : NSObject]? = nil) async throws {
 
@@ -33,11 +37,20 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         
+        // 定义 geosite 和 geoip 数据文件路径
+        let geoDataDirectory = Constant.assetDirectory.path
+        
         do {
+            // 加载 geo 数据 //报错
+//            try loadGeoData(datDir: geoDataDirectory, name: "geosite", geoType: "domain")
+//            try loadGeoData(datDir: geoDataDirectory, name: "geoip", geoType: "ip")
+
             // 启动 Xray 核心进程
-            try startXray(path:path)
+            try startXray(path: path)
+
             // 设置隧道网络
             try await setTunnelNetworkSettings()
+
             // 启动 SOCKS5 隧道
             try startSocks5Tunnel(serverPort: sock5Port)
         } catch {
@@ -45,12 +58,32 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             throw error
         }
     }
-    
-    // 启动 Xray 核心的方法
-    private func startXray(path:String) throws {
 
+    // 加载 geo 数据的方法
+    private func loadGeoData(datDir: String, name: String, geoType: String) throws {
+        // 创建 LoadGeoDataRequest
+        let request = LoadGeoDataRequest(datDir: datDir, name: name, geoType: geoType)
+        
+        // 编码请求为 JSON
+        let jsonData = try JSONEncoder().encode(request)
+        
+        // 将 JSON 编码为 Base64 字符串
+        let base64String = jsonData.base64EncodedString()
+        
+        // 调用 LoadGeoData 加载 geo 数据
+        let result = LibXrayLoadGeoData(base64String)
+        
+        // 检查返回结果是否包含错误
+        if !result.isEmpty {
+            os_log("加载 geo 数据时发生错误: %{public}@", result)
+            throw NSError(domain: "com.xray.error", code: -1, userInfo: [NSLocalizedDescriptionKey: "加载 geo 数据失败"])
+        }
+    }
+
+    // 启动 Xray 核心的方法
+    private func startXray(path: String) throws {
         // 创建 RunXrayRequest
-        let request = RunXrayRequest(datDir: Constant.assetDirectory.path, configPath: path, maxMemory: 24 * 1024 * 1024)
+        let request = RunXrayRequest(datDir: Constant.assetDirectory.path, configPath: path, maxMemory: 50 * 1024 * 1024)
         
         // 将 RunXrayRequest 对象编码为 JSON 数据并启动 Xray 核心
         do {
@@ -68,7 +101,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             throw error
         }
     }
-    
+
     // 启动 SOCKS5 隧道的方法
     private func startSocks5Tunnel(serverPort port: Int = 10808) throws {
         let socks5Config = """
@@ -96,12 +129,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             }
         }
     }
-    
+
     func setTunnelNetworkSettings() async throws {
         // 创建网络设置对象，设置隧道的远程地址
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "254.1.1.1")
         settings.mtu = NSNumber(integerLiteral: MTU)
-        
+
         // 设置 IPv4 地址、掩码和路由
         settings.ipv4Settings = {
             let settings = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.255.0.0"])
@@ -109,7 +142,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             settings.excludedRoutes = [NEIPv4Route(destinationAddress: "0.0.0.0", subnetMask: "255.0.0.0")]
             return settings
         }()
-        
+
         // 设置 IPv6 地址、掩码和路由
         settings.ipv6Settings = {
             let settings = NEIPv6Settings(addresses: ["fd6e:a81b:704f:1211::1"], networkPrefixLengths: [64])
@@ -117,14 +150,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             settings.excludedRoutes = [NEIPv6Route(destinationAddress: "::", networkPrefixLength: 128)]
             return settings
         }()
-        
+
         // 设置 DNS 服务器
-        settings.dnsSettings = NEDNSSettings(servers: ["8.8.8.8", "114.114.114.114"])
-        
+        settings.dnsSettings = NEDNSSettings(servers: ["1.1.1.1","8.8.8.8","8.8.4.4","114.114.114.114","223.5.5.5"])
+
         // 应用设置到隧道
         try await self.setTunnelNetworkSettings(settings)
     }
-    
+
     // 停止隧道的方法 没发现这个方法有什么用处
     override func stopTunnel(with reason: NEProviderStopReason) async {
         // 停止 SOCKS5 隧道
@@ -134,4 +167,3 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         LibXrayStopXray()
     }
 }
-

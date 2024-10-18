@@ -44,7 +44,6 @@ struct Configuration {
             "port": inboundPort,
             "protocol": "socks",
             "settings": [
-                "auth": "noauth",
                 "udp": true
             ],
             "tag": "socks"
@@ -91,6 +90,32 @@ struct Configuration {
                     "outboundTag": "metricsOut",
                     "type": "field"
                 ]
+                ,
+                [
+                    "type": "field",
+                    "port": "0-65535",
+                    "outboundTag": "proxy"
+                ]
+//                ,
+//                [
+//                    "type": "field",
+//                    "outboundTag": "direct",
+//                    "domain": [
+//                        "geosite:cn",
+//                        "geosite:geolocation-cn"
+//                    ]
+//                ]
+//                ,
+//                [
+//                    "type": "field",
+//                    "outboundTag": "direct",
+//                    "ip": [
+//                        "223.5.5.5/32",
+//                        "114.114.114.114/32",
+//                        "geoip:private",
+//                        "geoip:cn"
+//                    ]
+//                ]
             ]
         ]
     }
@@ -109,10 +134,27 @@ struct Configuration {
               let jsonData = decodedString.data(using: .utf8),
               let jsonDict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
               let success = jsonDict["success"] as? Bool, success,
-              let dataDict = jsonDict["data"] as? [String: Any] else {
+              let dataDict = jsonDict["data"] as? [String: Any],
+              var outboundsArray = dataDict["outbounds"] as? [[String: Any]] else {
             throw NSError(domain: "InvalidXrayJson", code: -1, userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败"])
         }
 
-        return dataDict
+        // 要插入的对象
+        let newObject: [String: Any] = [
+            "protocol": "freedom",
+            "tag": "direct"
+        ]
+
+        // 拼接新的对象到 outbounds 数组
+        outboundsArray.append(newObject)
+
+        // 更新 dataDict 中的 outbounds 数组
+        var updatedDataDict = dataDict
+        updatedDataDict["outbounds"] = outboundsArray
+//
+//        print("updatedDataDict")
+//        print(updatedDataDict)
+
+        return updatedDataDict
     }
 }
