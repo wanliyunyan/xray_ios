@@ -90,12 +90,6 @@ struct Configuration {
                     "outboundTag": "metricsOut",
                     "type": "field"
                 ]
-                ,
-                [
-                    "type": "field",
-                    "port": "0-65535",
-                    "outboundTag": "proxy"
-                ]
 //                ,
 //                [
 //                    "type": "field",
@@ -116,6 +110,12 @@ struct Configuration {
 //                        "geoip:cn"
 //                    ]
 //                ]
+                ,
+                [
+                    "type": "field",
+                    "port": "0-65535",
+                    "outboundTag": "proxy"
+                ]
             ]
         ]
     }
@@ -139,6 +139,15 @@ struct Configuration {
             throw NSError(domain: "InvalidXrayJson", code: -1, userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败"])
         }
 
+        // 确保 outbounds 数组中至少有一个对象
+        if var firstOutbound = outboundsArray.first {
+            // 添加 tag: "proxy" 属性
+            firstOutbound["tag"] = "proxy"
+            
+            // 更新 outbounds 数组中的第一个对象
+            outboundsArray[0] = firstOutbound
+        }
+
         // 要插入的对象
         let newObject: [String: Any] = [
             "protocol": "freedom",
@@ -151,9 +160,6 @@ struct Configuration {
         // 更新 dataDict 中的 outbounds 数组
         var updatedDataDict = dataDict
         updatedDataDict["outbounds"] = outboundsArray
-//
-//        print("updatedDataDict")
-//        print(updatedDataDict)
 
         return updatedDataDict
     }
