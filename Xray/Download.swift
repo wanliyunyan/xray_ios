@@ -114,7 +114,17 @@ struct DownloadView: View {
                 return
             }
 
-            completion(.success(localURL))
+            do {
+                let fileManager = FileManager.default
+                let destinationURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("filename.dat")
+
+                try fileManager.moveItem(at: localURL, to: destinationURL)
+                print("文件已成功保存到 \(destinationURL.path)")
+                completion(.success(destinationURL))
+            } catch {
+                completion(.failure(error))
+            }
+            
         }
         task.resume()
     }
