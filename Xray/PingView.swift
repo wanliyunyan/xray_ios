@@ -35,7 +35,7 @@ struct PingView: View {
                 
             }
         }
-        .padding(.top, 20)
+        .padding(.top, 10)
     }
 
     // Ping 请求逻辑

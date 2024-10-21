@@ -45,8 +45,11 @@ struct ContentView: View {
                 TrafficStatsView()
 
                 Text("本机端口:").font(.headline)
-                Text("Sock5端口: \(sock5Port)")
-                Text("流量端口: \(trafficPort)")
+                HStack {
+                    Text("Sock5: \(sock5Port)")
+                    Spacer() // 添加一个 Spacer，在两者之间创建空隙
+                    Text("流量: \(trafficPort)")
+                }
 
                 PingView().environmentObject(PacketTunnelManager.shared)
                 

@@ -2,53 +2,146 @@ import Foundation
 import SwiftUI
 
 struct DownloadView: View {
+    @State private var isDownloading: Bool = false
+    @State private var downloadedFiles: [String] = []
 
     var body: some View {
         VStack {
-            // 将“更新”和“清空”按钮放在一行
+            // 更新和清空按钮
             HStack {
-                // 更新按钮
                 Button(action: {
                     downloadAndUpdateGeoipDat()
                 }) {
                     HStack {
-                        Image(systemName: "arrow.down.circle") // 下载图标
+                        Image(systemName: "arrow.down.circle")
                             .resizable()
                             .frame(width: 30, height: 30)
-                        Text("地理文件") // 按钮文本
+                        Text("地理文件")
                     }
                 }
                 .padding()
+                .disabled(isDownloading)
+                .foregroundColor(isDownloading ? .gray : .blue)
 
-                Spacer() // 添加空隙
-
-                // 清空按钮
                 Button(action: {
                     clearAssetDirectory()
                 }) {
                     HStack {
-                        Image(systemName: "trash") // 垃圾桶图标
+                        Image(systemName: "trash")
                             .resizable()
                             .frame(width: 30, height: 30)
-                        Text("清空") // 按钮文本
+                        Text("清空地理")
                     }
                 }
                 .padding()
+                .disabled(isDownloading)
+                .foregroundColor(isDownloading ? .gray : .blue)
+            }
+
+            // 显示已下载的文件
+            if !downloadedFiles.isEmpty {
+                HStack {  // 使用 HStack 水平排列文件名
+                    Text("已下载:")
+                        .padding(.top)
+
+                    ForEach(downloadedFiles, id: \.self) { file in
+                        Text(file)
+                            .lineLimit(1) // 限制每个文件名在一行内显示
+                            .truncationMode(.tail) // 如果文件名过长，显示省略号
+                            .padding(.leading, 10)
+                    }
+                }
             }
         }
-        .padding() // 外层的 padding 调整整体布局
+        .onAppear {
+            loadDownloadedFiles()
+        }
+    }
+
+    private func loadDownloadedFiles() {
+        let fileManager = FileManager.default
+        let assetDirectoryPath = Constant.assetDirectory.path
+
+        do {
+            let files = try fileManager.contentsOfDirectory(atPath: assetDirectoryPath)
+            downloadedFiles = files
+        } catch {
+            print("加载文件失败: \(error.localizedDescription)")
+        }
     }
 
     // 下载并更新 geoip.dat 和 geosite.dat 文件
+    private func downloadAndUpdateGeoipDat() {
+        let urls = [
+            ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat", "geoip.dat"),
+            ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat")
+        ]
+
+        isDownloading = true
+
+        // 逐一下载文件，而不是并发
+        for (urlString, fileName) in urls {
+            if let url = URL(string: urlString) {
+                downloadFile(from: url) { result in
+                    switch result {
+                    case .success(let fileURL):
+                        // 调用主线程来处理文件保存
+                        Task {
+                            await saveFileToDirectory(fileURL: fileURL, fileName: fileName)
+                            await loadDownloadedFiles() // 下载完成后刷新文件列表
+                        }
+                    case .failure(let error):
+                        print("文件下载失败: \(error.localizedDescription)")
+                    }
+
+                    DispatchQueue.main.async {
+                        isDownloading = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func downloadFile(from url: URL, completion: @escaping @Sendable (Result<URL, Swift.Error>) -> Void) {
+        let task = URLSession.shared.downloadTask(with: url) { localURL, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+
+            guard let localURL = localURL else {
+                completion(.failure(NSError(domain: "DownloadError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法获取本地文件 URL"])))
+                return
+            }
+
+            completion(.success(localURL))
+        }
+        task.resume()
+    }
+
     @MainActor
     private func saveFileToDirectory(fileURL: URL, fileName: String) {
         let fileManager = FileManager.default
         let destinationURL = URL(fileURLWithPath: Constant.assetDirectory.path).appendingPathComponent(fileName)
 
         do {
-            if fileManager.fileExists(atPath: destinationURL.path) {
-                try fileManager.removeItem(at: destinationURL) // 如果文件存在，则删除
+            // 确保目标文件夹存在
+            if !fileManager.fileExists(atPath: Constant.assetDirectory.path) {
+                try fileManager.createDirectory(at: Constant.assetDirectory, withIntermediateDirectories: true, attributes: nil)
             }
+
+            // 检查临时文件是否存在
+            guard fileManager.fileExists(atPath: fileURL.path) else {
+                print("临时文件不存在: \(fileURL.path)")
+                return
+            }
+
+            // 如果目标文件存在，删除旧文件
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                try fileManager.removeItem(at: destinationURL)
+            }
+
+            // 移动临时文件到目标位置
             try fileManager.moveItem(at: fileURL, to: destinationURL)
             print("\(fileName) 文件已成功移动到 \(destinationURL.path)")
         } catch {
@@ -56,46 +149,6 @@ struct DownloadView: View {
         }
     }
 
-    private func downloadAndUpdateGeoipDat() {
-        let urls = [
-            ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat", "geoip.dat"),
-            ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat")
-        ]
-
-        for (urlString, fileName) in urls {
-            if let url = URL(string: urlString) {
-                downloadFile(from: url) { result in
-                    switch result {
-                    case .success(let fileURL):
-                        // 直接调用主 actor 隔离的方法
-                        Task {
-                            await saveFileToDirectory(fileURL: fileURL, fileName: fileName)
-                        }
-                    case .failure(let error):
-                        print("文件下载失败: \(error.localizedDescription)")
-                    }
-                }
-            }
-        }
-    }
-
-    // 下载文件
-    private func downloadFile(from url: URL, completion: @escaping @Sendable (Result<URL, Swift.Error>) -> Void) {
-        let task = URLSession.shared.downloadTask(with: url) { localURL, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
-            guard let localURL = localURL else {
-                completion(.failure(NSError(domain: "DownloadError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法获取本地文件 URL"])))
-                return
-            }
-            completion(.success(localURL))
-        }
-        task.resume()
-    }
-
-    // 清空 Constant.assetDirectory 文件夹
     private func clearAssetDirectory() {
         let fileManager = FileManager.default
         let assetDirectoryPath = Constant.assetDirectory.path
@@ -110,6 +163,9 @@ struct DownloadView: View {
             // 重新创建文件夹
             try fileManager.createDirectory(atPath: assetDirectoryPath, withIntermediateDirectories: true, attributes: nil)
             print("已重新创建文件夹: \(assetDirectoryPath)")
+
+            // 清空文件列表
+            downloadedFiles.removeAll()
 
         } catch {
             print("操作失败: \(error.localizedDescription)")

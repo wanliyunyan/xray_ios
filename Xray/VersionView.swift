@@ -20,7 +20,6 @@ struct VersionView: View {
                 Text("xray版本号:")
                 Text(versionText)
             }
-            .padding(.top, 20)
         }
         .onAppear {
             fetchVersion()
