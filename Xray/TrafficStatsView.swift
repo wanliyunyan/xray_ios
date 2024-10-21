@@ -142,7 +142,7 @@ struct TrafficStatsView: View {
     
     // 将字节转换为 MB 或 GB
     private func formatBytes(_ bytesString: String) -> String {
-        guard let bytes = Double(bytesString) else { return "0 字节" }
+        guard let bytes = Double(bytesString) else { return "0 bytes" }
         
         let kilobyte = 1024.0
         let megabyte = kilobyte * 1024
@@ -155,7 +155,7 @@ struct TrafficStatsView: View {
         } else if bytes >= kilobyte {
             return String(format: "%.2f KB", bytes / kilobyte)
         } else {
-            return "\(Int(bytes)) 字节"
+            return "\(Int(bytes)) bytes"
         }
     }
 }
