@@ -95,7 +95,7 @@ struct PingView: View {
     // 创建 Ping 请求
     private func createPingRequest(configPath: String, sock5Port: Int) throws -> PingRequest {
         return PingRequest(
-            datDir: nil,
+            datDir: Constant.assetDirectory.path,
             configPath: configPath,
             timeout: 30,
             url: "https://www.google.com",

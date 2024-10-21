@@ -1,30 +1,44 @@
-//
-//  DownloadProgressView.swift
-//  Xray
-//
-//  Created by pan on 2024/10/17.
-//
-
 import Foundation
 import SwiftUI
 
 struct DownloadView: View {
 
     var body: some View {
-        // 更新按钮
-        Button(action: {
-            downloadAndUpdateGeoipDat()
-        }) {
+        VStack {
+            // 将“更新”和“清空”按钮放在一行
             HStack {
-                Image(systemName: "arrow.down.circle") // 下载图标
-                    .resizable()
-                    .frame(width: 30, height: 30)
-                Text("更新geoip.dat与geosite.dat") // 按钮文本
+                // 更新按钮
+                Button(action: {
+                    downloadAndUpdateGeoipDat()
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.down.circle") // 下载图标
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                        Text("地理文件") // 按钮文本
+                    }
+                }
+                .padding()
+
+                Spacer() // 添加空隙
+
+                // 清空按钮
+                Button(action: {
+                    clearAssetDirectory()
+                }) {
+                    HStack {
+                        Image(systemName: "trash") // 垃圾桶图标
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                        Text("清空") // 按钮文本
+                    }
+                }
+                .padding()
             }
         }
+        .padding() // 外层的 padding 调整整体布局
     }
 
-    
     // 下载并更新 geoip.dat 和 geosite.dat 文件
     @MainActor
     private func saveFileToDirectory(fileURL: URL, fileName: String) {
@@ -45,8 +59,7 @@ struct DownloadView: View {
     private func downloadAndUpdateGeoipDat() {
         let urls = [
             ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat", "geoip.dat"),
-            ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat"),
-//            ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat", "geosite.dat")   // 内存溢出
+            ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat")
         ]
 
         for (urlString, fileName) in urls {
@@ -80,5 +93,26 @@ struct DownloadView: View {
             completion(.success(localURL))
         }
         task.resume()
+    }
+
+    // 清空 Constant.assetDirectory 文件夹
+    private func clearAssetDirectory() {
+        let fileManager = FileManager.default
+        let assetDirectoryPath = Constant.assetDirectory.path
+
+        do {
+            // 删除整个文件夹
+            if fileManager.fileExists(atPath: assetDirectoryPath) {
+                try fileManager.removeItem(atPath: assetDirectoryPath)
+                print("已删除文件夹: \(assetDirectoryPath)")
+            }
+
+            // 重新创建文件夹
+            try fileManager.createDirectory(atPath: assetDirectoryPath, withIntermediateDirectories: true, attributes: nil)
+            print("已重新创建文件夹: \(assetDirectoryPath)")
+
+        } catch {
+            print("操作失败: \(error.localizedDescription)")
+        }
     }
 }

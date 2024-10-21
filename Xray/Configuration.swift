@@ -32,7 +32,7 @@ struct Configuration {
         dataDict.forEach { configuration[$0.key] = $0.value }
         
         configuration["policy"] =  self.buildPolicy()
-        configuration["routing"] =  self.buildRoute()
+        configuration["routing"] =  try self.buildRoute()
         configuration["stats"] =  [:]
         
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
@@ -79,8 +79,8 @@ struct Configuration {
         ]
     }
     
-    private func buildRoute() -> [String: Any] {
-        return [
+    private func buildRoute() throws -> [String: Any] {
+        var route: [String: Any] = [
             "domainStrategy": "IpIfNonMatch",
             "rules": [
                 [
@@ -89,7 +89,17 @@ struct Configuration {
                     ],
                     "outboundTag": "metricsOut",
                     "type": "field"
-                ],
+                ]
+            ]
+        ]
+
+        let fileManager = FileManager.default
+        let assetDirectoryPath = Constant.assetDirectory.path
+
+        // 检查文件夹中是否有文件
+        if let files = try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath), !files.isEmpty {
+            // 如果有文件，添加 geosite 和 geoip 相关规则
+            route["rules"] = (route["rules"] as! [[String: Any]]) + [
                 [
                     "type": "field",
                     "outboundTag": "direct",
@@ -113,7 +123,9 @@ struct Configuration {
                     "outboundTag": "proxy"
                 ]
             ]
-        ]
+        }
+
+        return route
     }
     
     private func buildOutInbound(config: String) throws -> [String: Any] {

@@ -50,12 +50,11 @@ struct ContentView: View {
 
                 PingView().environmentObject(PacketTunnelManager.shared)
                 
-                DownloadView()
+                
             }
             .padding()
-            
-            Spacer()
 
+            DownloadView()
             HStack {
                 Button(action: {
                     handlePasteFromClipboard()
@@ -96,7 +95,6 @@ struct ContentView: View {
 
             }
             .padding(.horizontal)
-            .padding(.top, 20)
 
             VPNControlView() {
                 await connectVPN()
