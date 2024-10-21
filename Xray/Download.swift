@@ -45,7 +45,8 @@ struct DownloadView: View {
     private func downloadAndUpdateGeoipDat() {
         let urls = [
             ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat", "geoip.dat"),
-            ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat", "geosite.dat")
+            ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat"),
+//            ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat", "geosite.dat")   // 内存溢出
         ]
 
         for (urlString, fileName) in urls {

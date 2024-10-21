@@ -89,28 +89,24 @@ struct Configuration {
                     ],
                     "outboundTag": "metricsOut",
                     "type": "field"
-                ]
-//                ,
-//                [
-//                    "type": "field",
-//                    "outboundTag": "direct",
-//                    "domain": [
-//                        "geosite:cn",
-//                        "geosite:geolocation-cn"
-//                    ]
-//                ]
-//                ,
-//                [
-//                    "type": "field",
-//                    "outboundTag": "direct",
-//                    "ip": [
-//                        "223.5.5.5/32",
-//                        "114.114.114.114/32",
-//                        "geoip:private",
-//                        "geoip:cn"
-//                    ]
-//                ]
-                ,
+                ],
+                [
+                    "type": "field",
+                    "outboundTag": "direct",
+                    "domain": [
+                        "geosite:cn"
+                    ]
+                ],
+                [
+                    "type": "field",
+                    "outboundTag": "direct",
+                    "ip": [
+                        "223.5.5.5/32",
+                        "114.114.114.114/32",
+                        "geoip:private",
+                        "geoip:cn"
+                    ]
+                ],
                 [
                     "type": "field",
                     "port": "0-65535",

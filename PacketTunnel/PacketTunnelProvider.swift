@@ -17,12 +17,6 @@ struct RunXrayRequest: Codable {
     var maxMemory: Int64?
 }
 
-struct LoadGeoDataRequest: Codable {
-    var datDir: String
-    var name: String
-    var geoType: String
-}
-
 class PacketTunnelProvider: NEPacketTunnelProvider {
     let MTU = 8500
 
@@ -37,14 +31,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         
-        // 定义 geosite 和 geoip 数据文件路径
-        let geoDataDirectory = Constant.assetDirectory.path
-        
         do {
-            // 加载 geo 数据 //报错
-//            try loadGeoData(datDir: geoDataDirectory, name: "geosite", geoType: "domain")
-//            try loadGeoData(datDir: geoDataDirectory, name: "geoip", geoType: "ip")
-
             // 启动 Xray 核心进程
             try startXray(path: path)
 
@@ -56,27 +43,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         } catch {
             os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
             throw error
-        }
-    }
-
-    // 加载 geo 数据的方法
-    private func loadGeoData(datDir: String, name: String, geoType: String) throws {
-        // 创建 LoadGeoDataRequest
-        let request = LoadGeoDataRequest(datDir: datDir, name: name, geoType: geoType)
-        
-        // 编码请求为 JSON
-        let jsonData = try JSONEncoder().encode(request)
-        
-        // 将 JSON 编码为 Base64 字符串
-        let base64String = jsonData.base64EncodedString()
-        
-        // 调用 LoadGeoData 加载 geo 数据
-        let result = LibXrayLoadGeoData(base64String)
-        
-        // 检查返回结果是否包含错误
-        if !result.isEmpty {
-            os_log("加载 geo 数据时发生错误: %{public}@", result)
-            throw NSError(domain: "com.xray.error", code: -1, userInfo: [NSLocalizedDescriptionKey: "加载 geo 数据失败"])
         }
     }
 
