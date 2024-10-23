@@ -11,6 +11,7 @@ import SwiftUI
 struct DownloadView: View {
     @State private var isDownloading: Bool = false
     @State private var downloadedFiles: [String] = []
+    @State private var completedDownloads: Int = 0 // 新增，跟踪已完成下载的文件数
 
     var body: some View {
         VStack {
@@ -85,6 +86,7 @@ struct DownloadView: View {
         ]
 
         isDownloading = true
+        completedDownloads = 0 // 重置计数器
 
         // 逐一下载文件，而不是并发
         for (urlString, fileName) in urls {
@@ -101,8 +103,12 @@ struct DownloadView: View {
                         print("文件下载失败: \(error.localizedDescription)")
                     }
 
+                    // 更新已下载文件计数
                     DispatchQueue.main.async {
-                        isDownloading = false
+                        completedDownloads += 1
+                        if completedDownloads == urls.count {
+                            isDownloading = false // 当两个文件都下载完成时，解除禁用按钮
+                        }
                     }
                 }
             }
@@ -131,7 +137,6 @@ struct DownloadView: View {
             } catch {
                 completion(.failure(error))
             }
-            
         }
         task.resume()
     }
