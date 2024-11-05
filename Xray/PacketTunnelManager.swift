@@ -73,7 +73,7 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
     
-    func start(path:String) async throws {
+    func start() async throws {
         guard let manager = self.manager else {
             throw NSError(domain: "PacketTunnelManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Manager 未初始化"])
         }
@@ -84,14 +84,38 @@ final class PacketTunnelManager: ObservableObject {
             throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
         }
         
+        guard let config = Util.loadFromUserDefaults(key: "configLink") else {
+            throw NSError(domain: "ContentView", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"])
+        }
+        
+        // 构建配置数据并生成配置文件 URL
+        let configData = try Configuration().buildConfigurationData(config: config)
+        
+        guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
+            throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
+        }
+        let fileUrl = try Util.createConfigFile(with: mergedConfigString)
+        
         // 启动 VPN 并传递配置和端口号
         try manager.connection.startVPNTunnel(options: [
             "sock5Port": sock5Port as NSNumber,
-            "path": path as NSString,
+            "path": fileUrl.path() as NSString,
         ])
     }
     
     func stop() {
         manager?.connection.stopVPNTunnel()
+    }
+    
+
+    func restart() async throws {
+
+        stop()
+        
+        while manager?.connection.status == .disconnecting || manager?.connection.status == .connected {
+            try await Task.sleep(nanoseconds: 500_000_000) // 等待0.5秒
+        }
+        
+        try await start()
     }
 }

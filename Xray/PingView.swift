@@ -50,7 +50,7 @@ struct PingView: View {
 
         Task {
             do {
-                guard let savedContent = Util.loadFromUserDefaults(key: "clipboardContent"), !savedContent.isEmpty else {
+                guard let savedContent = Util.loadFromUserDefaults(key: "configLink"), !savedContent.isEmpty else {
                     throw NSError(domain: "ContentView", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
                 }
 

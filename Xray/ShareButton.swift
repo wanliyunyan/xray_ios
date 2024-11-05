@@ -52,7 +52,7 @@ struct ShareModalView: View {
 
     // 自动生成二维码的方法
     private func generateQRCode() {
-        guard let link = Util.loadFromUserDefaults(key: "clipboardContent"), !link.isEmpty else {
+        guard let link = Util.loadFromUserDefaults(key: "configLink"), !link.isEmpty else {
             print("无法生成二维码，因为没有可用的内容")
             return
         }

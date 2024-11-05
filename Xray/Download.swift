@@ -108,6 +108,16 @@ struct DownloadView: View {
                         completedDownloads += 1
                         if completedDownloads == urls.count {
                             isDownloading = false // 当两个文件都下载完成时，解除禁用按钮
+                            
+                            // 在下载完成后重启 VPN
+                            Task {
+                                do {
+                                    try await PacketTunnelManager.shared.restart()
+                                    print("VPN 已成功重启")
+                                } catch {
+                                    print("VPN 重启失败：\(error.localizedDescription)")
+                                }
+                            }
                         }
                     }
                 }

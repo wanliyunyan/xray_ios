@@ -130,7 +130,7 @@ struct ContentView: View {
                     if let code = newState {
                         print(code)
                         clipboardText = code
-                        Util.saveToUserDefaults(value: clipboardText, key: "clipboardContent")
+                        Util.saveToUserDefaults(value: clipboardText, key: "configLink")
                         Util.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
                         isShowingScanner = false // 扫描完成后立即关闭弹窗
                     }
@@ -141,23 +141,7 @@ struct ContentView: View {
     // MARK: - VPN Connection
     private func connectVPN() async {
         do {
-            if clipboardText.isEmpty {
-                guard let savedContent = Util.loadFromUserDefaults(key: "clipboardContent"), !savedContent.isEmpty else {
-                    throw NSError(domain: "ContentView", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
-                }
-                clipboardText = savedContent
-            }
-
-            let configData = try Configuration().buildConfigurationData(config: clipboardText)
-
-            guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
-                throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
-            }
-
-            let fileUrl = try Util.createConfigFile(with: mergedConfigString)
-
-            // 启动 VPN
-            try await packetTunnelManager.start(path: fileUrl.path)
+            try await packetTunnelManager.start()
         } catch {
             print("连接 VPN 时出错: \(error.localizedDescription)")
         }
@@ -165,7 +149,7 @@ struct ContentView: View {
 
     // MARK: - UserDefaults Handling
     private func loadDataFromUserDefaults() {
-        if let content = Util.loadFromUserDefaults(key: "clipboardContent") {
+        if let content = Util.loadFromUserDefaults(key: "configLink") {
             Util.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
         }
     }
@@ -174,10 +158,10 @@ struct ContentView: View {
     private func handlePasteFromClipboard() {
         if let clipboardContent = Util.pasteFromClipboard() {
             if !clipboardContent.isEmpty {
-                let storedContent = Util.loadFromUserDefaults(key: "clipboardContent")
+                let storedContent = Util.loadFromUserDefaults(key: "configLink")
                 if clipboardContent != storedContent {
                     clipboardText = clipboardContent
-                    Util.saveToUserDefaults(value: clipboardContent, key: "clipboardContent")
+                    Util.saveToUserDefaults(value: clipboardContent, key: "configLink")
                     Util.parseContent(clipboardContent, idText: &idText, ipText: &ipText, portText: &portText)
                 }
             } else {
