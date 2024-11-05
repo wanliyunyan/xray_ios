@@ -81,7 +81,7 @@ struct Configuration {
     
     private func buildRoute() throws -> [String: Any] {
         var route: [String: Any] = [
-            "domainStrategy": "IpIfNonMatch",
+            "domainStrategy": "AsIs",
             "rules": [
                 [
                     "inboundTag": [
@@ -96,8 +96,10 @@ struct Configuration {
         let fileManager = FileManager.default
         let assetDirectoryPath = Constant.assetDirectory.path
 
-        // 检查文件夹中是否有文件
-        if let files = try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath), !files.isEmpty {
+        let vpnMode = Util.loadFromUserDefaults(key: "VPNMode") ?? VPNMode.nonGlobal.rawValue
+
+        if vpnMode == VPNMode.nonGlobal.rawValue,
+            let files = try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath), !files.isEmpty {
             // 如果有文件，添加 geosite 和 geoip 相关规则
             route["rules"] = (route["rules"] as! [[String: Any]]) + [
                 [

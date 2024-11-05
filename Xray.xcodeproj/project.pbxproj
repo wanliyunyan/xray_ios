@@ -22,6 +22,7 @@
 		3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */; };
 		3B3C137B2CD9E2260076B451 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3C137A2CD9E2260076B451 /* LibXray */; };
 		3B3C137D2CD9E2350076B451 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = 3B3C137C2CD9E2350076B451 /* LibXray */; };
+		3B3C13892CDA0CB60076B451 /* VPNModePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3C13882CDA0CB40076B451 /* VPNModePicker.swift */; };
 		3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B8050DD2C9D7C0800043697 /* Configuration.swift */; };
 		3B99F5162CA11A8A00CDC946 /* ConnectedDurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B99F5152CA11A8A00CDC946 /* ConnectedDurationView.swift */; };
 		3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */; };
@@ -79,6 +80,7 @@
 		3B2DA99E2C95398600E8FCB9 /* PacketTunnelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelManager.swift; sourceTree = "<group>"; };
 		3B2DA9AA2C953B6200E8FCB9 /* libresolv.9.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.9.tbd; path = usr/lib/libresolv.9.tbd; sourceTree = SDKROOT; };
 		3B2DA9AC2C95573400E8FCB9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3B3C13882CDA0CB40076B451 /* VPNModePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNModePicker.swift; sourceTree = "<group>"; };
 		3B8050DD2C9D7C0800043697 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		3B99F5152CA11A8A00CDC946 /* ConnectedDurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectedDurationView.swift; sourceTree = "<group>"; };
 		3BA6A1D92C9D756C00FF9E1A /* InfoRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoRow.swift; sourceTree = "<group>"; };
@@ -141,6 +143,7 @@
 		3B2DA9562C95337E00E8FCB9 /* Xray */ = {
 			isa = PBXGroup;
 			children = (
+				3B3C13882CDA0CB40076B451 /* VPNModePicker.swift */,
 				3B2DA9992C95379100E8FCB9 /* Info.plist */,
 				3B2DA9952C95346A00E8FCB9 /* Xray.entitlements */,
 				3B2DA9572C95337E00E8FCB9 /* XrayApp.swift */,
@@ -308,6 +311,7 @@
 				3B2DA9AD2C95573400E8FCB9 /* ContentView.swift in Sources */,
 				3B2DA9582C95337E00E8FCB9 /* XrayApp.swift in Sources */,
 				3B99F5162CA11A8A00CDC946 /* ConnectedDurationView.swift in Sources */,
+				3B3C13892CDA0CB60076B451 /* VPNModePicker.swift in Sources */,
 				3B2DA99C2C95393600E8FCB9 /* Constant.swift in Sources */,
 				3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */,
 				3BAD4E2C2CAA747A006868C3 /* PingView.swift in Sources */,

@@ -52,8 +52,8 @@ struct ContentView: View {
                 }
 
                 PingView().environmentObject(PacketTunnelManager.shared)
-                
-                
+
+                VPNModePicker()
             }
             .padding()
 
