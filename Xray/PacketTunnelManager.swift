@@ -107,11 +107,16 @@ final class PacketTunnelManager: ObservableObject {
         DispatchQueue.main.async {
             let alert = UIAlertController(title: "切换 VPN 配置", message: "系统检测到其他 VPN 配置正在使用，请前往设置切换到当前配置。", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "确定", style: .default, handler: nil))
-            if let rootViewController = UIApplication.shared.windows.first?.rootViewController {
-                rootViewController.present(alert, animated: true, completion: nil)
+
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+                print("未找到活动的 UIWindowScene 或 rootViewController")
+                return
             }
+            rootViewController.present(alert, animated: true, completion: nil)
         }
     }
+
 
     /// 启动 VPN
     func start() async throws {
