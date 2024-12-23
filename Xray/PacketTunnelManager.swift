@@ -5,13 +5,12 @@
 //  Created by pan on 2024/9/14.
 //
 
-@preconcurrency import NetworkExtension
 import Combine
+@preconcurrency import NetworkExtension
 import UIKit
 
 @MainActor
 final class PacketTunnelManager: ObservableObject {
-
     private var cancellables = Set<AnyCancellable>()
 
     @Published private var manager: NETunnelProviderManager?
@@ -34,7 +33,7 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 初始化并设置 VPN 配置
     private func setupManager() async {
-        self.manager = await loadTunnelProviderManager()
+        manager = await loadTunnelProviderManager()
 
         if let connection = manager?.connection {
             NotificationCenter.default.publisher(for: .NEVPNStatusDidChange, object: connection)
@@ -109,7 +108,8 @@ final class PacketTunnelManager: ObservableObject {
             alert.addAction(UIAlertAction(title: "确定", style: .default, handler: nil))
 
             guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+                  let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+            else {
                 print("未找到活动的 UIWindowScene 或 rootViewController")
                 return
             }
@@ -117,10 +117,9 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
 
-
     /// 启动 VPN
     func start() async throws {
-        guard let manager = self.manager else {
+        guard let manager else {
             throw NSError(domain: "PacketTunnelManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Manager 未初始化"])
         }
 
@@ -136,7 +135,8 @@ final class PacketTunnelManager: ObservableObject {
 
         // 从 UserDefaults 加载端口和配置
         guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
-              let sock5Port = Int(sock5PortString) else {
+              let sock5Port = Int(sock5PortString)
+        else {
             throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
         }
 

@@ -9,85 +9,85 @@ import Foundation
 import LibXray
 
 struct Configuration {
-
     func buildConfigurationData(config: String) throws -> Data {
-        
         // 从 UserDefaults 加载端口并尝试转换为 Int
         guard let inboundPortString = Util.loadFromUserDefaults(key: "sock5Port"),
               let trafficPortString = Util.loadFromUserDefaults(key: "trafficPort"),
               let inboundPort = Int(inboundPortString),
-              let trafficPort = Int(trafficPortString) else {
+              let trafficPort = Int(trafficPortString)
+        else {
             throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
         }
 
-        var configuration = try self.buildOutInbound(config: config)
-        configuration["inbounds"] = self.buildInbound(inboundPort: inboundPort,trafficPort:trafficPort)
-        configuration["metrics"] = self.buildMetrics()
-        configuration["policy"] =  self.buildPolicy()
-        configuration["routing"] =  try self.buildRoute()
-        configuration["stats"] =  [:]
-        
-        configuration = removeNullValues(from:configuration)
-        
+        var configuration = try buildOutInbound(config: config)
+        configuration["inbounds"] = buildInbound(inboundPort: inboundPort, trafficPort: trafficPort)
+        configuration["metrics"] = buildMetrics()
+        configuration["policy"] = buildPolicy()
+        configuration["routing"] = try buildRoute()
+        configuration["stats"] = [:]
+
+        configuration = removeNullValues(from: configuration)
+
         // MARK: xray 24.12.18 如果outbound name不是域名或者ip，是其他的字符串，也会被赋值到sendThrough，但是启动的时候会报错，暂时先去掉了
-        configuration = removeSendThroughFromOutbounds(from:configuration)
+
+        configuration = removeSendThroughFromOutbounds(from: configuration)
 
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
-    
-    private func buildInbound(inboundPort: Int = Constant.sock5Port ,trafficPort: Int = Constant.trafficPort) -> [[String: Any]] {
+
+    private func buildInbound(inboundPort: Int = Constant.sock5Port, trafficPort: Int = Constant.trafficPort) -> [[String: Any]] {
         let inbound1: [String: Any] = [
             "listen": "127.0.0.1",
             "port": inboundPort,
             "protocol": "socks",
             "settings": [
-                "udp": true
+                "udp": true,
             ],
-            "tag": "socks"
+            "tag": "socks",
         ]
-        
+
         let inbound2: [String: Any] = [
             "listen": "127.0.0.1",
             "port": trafficPort,
             "protocol": "dokodemo-door",
             "settings": [
-                "address": "127.0.0.1"
+                "address": "127.0.0.1",
             ],
-            "tag": "metricsIn"
+            "tag": "metricsIn",
         ]
-        
+
         return [inbound1, inbound2]
     }
-    
+
     private func buildMetrics() -> [String: Any] {
-        return [
-            "tag" : "metricsOut"
+        [
+            "tag": "metricsOut",
         ]
     }
 
     private func buildPolicy() -> [String: Any] {
-        return [
+        [
             "system": [
                 "statsInboundDownlink": true,
                 "statsInboundUplink": true,
                 "statsOutboundDownlink": true,
-                "statsOutboundUplink": true
-            ]
+                "statsOutboundUplink": true,
+            ],
         ]
     }
-    
+
     private func buildRoute() throws -> [String: Any] {
         var route: [String: Any] = [
             "domainStrategy": "AsIs",
             "rules": [
                 [
                     "inboundTag": [
-                        "metricsIn"
+                        "metricsIn",
                     ],
                     "outboundTag": "metricsOut",
-                    "type": "field"
-                ]
-            ]
+                    "type": "field",
+                ],
+            ],
         ]
 
         let fileManager = FileManager.default
@@ -96,15 +96,16 @@ struct Configuration {
         let vpnMode = Util.loadFromUserDefaults(key: "VPNMode") ?? VPNMode.nonGlobal.rawValue
 
         if vpnMode == VPNMode.nonGlobal.rawValue,
-            let files = try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath), !files.isEmpty {
+           let files = try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath), !files.isEmpty
+        {
             // 如果有文件，添加 geosite 和 geoip 相关规则
             route["rules"] = (route["rules"] as! [[String: Any]]) + [
                 [
                     "type": "field",
                     "outboundTag": "direct",
                     "domain": [
-                        "geosite:cn"
-                    ]
+                        "geosite:cn",
+                    ],
                 ],
                 [
                     "type": "field",
@@ -113,20 +114,20 @@ struct Configuration {
                         "223.5.5.5/32",
                         "114.114.114.114/32",
                         "geoip:private",
-                        "geoip:cn"
-                    ]
+                        "geoip:cn",
+                    ],
                 ],
                 [
                     "type": "field",
                     "port": "0-65535",
-                    "outboundTag": "proxy"
-                ]
+                    "outboundTag": "proxy",
+                ],
             ]
         }
 
         return route
     }
-    
+
     private func buildOutInbound(config: String) throws -> [String: Any] {
         // 将传入的 config 字符串进行 Base64 编码并转换为 Xray JSON
         guard let configData = config.data(using: .utf8) else {
@@ -142,7 +143,8 @@ struct Configuration {
               let jsonDict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
               let success = jsonDict["success"] as? Bool, success,
               let dataDict = jsonDict["data"] as? [String: Any],
-              var outboundsArray = dataDict["outbounds"] as? [[String: Any]] else {
+              var outboundsArray = dataDict["outbounds"] as? [[String: Any]]
+        else {
             throw NSError(domain: "InvalidXrayJson", code: -1, userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败"])
         }
 
@@ -150,7 +152,7 @@ struct Configuration {
         if var firstOutbound = outboundsArray.first {
             // 添加 tag: "proxy" 属性
             firstOutbound["tag"] = "proxy"
-            
+
             // 更新 outbounds 数组中的第一个对象
             outboundsArray[0] = firstOutbound
         }
@@ -158,7 +160,7 @@ struct Configuration {
         // 要插入的对象
         let newObject: [String: Any] = [
             "protocol": "freedom",
-            "tag": "direct"
+            "tag": "direct",
         ]
 
         // 拼接新的对象到 outbounds 数组
@@ -170,7 +172,7 @@ struct Configuration {
 
         return updatedDataDict
     }
-    
+
     func removeSendThroughFromOutbounds(from configuration: [String: Any]) -> [String: Any] {
         var updatedConfig = configuration
 
@@ -183,14 +185,13 @@ struct Configuration {
 
         return updatedConfig
     }
-    
+
     func removeNullValues(from dictionary: [String: Any]) -> [String: Any] {
         var updatedDictionary = dictionary
 
         for (key, value) in dictionary {
             // 检查值是否为 null 类型或占位符
             if value is NSNull || "\(value)" == "<null>" {
-                print(key)
                 // 如果值是 NSNull 或 "<null>"，移除键
                 updatedDictionary.removeValue(forKey: key)
             } else if let nestedDictionary = value as? [String: Any] {

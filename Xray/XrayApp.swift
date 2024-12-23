@@ -5,8 +5,8 @@
 //  Created by pan on 2024/9/14.
 //
 
-import SwiftUI
 import NetworkExtension
+import SwiftUI
 
 @main
 struct XrayApp: App {

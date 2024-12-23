@@ -18,7 +18,7 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
             self.parent = parent
         }
 
-        @MainActor func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        @MainActor func metadataOutput(_: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from _: AVCaptureConnection) {
             if let metadataObject = metadataObjects.first {
                 guard let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject,
                       let stringValue = readableObject.stringValue else { return }
@@ -30,7 +30,7 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        return Coordinator(parent: self)
+        Coordinator(parent: self)
     }
 
     func makeUIViewController(context: Context) -> UIViewController {
@@ -46,7 +46,7 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
             return viewController
         }
 
-        if (captureSession.canAddInput(videoInput)) {
+        if captureSession.canAddInput(videoInput) {
             captureSession.addInput(videoInput)
         } else {
             return viewController
@@ -54,7 +54,7 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
 
         let metadataOutput = AVCaptureMetadataOutput()
 
-        if (captureSession.canAddOutput(metadataOutput)) {
+        if captureSession.canAddOutput(metadataOutput) {
             captureSession.addOutput(metadataOutput)
 
             metadataOutput.setMetadataObjectsDelegate(context.coordinator, queue: DispatchQueue.main)
@@ -73,5 +73,5 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
         return viewController
     }
 
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    func updateUIViewController(_: UIViewController, context _: Context) {}
 }

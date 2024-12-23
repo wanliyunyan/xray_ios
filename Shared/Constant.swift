@@ -8,9 +8,7 @@
 import Foundation
 
 public enum Constant {
-    public static let packageName = {
-        Bundle.main.infoDictionary?["APP_ID"] as? String ?? "unknown"
-    }()
+    public static let packageName = Bundle.main.infoDictionary?["APP_ID"] as? String ?? "unknown"
 }
 
 public extension Constant {
@@ -18,7 +16,7 @@ public extension Constant {
     static let tunnelName = "\(Constant.packageName).PacketTunnel"
     static let sock5Port = 10808
     static let trafficPort = 49227
-    
+
     private static func createDirectory(at url: URL) -> URL {
         guard FileManager.default.fileExists(atPath: url.path) == false else {
             return url
@@ -38,9 +36,8 @@ public extension Constant {
         let url = containerURL.appendingPathComponent("Library/Application Support/Xray")
         return createDirectory(at: url)
     }()
-    
+
     static let assetDirectory = createDirectory(at: homeDirectory.appending(component: "assets", directoryHint: .isDirectory))
-    
+
     static let configDirectory = createDirectory(at: homeDirectory.appending(component: "configs", directoryHint: .isDirectory))
-    
 }

@@ -25,9 +25,9 @@ struct VPNModePicker: View {
                 Text(VPNMode.global.rawValue).tag(VPNMode.global)
             }
             .pickerStyle(SegmentedPickerStyle())
-            .onChange(of: selectedMode) { oldMode, newMode in
+            .onChange(of: selectedMode) { _, newMode in
                 saveModeToUserDefaults(newMode)
-                
+
                 // 检查 VPN 是否已连接，并在切换模式时重启
                 if packetTunnelManager.status == .connected {
                     Task {
@@ -47,13 +47,15 @@ struct VPNModePicker: View {
     }
 
     // MARK: - Save and Load Mode to/from UserDefaults
+
     private func saveModeToUserDefaults(_ mode: VPNMode) {
         Util.saveToUserDefaults(value: mode.rawValue, key: "VPNMode")
     }
 
     private func loadModeFromUserDefaults() {
         if let modeString = Util.loadFromUserDefaults(key: "VPNMode"),
-           let mode = VPNMode(rawValue: modeString) {
+           let mode = VPNMode(rawValue: modeString)
+        {
             selectedMode = mode
         } else {
             selectedMode = .nonGlobal // 如果没有存储的值，默认选择非全局模式

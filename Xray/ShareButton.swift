@@ -5,8 +5,8 @@
 //  Created by pan on 2024/9/29.
 //
 
-import SwiftUI
 import CoreImage.CIFilterBuiltins
+import SwiftUI
 
 struct ShareModalView: View {
     @Binding var isShowing: Bool // 控制弹窗的显示与关闭
@@ -26,7 +26,7 @@ struct ShareModalView: View {
                 }
 
                 // 显示二维码
-                if let qrCodeImage = qrCodeImage {
+                if let qrCodeImage {
                     Image(uiImage: qrCodeImage)
                         .resizable()
                         .interpolation(.none) // 避免图片缩放时模糊

@@ -1,5 +1,5 @@
 //
-//  DownloadProgressView.swift
+//  Download.swift
 //  Xray
 //
 //  Created by pan on 2024/10/17.
@@ -48,7 +48,7 @@ struct DownloadView: View {
 
             // 显示已下载的文件
             if !downloadedFiles.isEmpty {
-                HStack {  // 使用 HStack 水平排列文件名
+                HStack { // 使用 HStack 水平排列文件名
                     Text("已下载:")
                         .padding(.top)
 
@@ -82,7 +82,7 @@ struct DownloadView: View {
     private func downloadAndUpdateGeoipDat() {
         let urls = [
             ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat", "geoip.dat"),
-            ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat")
+            ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat"),
         ]
 
         isDownloading = true
@@ -93,13 +93,13 @@ struct DownloadView: View {
             if let url = URL(string: urlString) {
                 downloadFile(from: url) { result in
                     switch result {
-                    case .success(let fileURL):
+                    case let .success(fileURL):
                         // 调用主线程来处理文件保存
                         Task {
                             await saveFileToDirectory(fileURL: fileURL, fileName: fileName)
                             await loadDownloadedFiles() // 下载完成后刷新文件列表
                         }
-                    case .failure(let error):
+                    case let .failure(error):
                         print("文件下载失败: \(error.localizedDescription)")
                     }
 
@@ -108,7 +108,7 @@ struct DownloadView: View {
                         completedDownloads += 1
                         if completedDownloads == urls.count {
                             isDownloading = false // 当两个文件都下载完成时，解除禁用按钮
-                            
+
                             if PacketTunnelManager.shared.status == .connected {
                                 Task {
                                     do {
@@ -129,13 +129,13 @@ struct DownloadView: View {
     }
 
     private func downloadFile(from url: URL, completion: @escaping @Sendable (Result<URL, Swift.Error>) -> Void) {
-        let task = URLSession.shared.downloadTask(with: url) { localURL, response, error in
-            if let error = error {
+        let task = URLSession.shared.downloadTask(with: url) { localURL, _, error in
+            if let error {
                 completion(.failure(error))
                 return
             }
 
-            guard let localURL = localURL else {
+            guard let localURL else {
                 completion(.failure(NSError(domain: "DownloadError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法获取本地文件 URL"])))
                 return
             }

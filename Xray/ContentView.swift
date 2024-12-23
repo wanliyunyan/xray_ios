@@ -5,8 +5,8 @@
 //  Created by pan on 2024/9/14.
 //
 
-import SwiftUI
 import LibXray
+import SwiftUI
 
 struct PingRequest: Codable {
     var datDir: String?
@@ -26,7 +26,7 @@ struct ContentView: View {
     @State private var path: String = "" // 配置地址
     @State private var isShowingShareModal = false // 控制弹窗显示
     @State private var showClipboardEmptyAlert = false // 用于控制显示空剪贴板的提示
-    @State private var pingSpeed: Int = 0  // 用于显示网速的状态
+    @State private var pingSpeed: Int = 0 // 用于显示网速的状态
     @State private var sock5Port: String = "" // 显示 sock5Port
     @State private var trafficPort: String = "" // 显示 trafficPort
     @State private var scannedCode: String? = nil // 扫描到的二维码内容
@@ -95,11 +95,10 @@ struct ContentView: View {
                         Text("分享") // 添加汉字说明
                     }
                 }
-
             }
             .padding(.horizontal)
 
-            VPNControlView() {
+            VPNControlView {
                 await connectVPN()
             }
 
@@ -139,6 +138,7 @@ struct ContentView: View {
     }
 
     // MARK: - VPN Connection
+
     private func connectVPN() async {
         do {
             try await packetTunnelManager.start()
@@ -148,6 +148,7 @@ struct ContentView: View {
     }
 
     // MARK: - UserDefaults Handling
+
     private func loadDataFromUserDefaults() {
         if let content = Util.loadFromUserDefaults(key: "configLink") {
             Util.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
@@ -155,6 +156,7 @@ struct ContentView: View {
     }
 
     // MARK: - Clipboard Handling
+
     private func handlePasteFromClipboard() {
         if let clipboardContent = Util.pasteFromClipboard() {
             if !clipboardContent.isEmpty {
@@ -175,11 +177,13 @@ struct ContentView: View {
     }
 
     // MARK: - Fetch Free Ports
+
     private func fetchFreePorts() {
         let freePortsBase64String = LibXrayGetFreePorts(2)
 
         guard let decodedData = Data(base64Encoded: freePortsBase64String),
-              let decodedString = String(data: decodedData, encoding: .utf8) else {
+              let decodedString = String(data: decodedData, encoding: .utf8)
+        else {
             print("Base64 解码失败")
             return
         }
@@ -188,7 +192,8 @@ struct ContentView: View {
             if let jsonObject = try JSONSerialization.jsonObject(with: Data(decodedString.utf8), options: []) as? [String: Any],
                let success = jsonObject["success"] as? Bool, success,
                let data = jsonObject["data"] as? [String: Any],
-               let ports = data["ports"] as? [Int], ports.count == 2 {
+               let ports = data["ports"] as? [Int], ports.count == 2
+            {
                 Util.saveToUserDefaults(value: String(ports[0]), key: "sock5Port")
                 Util.saveToUserDefaults(value: String(ports[1]), key: "trafficPort")
                 sock5Port = String(ports[0])
@@ -201,5 +206,4 @@ struct ContentView: View {
             print("JSON 解析错误: \(error.localizedDescription)")
         }
     }
-
 }

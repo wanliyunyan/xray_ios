@@ -1,14 +1,14 @@
 //
-//  PingvVew.swift
+//  PingView.swift
 //  Xray
 //
 //  Created by pan on 2024/9/30.
 //
 
-import Foundation
-import SwiftUI
 import Combine
+import Foundation
 import LibXray
+import SwiftUI
 
 struct PingView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager // 引入 PacketTunnelManager
@@ -60,20 +60,21 @@ struct PingView: View {
                 }
 
                 let fileUrl = try Util.createConfigFile(with: mergedConfigString)
-                        
+
                 guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
-                      let sock5Port = Int(sock5PortString) else {
+                      let sock5Port = Int(sock5PortString)
+                else {
                     throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
                 }
-                
+
                 let pingRequest = try createPingRequest(configPath: fileUrl.path(), sock5Port: sock5Port)
                 let pingBase64String = try JSONEncoder().encode(pingRequest).base64EncodedString()
 
                 // 调用 LibXrayPing 并处理响应
                 let pingResponseBase64 = LibXrayPing(pingBase64String)
                 if let pingResult = await decodePingResponse(base64String: pingResponseBase64) {
-                    self.pingSpeed = pingResult
-                    self.isPingFetched = true
+                    pingSpeed = pingResult
+                    isPingFetched = true
                 } else {
                     print("Ping 解码失败")
                 }
@@ -82,7 +83,7 @@ struct PingView: View {
             } catch {
                 print("发生了未知错误: \(error.localizedDescription)")
             }
-            self.isLoading = false // 停止加载
+            isLoading = false // 停止加载
         }
     }
 
@@ -94,7 +95,7 @@ struct PingView: View {
         switch pingSpeed {
         case ..<1000:
             return .green
-        case 1000..<5000:
+        case 1000 ..< 5000:
             return .yellow
         default:
             return .red
@@ -104,7 +105,7 @@ struct PingView: View {
     // 创建 Ping 请求
     @MainActor
     private func createPingRequest(configPath: String, sock5Port: Int) throws -> PingRequest {
-        return PingRequest(
+        PingRequest(
             datDir: Constant.assetDirectory.path,
             configPath: configPath,
             timeout: 30,
@@ -118,7 +119,8 @@ struct PingView: View {
     private func decodePingResponse(base64String: String) async -> Int? {
         guard let decodedData = Data(base64Encoded: base64String),
               let decodedString = String(data: decodedData, encoding: .utf8),
-              let jsonData = decodedString.data(using: .utf8) else {
+              let jsonData = decodedString.data(using: .utf8)
+        else {
             print("Base64 解码或转换为 JSON 失败")
             return nil
         }
@@ -126,7 +128,8 @@ struct PingView: View {
         do {
             if let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
                let success = jsonObject["success"] as? Bool, success,
-               let data = jsonObject["data"] as? Int {
+               let data = jsonObject["data"] as? Int
+            {
                 return data
             }
         } catch {

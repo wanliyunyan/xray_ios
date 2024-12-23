@@ -8,18 +8,17 @@
 import SwiftUI
 
 struct ConnectedDurationView: View {
-    
     @EnvironmentObject private var packetTunnelManager: PacketTunnelManager
-    
+
     var body: some View {
         VStack(alignment: .leading) {
-            Text("连接时长:").font(.headline)  // 标签在上方
-            
+            Text("连接时长:").font(.headline) // 标签在上方
+
             if let status = packetTunnelManager.status, status == .connected {
                 if let connectedDate = packetTunnelManager.connectedDate {
                     TimelineView(.periodic(from: Date(), by: 1.0)) { context in
                         Text(connectedDateString(connectedDate: connectedDate, current: context.date))
-                            .monospacedDigit()  // 时间显示在下方
+                            .monospacedDigit() // 时间显示在下方
                     }
                 } else {
                     Text("00:00")
@@ -29,7 +28,7 @@ struct ConnectedDurationView: View {
             }
         }
     }
-    
+
     private func connectedDateString(connectedDate: Date, current: Date) -> String {
         let duration = Int64(abs(current.distance(to: connectedDate)))
         let hs = duration / 3600

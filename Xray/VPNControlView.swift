@@ -11,7 +11,7 @@ import SwiftUI
 struct VPNControlView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
-    var connect: () async -> Void  // 传入一个方法，带两个端口
+    var connect: () async -> Void // 传入一个方法，带两个端口
 
     var body: some View {
         VStack {
@@ -21,6 +21,7 @@ struct VPNControlView: View {
     }
 
     // MARK: - VPN Control Button
+
     @ViewBuilder
     private func vpnControlButton() -> some View {
         switch packetTunnelManager.status {

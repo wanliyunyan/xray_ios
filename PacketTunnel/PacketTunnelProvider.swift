@@ -5,10 +5,10 @@
 //  Created by pan on 2024/9/14.
 //
 
-import NetworkExtension
 import LibXray
-import Tun2SocksKit
+import NetworkExtension
 import os
+import Tun2SocksKit
 
 // 定义一个 Swift 中的结构体，用于运行 Xray 配置
 struct RunXrayRequest: Codable {
@@ -21,8 +21,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     let MTU = 8500
 
     // 开始隧道的方法，会在创建隧道时调用
-    override func startTunnel(options: [String : NSObject]? = nil) async throws {
-
+    override func startTunnel(options: [String: NSObject]? = nil) async throws {
         guard let sock5Port = options?["sock5Port"] as? Int else {
             return
         }
@@ -30,7 +29,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         guard let path = options?["path"] as? String else {
             return
         }
-        
+
         do {
             // 启动 Xray 核心进程
             try startXray(path: path)
@@ -50,7 +49,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private func startXray(path: String) throws {
         // 创建 RunXrayRequest
         let request = RunXrayRequest(datDir: Constant.assetDirectory.path, configPath: path, maxMemory: 50 * 1024 * 1024)
-        
+
         // 将 RunXrayRequest 对象编码为 JSON 数据并启动 Xray 核心
         do {
             // 使用 JSONEncoder 编码请求对象为 JSON 数据
@@ -118,14 +117,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }()
 
         // 设置 DNS 服务器
-        settings.dnsSettings = NEDNSSettings(servers: ["1.1.1.1","8.8.8.8","8.8.4.4","114.114.114.114","223.5.5.5"])
+        settings.dnsSettings = NEDNSSettings(servers: ["1.1.1.1", "8.8.8.8", "8.8.4.4", "114.114.114.114", "223.5.5.5"])
 
         // 应用设置到隧道
-        try await self.setTunnelNetworkSettings(settings)
+        try await setTunnelNetworkSettings(settings)
     }
 
     // 停止隧道的方法 没发现这个方法有什么用处
-    override func stopTunnel(with reason: NEProviderStopReason) async {
+    override func stopTunnel(with _: NEProviderStopReason) async {
         // 停止 SOCKS5 隧道
         Socks5Tunnel.quit()
 
