@@ -20,21 +20,18 @@ struct Configuration {
             throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
         }
 
-        var configuration: [String: Any] = [:]
-        
-        configuration["metrics"] = self.buildMetrics()
+        var configuration = try self.buildOutInbound(config: config)
         configuration["inbounds"] = self.buildInbound(inboundPort: inboundPort,trafficPort:trafficPort)
-        
-        // 获取 dataDict
-        let dataDict = try self.buildOutInbound(config: config)
-        
-        // 合并 inbound 和 dataDict
-        dataDict.forEach { configuration[$0.key] = $0.value }
-        
+        configuration["metrics"] = self.buildMetrics()
         configuration["policy"] =  self.buildPolicy()
         configuration["routing"] =  try self.buildRoute()
         configuration["stats"] =  [:]
         
+        configuration = removeNullValues(from:configuration)
+        
+        // MARK: xray 24.12.18 如果outbound name不是域名或者ip，是其他的字符串，也会被赋值到sendThrough，但是启动的时候会报错，暂时先去掉了
+        configuration = removeSendThroughFromOutbounds(from:configuration)
+
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
     
@@ -172,5 +169,39 @@ struct Configuration {
         updatedDataDict["outbounds"] = outboundsArray
 
         return updatedDataDict
+    }
+    
+    func removeSendThroughFromOutbounds(from configuration: [String: Any]) -> [String: Any] {
+        var updatedConfig = configuration
+
+        // 确保 outbounds 存在并处理第一个元素
+        if var outbounds = configuration["outbounds"] as? [[String: Any]], !outbounds.isEmpty {
+            // 移除第一个字典中的 sendThrough 键
+            outbounds[0].removeValue(forKey: "sendThrough")
+            updatedConfig["outbounds"] = outbounds
+        }
+
+        return updatedConfig
+    }
+    
+    func removeNullValues(from dictionary: [String: Any]) -> [String: Any] {
+        var updatedDictionary = dictionary
+
+        for (key, value) in dictionary {
+            // 检查值是否为 null 类型或占位符
+            if value is NSNull || "\(value)" == "<null>" {
+                print(key)
+                // 如果值是 NSNull 或 "<null>"，移除键
+                updatedDictionary.removeValue(forKey: key)
+            } else if let nestedDictionary = value as? [String: Any] {
+                // 如果值是嵌套字典，递归处理
+                updatedDictionary[key] = removeNullValues(from: nestedDictionary)
+            } else if let nestedArray = value as? [[String: Any]] {
+                // 如果值是字典数组，递归处理每个字典
+                updatedDictionary[key] = nestedArray.map { removeNullValues(from: $0) }
+            }
+        }
+
+        return updatedDictionary
     }
 }
