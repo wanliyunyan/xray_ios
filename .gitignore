@@ -38,10 +38,6 @@ AccioPackages/
 .swiftlint.yml
 .swiftlint
 
-# SwiftFormat
-#
-.swiftformat
-
 # Fastlane
 #
 fastlane/report.xml

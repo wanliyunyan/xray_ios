@@ -23,11 +23,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     // 开始隧道的方法，会在创建隧道时调用
     override func startTunnel(options: [String: NSObject]? = nil) async throws {
         guard let sock5Port = options?["sock5Port"] as? Int else {
-            return
+            throw NSError(domain: "PacketTunnel", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 SOCKS5 端口配置"])
         }
 
         guard let path = options?["path"] as? String else {
-            return
+            throw NSError(domain: "PacketTunnel", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少配置路径"])
         }
 
         do {
@@ -96,28 +96,32 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     func setTunnelNetworkSettings() async throws {
-        // 创建网络设置对象，设置隧道的远程地址
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "254.1.1.1")
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "fd00::1")
         settings.mtu = NSNumber(integerLiteral: MTU)
 
-        // 设置 IPv4 地址、掩码和路由
+        // 配置 IPv4 地址和路由
         settings.ipv4Settings = {
             let settings = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.255.0.0"])
             settings.includedRoutes = [NEIPv4Route.default()]
-            settings.excludedRoutes = [NEIPv4Route(destinationAddress: "0.0.0.0", subnetMask: "255.0.0.0")]
+            settings.excludedRoutes = [] // 不排除任何 IPv4 流量
             return settings
         }()
 
-        // 设置 IPv6 地址、掩码和路由
+        // 配置 IPv6 地址和路由
         settings.ipv6Settings = {
             let settings = NEIPv6Settings(addresses: ["fd6e:a81b:704f:1211::1"], networkPrefixLengths: [64])
             settings.includedRoutes = [NEIPv6Route.default()]
-            settings.excludedRoutes = [NEIPv6Route(destinationAddress: "::", networkPrefixLength: 128)]
+            settings.excludedRoutes = [] // 不排除任何 IPv6 流量
             return settings
         }()
 
-        // 设置 DNS 服务器
-        settings.dnsSettings = NEDNSSettings(servers: ["1.1.1.1", "8.8.8.8", "8.8.4.4", "114.114.114.114", "223.5.5.5"])
+        // 配置 DNS
+        settings.dnsSettings = NEDNSSettings(servers: [
+            "1.1.1.1", // Cloudflare IPv4 DNS
+            "8.8.8.8", // Google Public DNS IPv4
+            "2606:4700:4700::1111", // Cloudflare IPv6 DNS
+            "2001:4860:4860::8888", // Google Public DNS IPv6
+        ])
 
         // 应用设置到隧道
         try await setTunnelNetworkSettings(settings)
