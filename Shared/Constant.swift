@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Network
 
 public enum Constant {
     public static let packageName = Bundle.main.infoDictionary?["APP_ID"] as? String ?? "unknown"
@@ -14,8 +15,8 @@ public enum Constant {
 public extension Constant {
     static let groupName = "group.\(Constant.packageName)"
     static let tunnelName = "\(Constant.packageName).PacketTunnel"
-    static let sock5Port = 10808
-    static let trafficPort = 49227
+    static let sock5Port: NWEndpoint.Port = 10808
+    static let trafficPort: NWEndpoint.Port = 49227
 
     private static func createDirectory(at url: URL) -> URL {
         guard FileManager.default.fileExists(atPath: url.path) == false else {

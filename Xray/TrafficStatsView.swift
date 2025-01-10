@@ -7,6 +7,7 @@
 
 import Foundation
 import LibXray
+import Network
 import SwiftUI
 
 struct TrafficStatsView: View {
@@ -43,7 +44,7 @@ struct TrafficStatsView: View {
     // 初始化 trafficString 并进行 Base64 编码，仅执行一次
     private func initializeTrafficString() throws {
         guard let trafficPortString = Util.loadFromUserDefaults(key: "trafficPort"),
-              let trafficPort = Int(trafficPortString)
+              let trafficPort = NWEndpoint.Port(trafficPortString)
         else {
             throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
         }

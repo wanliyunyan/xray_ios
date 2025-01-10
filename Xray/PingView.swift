@@ -8,6 +8,7 @@
 import Combine
 import Foundation
 import LibXray
+import Network
 import SwiftUI
 
 struct PingView: View {
@@ -62,7 +63,7 @@ struct PingView: View {
                 let fileUrl = try Util.createConfigFile(with: mergedConfigString)
 
                 guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
-                      let sock5Port = Int(sock5PortString)
+                      let sock5Port = NWEndpoint.Port(sock5PortString)
                 else {
                     throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
                 }
@@ -104,7 +105,7 @@ struct PingView: View {
 
     // 创建 Ping 请求
     @MainActor
-    private func createPingRequest(configPath: String, sock5Port: Int) throws -> PingRequest {
+    private func createPingRequest(configPath: String, sock5Port: NWEndpoint.Port) throws -> PingRequest {
         PingRequest(
             datDir: Constant.assetDirectory.path,
             configPath: configPath,
