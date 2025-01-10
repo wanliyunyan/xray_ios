@@ -96,36 +96,73 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     func setTunnelNetworkSettings() async throws {
+        // 1. 创建网络设置对象
+        //    tunnelRemoteAddress 通常写服务器实际分配给你的隧道地址，也可以是 IPv4 or IPv6
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "fd00::1")
-        settings.mtu = NSNumber(integerLiteral: MTU)
-
-        // 配置 IPv4 地址和路由
+        
+        // 2. 设置 MTU
+        settings.mtu = NSNumber(value: MTU)
+        
+        // 3. 配置 IPv4
         settings.ipv4Settings = {
-            let settings = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.255.0.0"])
-            settings.includedRoutes = [NEIPv4Route.default()]
-            settings.excludedRoutes = [] // 不排除任何 IPv4 流量
-            return settings
+            // - addresses：本地虚拟网卡 IP（客户端侧）
+            // - subnetMasks：对应的掩码
+            let ipv4 = NEIPv4Settings(
+                addresses: ["198.18.0.1"],
+                subnetMasks: ["255.255.255.0"]
+            )
+            
+            // 包含路由
+            // 下面演示如何显式地对默认路由设置 gatewayAddress
+            let defaultV4Route = NEIPv4Route(
+                destinationAddress: "0.0.0.0",
+                subnetMask: "0.0.0.0"
+            )
+            defaultV4Route.gatewayAddress = "198.18.0.1"
+            
+            ipv4.includedRoutes = [defaultV4Route]
+            ipv4.excludedRoutes = []
+            
+            return ipv4
         }()
-
-        // 配置 IPv6 地址和路由
+        
+        // 4. 配置 IPv6
         settings.ipv6Settings = {
-            let settings = NEIPv6Settings(addresses: ["fd6e:a81b:704f:1211::1"], networkPrefixLengths: [64])
-            settings.includedRoutes = [NEIPv6Route.default()]
-            settings.excludedRoutes = [] // 不排除任何 IPv6 流量
-            return settings
+            // addresses 与 networkPrefixLengths 要成对匹配
+            let ipv6 = NEIPv6Settings(
+                addresses: ["fd6e:a81b:704f:1211::1"],
+                networkPrefixLengths: [64]
+            )
+            
+            // 同理为 IPv6 默认路由添加网关地址
+            let defaultV6Route = NEIPv6Route(
+                destinationAddress: "::",
+                networkPrefixLength: 0
+            )
+            defaultV6Route.gatewayAddress = "fd6e:a81b:704f:1211::1"
+            
+            ipv6.includedRoutes = [defaultV6Route]
+            ipv6.excludedRoutes = []
+            
+            return ipv6
         }()
-
-        // 配置 DNS
-        settings.dnsSettings = NEDNSSettings(servers: [
-            "1.1.1.1", // Cloudflare IPv4 DNS
-            "8.8.8.8", // Google Public DNS IPv4
-            "2606:4700:4700::1111", // Cloudflare IPv6 DNS
-            "2001:4860:4860::8888", // Google Public DNS IPv6
+        
+        // 5. 配置 DNS
+        //    matchDomains = [""] 表示将所有域名都走隧道 DNS
+        let dnsSettings = NEDNSSettings(servers: [
+            "1.1.1.1",              // Cloudflare DNS (IPv4)
+            "8.8.8.8",              // Google DNS (IPv4)
+            "2606:4700:4700::1111", // Cloudflare DNS (IPv6)
+            "2001:4860:4860::8888"  // Google DNS (IPv6)
         ])
+        dnsSettings.matchDomains = [""]   // 必要！确保所有域名都走隧道
+        
+        settings.dnsSettings = dnsSettings
 
-        // 应用设置到隧道
+        // 5. 应用到隧道
         try await setTunnelNetworkSettings(settings)
     }
+
 
     // 停止隧道的方法 没发现这个方法有什么用处
     override func stopTunnel(with _: NEProviderStopReason) async {
