@@ -8,17 +8,30 @@
 import Foundation
 import SwiftUI
 
+/**
+ 下载并管理地理数据库文件的视图
+
+ - 显示并管理地理数据库（geoip、geosite）文件的下载和清理
+ - 下载完成后可自动重启 VPN（若当前已连接）
+ */
 struct DownloadView: View {
+    /// 是否正在下载，控制按钮的禁用状态
     @State private var isDownloading: Bool = false
+
+    /// 已下载的文件列表
     @State private var downloadedFiles: [String] = []
-    @State private var completedDownloads: Int = 0 // 新增，跟踪已完成下载的文件数
+
+    // MARK: - 界面布局
 
     var body: some View {
         VStack {
-            // 更新和清空按钮
+            // 按钮
             HStack {
+                // 下载/更新按钮
                 Button(action: {
-                    downloadAndUpdateGeoipDat()
+                    Task {
+                        await downloadAndUpdateGeoipDat()
+                    }
                 }) {
                     HStack {
                         Image(systemName: "arrow.down.circle")
@@ -31,8 +44,11 @@ struct DownloadView: View {
                 .disabled(isDownloading)
                 .foregroundColor(isDownloading ? .gray : .blue)
 
+                // 清空文件按钮
                 Button(action: {
-                    clearAssetDirectory()
+                    Task {
+                        await clearAssetDirectory()
+                    }
                 }) {
                     HStack {
                         Image(systemName: "trash")
@@ -48,14 +64,15 @@ struct DownloadView: View {
 
             // 显示已下载的文件
             if !downloadedFiles.isEmpty {
-                HStack { // 使用 HStack 水平排列文件名
+                HStack {
                     Text("已下载:")
                         .padding(.top)
 
+                    // 水平展示多个文件名
                     ForEach(downloadedFiles, id: \.self) { file in
                         Text(file)
-                            .lineLimit(1) // 限制每个文件名在一行内显示
-                            .truncationMode(.tail) // 如果文件名过长，显示省略号
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                             .padding(.leading, 10)
                     }
                 }
@@ -66,6 +83,13 @@ struct DownloadView: View {
         }
     }
 
+    // MARK: - 加载已下载文件列表
+
+    /**
+     从应用内的 `Constant.assetDirectory` 路径中，获取当前所有下载后的地理数据库文件名，并更新到 `downloadedFiles`.
+
+     - Note: 如果读取失败会在控制台打印错误信息，但不会抛出异常。
+     */
     private func loadDownloadedFiles() {
         let fileManager = FileManager.default
         let assetDirectoryPath = Constant.assetDirectory.path
@@ -78,105 +102,116 @@ struct DownloadView: View {
         }
     }
 
-    // 下载并更新 geoip.dat 和 geosite.dat 文件
-    private func downloadAndUpdateGeoipDat() {
+    // MARK: - 使用 async/await 顺序下载并更新 geoip.dat & geosite.dat
+
+    /**
+     顺序下载两个地理数据库文件（geoip.dat, geosite.dat），并在下载完成后根据 VPN 状态决定是否重启。
+
+     - Important: 此方法会将 `isDownloading` 置为 `true` 并在结束时还原为 `false`，以便界面更新下载按钮的可用状态。
+     - Note: 若当前 VPN 已连接，则下载完成后会调用 `PacketTunnelManager.shared.restart()` 进行重启。
+     */
+    @MainActor
+    private func downloadAndUpdateGeoipDat() async {
         let urls = [
             ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat", "geoip.dat"),
             ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat"),
         ]
 
-        isDownloading = true
-        completedDownloads = 0 // 重置计数器
+        isDownloading = true // 禁用按钮，避免重复点击
 
-        // 逐一下载文件，而不是并发
-        for (urlString, fileName) in urls {
-            if let url = URL(string: urlString) {
-                downloadFile(from: url) { result in
-                    switch result {
-                    case let .success(fileURL):
-                        // 调用主线程来处理文件保存
-                        Task {
-                            await saveFileToDirectory(fileURL: fileURL, fileName: fileName)
-                            await loadDownloadedFiles() // 下载完成后刷新文件列表
-                        }
-                    case let .failure(error):
-                        print("文件下载失败: \(error.localizedDescription)")
-                    }
-
-                    // 更新已下载文件计数
-                    DispatchQueue.main.async {
-                        completedDownloads += 1
-                        if completedDownloads == urls.count {
-                            isDownloading = false // 当两个文件都下载完成时，解除禁用按钮
-
-                            if PacketTunnelManager.shared.status == .connected {
-                                Task {
-                                    do {
-                                        try await PacketTunnelManager.shared.restart()
-                                        print("VPN 已成功重启")
-                                    } catch {
-                                        print("VPN 重启失败：\(error.localizedDescription)")
-                                    }
-                                }
-                            } else {
-                                print("VPN 未处于连接状态，跳过重启")
-                            }
-                        }
-                    }
+        do {
+            // 逐一下载文件（顺序执行）
+            for (urlString, fileName) in urls {
+                guard let url = URL(string: urlString) else {
+                    print("无效的下载链接: \(urlString)")
+                    continue
                 }
+
+                // 1) 下载到临时目录
+                let downloadedTempURL = try await downloadFile(from: url)
+
+                // 2) 将临时文件移动到指定位置并改名
+                saveFileToDirectory(fileURL: downloadedTempURL, fileName: fileName)
+
+                // 3) 刷新文件列表
+                loadDownloadedFiles()
             }
+
+            // 下载全部完成后，检查 VPN 状态，决定是否重启
+            if PacketTunnelManager.shared.status == .connected {
+                do {
+                    try await PacketTunnelManager.shared.restart()
+                    print("VPN 已成功重启")
+                } catch {
+                    print("VPN 重启失败：\(error.localizedDescription)")
+                }
+            } else {
+                print("VPN 未处于连接状态，跳过重启")
+            }
+        } catch {
+            print("文件下载或保存失败: \(error.localizedDescription)")
         }
+
+        // 恢复按钮可点击
+        isDownloading = false
     }
 
-    private func downloadFile(from url: URL, completion: @escaping @Sendable (Result<URL, Swift.Error>) -> Void) {
-        let task = URLSession.shared.downloadTask(with: url) { localURL, _, error in
-            if let error {
-                completion(.failure(error))
-                return
-            }
+    // MARK: - 利用 URLSession 的异步下载
 
-            guard let localURL else {
-                completion(.failure(NSError(domain: "DownloadError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法获取本地文件 URL"])))
-                return
-            }
+    /**
+     从远程地址下载文件到本地临时目录，返回临时文件的本地 URL。
 
-            do {
-                let fileManager = FileManager.default
-                let destinationURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("filename.dat")
+     - Parameter url: 文件下载链接
+     - Throws: 若网络响应非 200 或下载中遇到网络错误，会抛出 `URLError`
+     - Returns: 下载成功后，位于本地临时目录的临时文件 `URL`
+     */
+    private func downloadFile(from url: URL) async throws -> URL {
+        // 使用 async/await 的 download(from:) API
+        let (tempLocalURL, response) = try await URLSession.shared.download(from: url)
 
-                try fileManager.moveItem(at: localURL, to: destinationURL)
-                print("文件已成功保存到 \(destinationURL.path)")
-                completion(.success(destinationURL))
-            } catch {
-                completion(.failure(error))
-            }
+        // 检查 HTTP 响应码
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200
+        else {
+            throw URLError(.badServerResponse)
         }
-        task.resume()
+
+        // tempLocalURL 指向临时文件位置
+        return tempLocalURL
     }
 
+    // MARK: - 移动下载后的临时文件到自定义目录
+
+    /**
+     将临时文件移动到 `Constant.assetDirectory` 指定的文件夹中，并改名为 `fileName`。
+
+     - Parameter fileURL: 下载所得的临时文件路径
+     - Parameter fileName: 目标文件名
+     - Note: 若目标位置已存在同名文件，会先删除旧文件后再进行替换。
+     */
     @MainActor
     private func saveFileToDirectory(fileURL: URL, fileName: String) {
         let fileManager = FileManager.default
         let destinationURL = URL(fileURLWithPath: Constant.assetDirectory.path).appendingPathComponent(fileName)
 
         do {
-            // 确保目标文件夹存在
+            // 如果文件夹不存在就创建
             if !fileManager.fileExists(atPath: Constant.assetDirectory.path) {
-                try fileManager.createDirectory(at: Constant.assetDirectory, withIntermediateDirectories: true, attributes: nil)
+                try fileManager.createDirectory(at: Constant.assetDirectory, withIntermediateDirectories: true)
             }
 
-            // 检查临时文件是否存在
+            // 检查临时文件是否确实存在
             guard fileManager.fileExists(atPath: fileURL.path) else {
                 print("临时文件不存在: \(fileURL.path)")
                 return
             }
 
-            // 如果目标文件存在，删除旧文件
+            // 如果目标位置已有同名文件，先删除旧文件
             if fileManager.fileExists(atPath: destinationURL.path) {
                 try fileManager.removeItem(at: destinationURL)
             }
 
-            // 移动临时文件到目标位置
+            // 将临时文件移动到目标路径
             try fileManager.moveItem(at: fileURL, to: destinationURL)
             print("\(fileName) 文件已成功移动到 \(destinationURL.path)")
         } catch {
@@ -184,7 +219,15 @@ struct DownloadView: View {
         }
     }
 
-    private func clearAssetDirectory() {
+    // MARK: - 清空地理文件夹
+
+    /**
+     清空 `Constant.assetDirectory` 文件夹，并在完成后根据 VPN 状态决定是否重启。
+
+     - Important: 会先删除整个文件夹，再新建一个空文件夹，最后刷新 `downloadedFiles` 列表。
+     - Note: 若当前 VPN 已连接，则清空后会尝试重启 VPN。
+     */
+    private func clearAssetDirectory() async {
         let fileManager = FileManager.default
         let assetDirectoryPath = Constant.assetDirectory.path
 
@@ -196,12 +239,23 @@ struct DownloadView: View {
             }
 
             // 重新创建文件夹
-            try fileManager.createDirectory(atPath: assetDirectoryPath, withIntermediateDirectories: true, attributes: nil)
+            try fileManager.createDirectory(atPath: assetDirectoryPath, withIntermediateDirectories: true)
             print("已重新创建文件夹: \(assetDirectoryPath)")
 
             // 清空文件列表
             downloadedFiles.removeAll()
 
+            // 清空完成后，检查 VPN 状态，决定是否重启
+            if PacketTunnelManager.shared.status == .connected {
+                do {
+                    try await PacketTunnelManager.shared.restart()
+                    print("VPN 已成功重启")
+                } catch {
+                    print("VPN 重启失败：\(error.localizedDescription)")
+                }
+            } else {
+                print("VPN 未处于连接状态，跳过重启")
+            }
         } catch {
             print("操作失败: \(error.localizedDescription)")
         }
