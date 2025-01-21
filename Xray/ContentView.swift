@@ -99,7 +99,7 @@ struct ContentView: View {
                 PingView().environmentObject(PacketTunnelManager.shared)
 
                 // 选择 VPN 工作模式（全局 / 非全局等）
-                VPNModePicker()
+                VPNModePickerView()
             }
             .padding()
 
