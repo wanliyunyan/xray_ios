@@ -11,31 +11,46 @@ import LibXray
 import Network
 import SwiftUI
 
+/// 一个用于测试网络延迟（Ping）的视图，展示并记录从服务器返回的网速信息。
 struct PingView: View {
-    @EnvironmentObject var packetTunnelManager: PacketTunnelManager // 引入 PacketTunnelManager
+    // MARK: - 环境变量
+
+    /// 自定义的 PacketTunnelManager，用于管理代理隧道的连接状态。
+    @EnvironmentObject var packetTunnelManager: PacketTunnelManager
+
+    // MARK: - 本地状态
+
+    /// 记录最新一次获取到的 Ping 值（单位 ms）。
     @State private var pingSpeed: Int = 0
-    @State private var isPingFetched: Bool = false // 全局变量，初始为 false
-    @State private var isLoading: Bool = false // 新增，控制是否显示加载动画
+    /// 标记是否已经成功获取到 Ping 数据。
+    @State private var isPingFetched: Bool = false
+    /// 标记是否正在加载（请求中）。
+    @State private var isLoading: Bool = false
+
+    // MARK: - 主视图
 
     var body: some View {
         VStack {
-            // 如果正在加载，显示 “正在获取网速...” 文本
+            // 如果正在请求数据，显示加载提示
             if isLoading {
                 Text("正在获取网速...")
             } else {
-                // 显示 Ping 信息
+                // 如果已经获取到 Ping 值，显示结果
                 if isPingFetched {
                     HStack {
                         Text("Ping网速:")
-                        Text("\(pingSpeed)").foregroundColor(pingSpeedColor(pingSpeed)).font(.headline)
+                        Text("\(pingSpeed)")
+                            .foregroundColor(pingSpeedColor(pingSpeed))
+                            .font(.headline)
                         Text("ms").foregroundColor(.black)
                     }
                 } else {
+                    // 未获取到 Ping 值，并且当前处于断开状态，提供点击触发 Ping 的操作
                     if packetTunnelManager.status == .disconnected {
                         Text("点击获取网速")
                             .foregroundColor(.blue)
                             .onTapGesture {
-                                requestPing() // 点击时调用 requestPing
+                                requestPing()
                             }
                     }
                 }
@@ -43,92 +58,142 @@ struct PingView: View {
         }
     }
 
-    // Ping 请求逻辑
+    // MARK: - 业务逻辑
+
+    /// 请求 Ping 测试逻辑，包含获取配置、生成请求并调用 LibXrayPing。
+    ///
+    /// 调用此函数后，将首先显示加载状态，等待异步的 Ping 测试完成或出现错误。
+    /// 若成功，将更新 `pingSpeed` 和 `isPingFetched`，并关闭加载状态。
     private func requestPing() {
-        // 开始加载，显示 loading 样式
+        // 显示加载动画
         isLoading = true
 
         Task {
             do {
-                guard let savedContent = Util.loadFromUserDefaults(key: "configLink"), !savedContent.isEmpty else {
-                    throw NSError(domain: "ContentView", code: 0, userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"])
+                // 1. 从 UserDefaults 或其他地方读取配置信息
+                guard let savedContent = Util.loadFromUserDefaults(key: "configLink"),
+                      !savedContent.isEmpty
+                else {
+                    throw NSError(
+                        domain: "ContentView",
+                        code: 0,
+                        userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"]
+                    )
                 }
 
+                // 2. 生成配置文件的最终字符串
                 let configData = try Configuration().buildConfigurationData(config: savedContent)
-
                 guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
-                    throw NSError(domain: "ConfigDataError", code: -1, userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])
+                    throw NSError(
+                        domain: "ConfigDataError",
+                        code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"]
+                    )
                 }
 
+                // 3. 将配置字符串写入临时文件
                 let fileUrl = try Util.createConfigFile(with: mergedConfigString)
 
+                // 4. 读取 SOCKS5 代理端口
                 guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
                       let sock5Port = NWEndpoint.Port(sock5PortString)
                 else {
-                    throw NSError(domain: "ConfigurationError", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
+                    throw NSError(
+                        domain: "ConfigurationError",
+                        code: 0,
+                        userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
+                    )
                 }
 
-                let pingRequest = try createPingRequest(configPath: fileUrl.path(), sock5Port: sock5Port)
+                // 5. 构造 Ping 请求
+                let pingRequest = try createPingRequest(
+                    configPath: fileUrl.path(),
+                    sock5Port: sock5Port
+                )
+
+                // 6. 将请求转换成 Base64 再调用 LibXrayPing
                 let pingBase64String = try JSONEncoder().encode(pingRequest).base64EncodedString()
 
-                // 调用 LibXrayPing 并处理响应
+                // 7. 解析返回结果
                 let pingResponseBase64 = LibXrayPing(pingBase64String)
+
                 if let pingResult = await decodePingResponse(base64String: pingResponseBase64) {
+                    // 更新本地状态
                     pingSpeed = pingResult
                     isPingFetched = true
                 } else {
                     print("Ping 解码失败")
                 }
             } catch let error as NSError {
+                // 业务逻辑错误提示
                 print("Ping 请求失败: \(error.localizedDescription)")
             } catch {
+                // 未知错误
                 print("发生了未知错误: \(error.localizedDescription)")
             }
-            isLoading = false // 停止加载
+
+            // 隐藏加载动画
+            isLoading = false
         }
     }
 
-    // 根据 pingSpeed 值返回对应的颜色
+    /// 根据 `pingSpeed` 值获取不同的颜色。
+    ///
+    /// - Parameter pingSpeed: 当前的 Ping 值（ms）。
+    /// - Returns: 对应的颜色对象。
     private func pingSpeedColor(_ pingSpeed: Int) -> Color {
+        // 如果还未获取到 ping 值，保持黑色
         if pingSpeed == 0 {
             return .black
         }
         switch pingSpeed {
         case ..<1000:
-            return .green
+            return .green // 0 ~ 999 ms 视为网络相对畅通
         case 1000 ..< 5000:
-            return .yellow
+            return .yellow // 1000 ~ 4999 ms 视为较慢
         default:
-            return .red
+            return .red // 超过 5000 ms 视为网络极慢或无法连接
         }
     }
 
-    // 创建 Ping 请求
+    // MARK: - 辅助方法
+
+    /// 创建一个 `PingRequest` 对象，用于封装需要给后端的完整参数。
+    ///
+    /// - Parameters:
+    ///   - configPath: 配置文件在本地的路径。
+    ///   - sock5Port: SOCKS5 代理使用的端口号。
+    /// - Throws: 当参数无效时可能抛出错误。	
+    /// - Returns: 生成的 `PingRequest` 对象。
     @MainActor
     private func createPingRequest(configPath: String, sock5Port: NWEndpoint.Port) throws -> PingRequest {
         PingRequest(
-            datDir: Constant.assetDirectory.path,
-            configPath: configPath,
-            timeout: 30,
-            url: "https://www.google.com",
-            proxy: "socks5://127.0.0.1:\(sock5Port)"
+            datDir: Constant.assetDirectory.path, // 数据文件目录
+            configPath: configPath, // Xray 配置文件路径
+            timeout: 30, // 超时时间（秒）
+            url: "https://1.1.1.1", // 用于检测的网络地址
+            proxy: "socks5://127.0.0.1:\(sock5Port)" // 使用的代理地址
         )
     }
 
-    // 解码 Base64 响应并提取 "data" 字段中的网速
+    /// 解码 Base64 字符串为 JSON，并从中提取 "data" 字段中的网速信息。
+    ///
+    /// - Parameter base64String: Base64 编码的字符串，包含 Ping 测试结果。
+    /// - Returns: 若成功解析，则返回表示 Ping 延迟（ms）的整数；若解析失败，返回 nil。
     @MainActor
     private func decodePingResponse(base64String: String) async -> Int? {
         guard let decodedData = Data(base64Encoded: base64String),
               let decodedString = String(data: decodedData, encoding: .utf8),
               let jsonData = decodedString.data(using: .utf8)
         else {
-            print("Base64 解码或转换为 JSON 失败")
+            print("Base64 解码或字符串转 Data 失败")
             return nil
         }
 
         do {
             if let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
-               let success = jsonObject["success"] as? Bool, success,
+               let success = jsonObject["success"] as? Bool,
+               success,
                let data = jsonObject["data"] as? Int
             {
                 return data
