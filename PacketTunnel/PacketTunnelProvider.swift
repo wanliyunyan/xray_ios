@@ -23,7 +23,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     // 开始隧道的方法，会在创建隧道时调用
     override func startTunnel(options: [String: NSObject]? = nil) async throws {
-        guard let sock5Port = options?["sock5Port"] as? NWEndpoint.Port else {
+        guard let sock5Port = options?["sock5Port"] as? Int else {
             throw NSError(domain: "PacketTunnel", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 SOCKS5 端口配置"])
         }
 
@@ -69,7 +69,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     // 启动 SOCKS5 隧道的方法
-    private func startSocks5Tunnel(serverPort port: NWEndpoint.Port = 10808) throws {
+    private func startSocks5Tunnel(serverPort port: Int = 10808) throws {
         let socks5Config = """
         tunnel:
           mtu: \(MTU)

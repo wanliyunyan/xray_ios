@@ -39,7 +39,7 @@ struct Configuration {
     private func buildInbound(inboundPort: NWEndpoint.Port = Constant.sock5Port, trafficPort: NWEndpoint.Port = Constant.trafficPort) -> [[String: Any]] {
         let inbound1: [String: Any] = [
             "listen": "127.0.0.1",
-            "port": inboundPort,
+            "port": Int(inboundPort.rawValue),
             "protocol": "socks",
             "settings": [
                 "udp": true,
@@ -49,7 +49,7 @@ struct Configuration {
 
         let inbound2: [String: Any] = [
             "listen": "127.0.0.1",
-            "port": trafficPort,
+            "port": Int(trafficPort.rawValue),
             "protocol": "dokodemo-door",
             "settings": [
                 "address": "127.0.0.1",
