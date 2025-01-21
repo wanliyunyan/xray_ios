@@ -33,7 +33,7 @@
 		3BA6A1E22C9D779A00FF9E1A /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1E12C9D779A00FF9E1A /* Util.swift */; };
 		3BAD4E2C2CAA747A006868C3 /* PingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BAD4E2B2CAA747A006868C3 /* PingView.swift */; };
 		3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */; };
-		3BCF8AEB2CA8E5C400723541 /* ShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */; };
+		3BCF8AEB2CA8E5C400723541 /* ShareModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ShareModalView.swift */; };
 		3BF632AC2CB8CF4000FB040B /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */; };
 		3BF632AF2CB8D8E900FB040B /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3BF632AE2CB8D8E900FB040B /* Tun2SocksKit */; };
 		3BF632B12CB8D8E900FB040B /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = 3BF632B02CB8D8E900FB040B /* Tun2SocksKitC */; };
@@ -90,7 +90,7 @@
 		3BA6A1E12C9D779A00FF9E1A /* Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Util.swift; sourceTree = "<group>"; };
 		3BAD4E2B2CAA747A006868C3 /* PingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingView.swift; sourceTree = "<group>"; };
 		3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatsView.swift; sourceTree = "<group>"; };
-		3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareButton.swift; sourceTree = "<group>"; };
+		3BCF8AEA2CA8E5C400723541 /* ShareModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareModalView.swift; sourceTree = "<group>"; };
 		3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeScannerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -158,7 +158,7 @@
 				3B8050DD2C9D7C0800043697 /* Configuration.swift */,
 				3B99F5152CA11A8A00CDC946 /* ConnectedDurationView.swift */,
 				3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */,
-				3BCF8AEA2CA8E5C400723541 /* ShareButton.swift */,
+				3BCF8AEA2CA8E5C400723541 /* ShareModalView.swift */,
 				3BAD4E2B2CAA747A006868C3 /* PingView.swift */,
 				3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */,
 				3B08478D2CC1135400484E72 /* Download.swift */,
@@ -319,7 +319,7 @@
 				3B8050DE2C9D7C0800043697 /* Configuration.swift in Sources */,
 				3BA6A1E02C9D75DF00FF9E1A /* VersionView.swift in Sources */,
 				3BA6A1DA2C9D756C00FF9E1A /* InfoRow.swift in Sources */,
-				3BCF8AEB2CA8E5C400723541 /* ShareButton.swift in Sources */,
+				3BCF8AEB2CA8E5C400723541 /* ShareModalView.swift in Sources */,
 				3B08478E2CC1135400484E72 /* Download.swift in Sources */,
 				3BA6A1DC2C9D759D00FF9E1A /* ActionButtonStyle.swift in Sources */,
 				3BF632AC2CB8CF4000FB040B /* QRCodeScannerView.swift in Sources */,
