@@ -163,7 +163,7 @@ struct PingView: View {
     /// - Parameters:
     ///   - configPath: 配置文件在本地的路径。
     ///   - sock5Port: SOCKS5 代理使用的端口号。
-    /// - Throws: 当参数无效时可能抛出错误。	
+    /// - Throws: 当参数无效时可能抛出错误。
     /// - Returns: 生成的 `PingRequest` 对象。
     @MainActor
     private func createPingRequest(configPath: String, sock5Port: NWEndpoint.Port) throws -> PingRequest {
