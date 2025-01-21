@@ -11,65 +11,110 @@ import NetworkExtension
 import os
 import Tun2SocksKit
 
-// 定义一个 Swift 中的结构体，用于运行 Xray 配置
+// MARK: - 数据模型
+
+/// 用于向 Xray 核心传递配置参数的结构体，包含配置文件路径、数据文件目录等信息。
 struct RunXrayRequest: Codable {
+    /// Xray 核心所需的数据文件目录（如 geoip、geosite 等）。
     var datDir: String?
+
+    /// Xray 配置文件的本地路径，用于启动时加载其内容。
     var configPath: String?
+
+    /// Xray 核心可占用的最大内存（字节为单位），可根据实际需求进行限制。
     var maxMemory: Int64?
 }
 
+// MARK: - PacketTunnelProvider
+
+/// 核心的 VPN 扩展入口类。通过重写 `startTunnel`、`stopTunnel` 来管理自定义隧道的创建与销毁。
+/// 内部包含了启动 Xray、设置网络环境以及启动 Socks5 隧道的完整逻辑。
 class PacketTunnelProvider: NEPacketTunnelProvider {
+    // MARK: - 常量
+
+    /// 虚拟网络接口的 MTU 值，可根据实际环境进行调整。
     let MTU = 8500
 
-    // 开始隧道的方法，会在创建隧道时调用
+    // MARK: - 隧道生命周期
+
+    /// 在创建或启用隧道时调用，用于启动 Xray 核心、配置虚拟网卡并启动 Tun2SocksKit（Socks5 隧道）。
+    ///
+    /// - Parameter options: 传递给隧道的键值对信息，通常包含 `sock5Port` 和 `path` 等。
+    /// - Throws: 若缺失必要信息或启动过程中发生错误，抛出相应的错误。
     override func startTunnel(options: [String: NSObject]? = nil) async throws {
+        // 1. 从 options 中提取 SOCKS5 端口与配置文件路径
         guard let sock5Port = options?["sock5Port"] as? Int else {
-            throw NSError(domain: "PacketTunnel", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 SOCKS5 端口配置"])
+            throw NSError(domain: "PacketTunnel", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "缺少 SOCKS5 端口配置"])
         }
 
         guard let path = options?["path"] as? String else {
-            throw NSError(domain: "PacketTunnel", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少配置路径"])
+            throw NSError(domain: "PacketTunnel", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "缺少配置路径"])
         }
 
         do {
-            // 启动 Xray 核心进程
+            // 2. 启动 Xray 核心
             try startXray(path: path)
 
-            // 设置隧道网络
+            // 3. 设置隧道网络（虚拟网卡、路由、DNS 等）
             try await setTunnelNetworkSettings()
 
-            // 启动 SOCKS5 隧道
+            // 4. 启动 SOCKS5 隧道（Tun2SocksKit）
             try startSocks5Tunnel(serverPort: sock5Port)
+
         } catch {
             os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
             throw error
         }
     }
 
-    // 启动 Xray 核心的方法
+    /// 在隧道停止时调用，可在此处释放所有资源、停止相关服务（如 Xray、Tun2SocksKit）。
+    ///
+    /// - Parameter reason: 系统定义的停止原因，通常可以根据实际需求进行相应处理。
+    override func stopTunnel(with _: NEProviderStopReason) async {
+        // 1. 停止 SOCKS5 隧道
+        Socks5Tunnel.quit()
+
+        // 2. 停止 Xray 核心
+        LibXrayStopXray()
+    }
+
+    // MARK: - 启动 Xray
+
+    /// 启动 Xray 核心进程，向其传递相关配置和内存限制。
+    ///
+    /// - Parameter path: 已生成的 Xray 配置文件路径。
+    /// - Throws: 当编码请求或底层调用出现错误时，抛出相应错误。
     private func startXray(path: String) throws {
-        // 创建 RunXrayRequest
-        let request = RunXrayRequest(datDir: Constant.assetDirectory.path, configPath: path, maxMemory: 50 * 1024 * 1024)
+        // 1. 构造请求对象，填入配置路径、数据目录、内存限制等
+        let request = RunXrayRequest(
+            datDir: Constant.assetDirectory.path,
+            configPath: path,
+            maxMemory: 50 * 1024 * 1024
+        )
 
-        // 将 RunXrayRequest 对象编码为 JSON 数据并启动 Xray 核心
         do {
-            // 使用 JSONEncoder 编码请求对象为 JSON 数据
+            // 2. 将请求对象编码为 JSON
             let jsonData = try JSONEncoder().encode(request)
-
-            // 将 JSON 数据转换为 Base64 编码的字符串
             let base64String = jsonData.base64EncodedString()
 
-            // 将 Base64 编码后的字符串传递给 LibXrayRunXray 方法以启动 Xray 核心
+            // 3. 调用 LibXrayRunXray 以启动 Xray 核心
             LibXrayRunXray(base64String)
         } catch {
-            // 处理编码过程中可能发生的错误
             NSLog("编码 RunXrayRequest 失败: \(error.localizedDescription)")
             throw error
         }
     }
 
-    // 启动 SOCKS5 隧道的方法
+    // MARK: - 启动 Socks5 隧道（Tun2SocksKit）
+
+    /// 使用 Tun2SocksKit 启动 Socks5 隧道，将指定端口的 SOCKS5 流量引导进虚拟网卡。
+    ///
+    /// - Parameter port: SOCKS5 服务所监听的端口号，默认为 10808。
+    /// - Throws: 若配置字符串生成或启动过程中发生错误，抛出相应错误。
     private func startSocks5Tunnel(serverPort port: Int = 10808) throws {
+        // 1. 构造 Socks5 隧道配置
         let socks5Config = """
         tunnel:
           mtu: \(MTU)
@@ -87,6 +132,8 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
           log-level: debug
           limit-nofile: 65535
         """
+
+        // 2. 启动隧道
         Socks5Tunnel.run(withConfig: .string(content: socks5Config)) { code in
             if code == 0 {
                 os_log("Tun2Socks 启动成功")
@@ -96,15 +143,17 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
 
-    func setTunnelNetworkSettings() async throws {
-        // 1. 创建网络设置对象
-        //    tunnelRemoteAddress 通常写服务器实际分配给你的隧道地址，也可以是 IPv4 or IPv6
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "fd00::1")
+    // MARK: - 配置虚拟网卡
 
-        // 2. 设置 MTU
+    /// 配置隧道网络设置，如本地虚拟网卡 IP、路由、DNS 服务器等，并应用到当前隧道。
+    ///
+    /// - Throws: 当网络设置应用失败时，抛出相应错误。
+    func setTunnelNetworkSettings() async throws {
+        // 1. 创建基础的 NetworkSettings
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "fd00::1")
         settings.mtu = NSNumber(value: MTU)
 
-        // 3. 配置 IPv4
+        // 2. 配置 IPv4 设置
         settings.ipv4Settings = {
             // - addresses：本地虚拟网卡 IP（客户端侧）
             // - subnetMasks：对应的掩码
@@ -113,8 +162,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 subnetMasks: ["255.255.255.0"]
             )
 
-            // 包含路由
-            // 下面演示如何显式地对默认路由设置 gatewayAddress
             let defaultV4Route = NEIPv4Route(
                 destinationAddress: "0.0.0.0",
                 subnetMask: "0.0.0.0"
@@ -123,19 +170,16 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             ipv4.includedRoutes = [defaultV4Route]
             ipv4.excludedRoutes = []
-
             return ipv4
         }()
 
-        // 4. 配置 IPv6
+        // 3. 配置 IPv6 设置
         settings.ipv6Settings = {
-            // addresses 与 networkPrefixLengths 要成对匹配
             let ipv6 = NEIPv6Settings(
                 addresses: ["fd6e:a81b:704f:1211::1"],
                 networkPrefixLengths: [64]
             )
 
-            // 同理为 IPv6 默认路由添加网关地址
             let defaultV6Route = NEIPv6Route(
                 destinationAddress: "::",
                 networkPrefixLength: 0
@@ -144,32 +188,22 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             ipv6.includedRoutes = [defaultV6Route]
             ipv6.excludedRoutes = []
-
             return ipv6
         }()
 
-        // 5. 配置 DNS
-        //    matchDomains = [""] 表示将所有域名都走隧道 DNS
+        // 4. 配置 DNS 服务器
         let dnsSettings = NEDNSSettings(servers: [
             "1.1.1.1", // Cloudflare DNS (IPv4)
             "8.8.8.8", // Google DNS (IPv4)
             "2606:4700:4700::1111", // Cloudflare DNS (IPv6)
             "2001:4860:4860::8888", // Google DNS (IPv6)
         ])
-        dnsSettings.matchDomains = [""] // 必要！确保所有域名都走隧道
+        // matchDomains = [""] 表示所有域名都走此 DNS
+        dnsSettings.matchDomains = [""]
 
         settings.dnsSettings = dnsSettings
 
-        // 5. 应用到隧道
+        // 5. 应用新建的网络设置
         try await setTunnelNetworkSettings(settings)
-    }
-
-    // 停止隧道的方法 没发现这个方法有什么用处
-    override func stopTunnel(with _: NEProviderStopReason) async {
-        // 停止 SOCKS5 隧道
-        Socks5Tunnel.quit()
-
-        // 停止 Xray 核心
-        LibXrayStopXray()
     }
 }
