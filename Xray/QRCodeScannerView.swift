@@ -5,7 +5,7 @@
 //  Created by pan on 2024/10/11.
 //
 
-import AVFoundation
+@preconcurrency import AVFoundation
 import SwiftUI
 
 /// 一个 SwiftUI 视图，用于扫描二维码并将扫描结果通过 `scannedCode` 传递出去。
@@ -49,7 +49,9 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
             AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
 
             // 更新扫描结果
-            parent.scannedCode = stringValue
+            DispatchQueue.main.async {
+                self.parent.scannedCode = stringValue
+            }
         }
     }
 
@@ -150,9 +152,12 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
         // 将预览图层添加到视图控制器的视图上
         viewController.view.layer.addSublayer(previewLayer)
 
-        // 启动会话
-        captureSession.startRunning()
-
+        // 在后台线程启动会话，避免阻塞主线程
+        DispatchQueue.global(qos: .userInitiated).async {
+            // 启动会话
+            captureSession.startRunning()
+        }
+        
         return viewController
     }
 }
