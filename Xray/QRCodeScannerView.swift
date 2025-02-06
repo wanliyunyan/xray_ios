@@ -157,7 +157,7 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
             // 启动会话
             captureSession.startRunning()
         }
-        
+
         return viewController
     }
 }
