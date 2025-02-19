@@ -10,7 +10,8 @@
 ## 测试机型
 iphone 15 plus，系统 ios 17.6.1 和 18  
 iphone 12，系统 ios 17.6.1  
-低于17.6.1的版本我没有测试过，很抱歉我就只有一台ios17.6.1的iphone
+低于17.6.1的版本我没有测试过，很抱歉我就只有一台ios17.6.1的iphone  
+ios15和ios16参考这个[issue](https://github.com/wanliyunyan/xray_ios/issues/14#issuecomment-2651015275) 
 
 ## 测试链接
 **vless**链接，其它的链接都没有测试过，所以有什么问题，我也不知道
