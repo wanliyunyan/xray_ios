@@ -20,9 +20,6 @@ struct RunXrayRequest: Codable {
 
     /// Xray 配置文件的本地路径，用于启动时加载其内容。
     var configPath: String?
-
-    /// Xray 核心可占用的最大内存（字节为单位），可根据实际需求进行限制。
-    var maxMemory: Int64?
 }
 
 // MARK: - PacketTunnelProvider
@@ -90,8 +87,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         // 1. 构造请求对象，填入配置路径、数据目录、内存限制等
         let request = RunXrayRequest(
             datDir: Constant.assetDirectory.path,
-            configPath: path,
-            maxMemory: 50 * 1024 * 1024
+            configPath: path
         )
 
         do {
