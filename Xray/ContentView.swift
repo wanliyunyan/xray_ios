@@ -6,7 +6,12 @@
 //
 
 import LibXray
+import os
 import SwiftUI
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
 
 // MARK: - 数据模型
 
@@ -198,7 +203,7 @@ struct ContentView: View {
         do {
             try await packetTunnelManager.start()
         } catch {
-            print("连接 VPN 时出错: \(error.localizedDescription)")
+            logger.error("连接 VPN 时出错: \(error.localizedDescription)")
         }
     }
 
@@ -224,7 +229,7 @@ struct ContentView: View {
                 Util.parseContent(clipboardContent, idText: &idText, ipText: &ipText, portText: &portText)
             }
         } else {
-            print("剪贴板内容为空")
+            logger.info("剪贴板内容为空")
             showClipboardEmptyAlert = true
         }
     }
@@ -235,7 +240,7 @@ struct ContentView: View {
     ///
     /// - Parameter code: 扫描到的二维码字符串。
     private func handleScannedCode(_ code: String) {
-        print("扫描到的二维码内容: \(code)")
+        logger.info("扫描到的二维码内容: \(code)")
         clipboardText = code
         Util.saveToUserDefaults(value: clipboardText, key: "configLink")
         Util.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
@@ -254,7 +259,7 @@ struct ContentView: View {
             let decodedData = Data(base64Encoded: freePortsBase64String),
             let decodedString = String(data: decodedData, encoding: .utf8)
         else {
-            print("Base64 解码失败")
+            logger.error("Base64 解码失败")
             return
         }
 
@@ -271,12 +276,12 @@ struct ContentView: View {
                 sock5Port = String(ports[0])
                 trafficPort = String(ports[1])
 
-                print("获取到的端口: \(ports[0]), \(ports[1])")
+                logger.info("获取到的端口: \(ports[0]), \(ports[1])")
             } else {
-                print("解析 JSON 失败或未找到所需字段")
+                logger.error("解析 JSON 失败或未找到所需字段")
             }
         } catch {
-            print("JSON 解析错误: \(error.localizedDescription)")
+            logger.error("JSON 解析错误: \(error.localizedDescription)")
         }
     }
 }

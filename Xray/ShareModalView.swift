@@ -6,7 +6,12 @@
 //
 
 import CoreImage.CIFilterBuiltins
+import os
 import SwiftUI
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ShareModalView")
 
 /// 一个用于展示配置信息并生成二维码以供分享的视图。
 struct ShareModalView: View {
@@ -77,7 +82,7 @@ struct ShareModalView: View {
         guard let link = Util.loadFromUserDefaults(key: "configLink"),
               !link.isEmpty
         else {
-            print("无法生成二维码，因为没有可用的配置内容")
+            logger.error("无法生成二维码，因为没有可用的配置内容")
             return
         }
 
@@ -86,7 +91,7 @@ struct ShareModalView: View {
 
         // 3. 将字符串转换为 Data
         guard let data = link.data(using: .utf8) else {
-            print("无法将配置信息转换为数据")
+            logger.error("无法将配置信息转换为数据")
             return
         }
 
@@ -96,7 +101,7 @@ struct ShareModalView: View {
 
         // 5. 判断是否成功生成初步二维码图像
         guard let qrCodeImage = filter.outputImage else {
-            print("无法生成二维码图像")
+            logger.error("无法生成二维码图像")
             return
         }
 
@@ -112,7 +117,7 @@ struct ShareModalView: View {
             let uiImage = UIImage(cgImage: cgImage)
             self.qrCodeImage = uiImage
         } else {
-            print("无法将二维码转换为 CGImage")
+            logger.error("无法将二维码转换为 CGImage")
         }
     }
 }

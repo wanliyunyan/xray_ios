@@ -90,7 +90,7 @@ enum Util {
         ) else {
             throw NSError(
                 domain: "AppGroupError",
-                code: 1,
+                code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "无法找到 App Group 容器"]
             )
         }

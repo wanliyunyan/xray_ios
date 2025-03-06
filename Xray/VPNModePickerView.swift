@@ -5,7 +5,12 @@
 //  Created by pan on 2024/11/5.
 //
 
+import os
 import SwiftUI
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "VPNMode")
 
 /// VPN 工作模式枚举：支持“全局”和“非全局”两种模式。
 enum VPNMode: String {
@@ -48,9 +53,9 @@ struct VPNModePickerView: View {
                     Task {
                         do {
                             try await packetTunnelManager.restart()
-                            print("VPN 已成功重启")
+                            logger.info("VPN 已成功重启")
                         } catch {
-                            print("VPN 重启失败：\(error.localizedDescription)")
+                            logger.error("VPN 重启失败：\(error.localizedDescription)")
                         }
                     }
                 }

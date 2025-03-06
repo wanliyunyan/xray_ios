@@ -9,7 +9,12 @@ import Combine
 import Foundation
 import LibXray
 import Network
+import os
 import SwiftUI
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PingView")
 
 /// 一个用于测试网络延迟（Ping）的视图，展示并记录从服务器返回的网速信息。
 struct PingView: View {
@@ -76,7 +81,7 @@ struct PingView: View {
                 else {
                     throw NSError(
                         domain: "ContentView",
-                        code: 0,
+                        code: -1,
                         userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"]
                     )
                 }
@@ -100,7 +105,7 @@ struct PingView: View {
                 else {
                     throw NSError(
                         domain: "ConfigurationError",
-                        code: 0,
+                        code: -1,
                         userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
                     )
                 }
@@ -122,14 +127,14 @@ struct PingView: View {
                     pingSpeed = pingResult
                     isPingFetched = true
                 } else {
-                    print("Ping 解码失败")
+                    logger.error("Ping 解码失败")
                 }
             } catch let error as NSError {
                 // 业务逻辑错误提示
-                print("Ping 请求失败: \(error.localizedDescription)")
+                logger.error("Ping 请求失败: \(error.localizedDescription)")
             } catch {
                 // 未知错误
-                print("发生了未知错误: \(error.localizedDescription)")
+                logger.error("发生了未知错误: \(error.localizedDescription)")
             }
 
             // 隐藏加载动画
@@ -186,7 +191,7 @@ struct PingView: View {
               let decodedString = String(data: decodedData, encoding: .utf8),
               let jsonData = decodedString.data(using: .utf8)
         else {
-            print("Base64 解码或字符串转 Data 失败")
+            logger.error("Base64 解码或字符串转 Data 失败")
             return nil
         }
 
@@ -199,7 +204,7 @@ struct PingView: View {
                 return data
             }
         } catch {
-            print("解析 JSON 失败: \(error.localizedDescription)")
+            logger.error("解析 JSON 失败: \(error.localizedDescription)")
         }
 
         return nil

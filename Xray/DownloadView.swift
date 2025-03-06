@@ -6,7 +6,12 @@
 //
 
 import Foundation
+import os
 import SwiftUI
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "DownloadView")
 
 /**
  下载并管理地理数据库文件的视图
@@ -98,7 +103,7 @@ struct DownloadView: View {
             let files = try fileManager.contentsOfDirectory(atPath: assetDirectoryPath)
             downloadedFiles = files
         } catch {
-            print("加载文件失败: \(error.localizedDescription)")
+            logger.error("加载文件失败: \(error.localizedDescription)")
         }
     }
 
@@ -123,7 +128,7 @@ struct DownloadView: View {
             // 逐一下载文件（顺序执行）
             for (urlString, fileName) in urls {
                 guard let url = URL(string: urlString) else {
-                    print("无效的下载链接: \(urlString)")
+                    logger.error("无效的下载链接: \(urlString)")
                     continue
                 }
 
@@ -141,15 +146,15 @@ struct DownloadView: View {
             if PacketTunnelManager.shared.status == .connected {
                 do {
                     try await PacketTunnelManager.shared.restart()
-                    print("VPN 已成功重启")
+                    logger.info("VPN 已成功重启")
                 } catch {
-                    print("VPN 重启失败：\(error.localizedDescription)")
+                    logger.error("VPN 重启失败：\(error.localizedDescription)")
                 }
             } else {
-                print("VPN 未处于连接状态，跳过重启")
+                logger.error("VPN 未处于连接状态，跳过重启")
             }
         } catch {
-            print("文件下载或保存失败: \(error.localizedDescription)")
+            logger.error("文件下载或保存失败: \(error.localizedDescription)")
         }
 
         // 恢复按钮可点击
@@ -202,7 +207,7 @@ struct DownloadView: View {
 
             // 检查临时文件是否确实存在
             guard fileManager.fileExists(atPath: fileURL.path) else {
-                print("临时文件不存在: \(fileURL.path)")
+                logger.error("临时文件不存在: \(fileURL.path)")
                 return
             }
 
@@ -213,9 +218,9 @@ struct DownloadView: View {
 
             // 将临时文件移动到目标路径
             try fileManager.moveItem(at: fileURL, to: destinationURL)
-            print("\(fileName) 文件已成功移动到 \(destinationURL.path)")
+            logger.info("\(fileName) 文件已成功移动到 \(destinationURL.path)")
         } catch {
-            print("文件保存失败: \(error.localizedDescription)")
+            logger.error("文件保存失败: \(error.localizedDescription)")
         }
     }
 
@@ -235,12 +240,12 @@ struct DownloadView: View {
             // 删除整个文件夹
             if fileManager.fileExists(atPath: assetDirectoryPath) {
                 try fileManager.removeItem(atPath: assetDirectoryPath)
-                print("已删除文件夹: \(assetDirectoryPath)")
+                logger.info("已删除文件夹: \(assetDirectoryPath)")
             }
 
             // 重新创建文件夹
             try fileManager.createDirectory(atPath: assetDirectoryPath, withIntermediateDirectories: true)
-            print("已重新创建文件夹: \(assetDirectoryPath)")
+            logger.info("已重新创建文件夹: \(assetDirectoryPath)")
 
             // 清空文件列表
             downloadedFiles.removeAll()
@@ -249,15 +254,15 @@ struct DownloadView: View {
             if PacketTunnelManager.shared.status == .connected {
                 do {
                     try await PacketTunnelManager.shared.restart()
-                    print("VPN 已成功重启")
+                    logger.info("VPN 已成功重启")
                 } catch {
-                    print("VPN 重启失败：\(error.localizedDescription)")
+                    logger.error("VPN 重启失败：\(error.localizedDescription)")
                 }
             } else {
-                print("VPN 未处于连接状态，跳过重启")
+                logger.error("VPN 未处于连接状态，跳过重启")
             }
         } catch {
-            print("操作失败: \(error.localizedDescription)")
+            logger.error("操作失败: \(error.localizedDescription)")
         }
     }
 }

@@ -11,6 +11,10 @@ import NetworkExtension
 import os
 import Tun2SocksKit
 
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PacketTunnelProvider")
+
 // MARK: - 数据模型
 
 /// 用于向 Xray 核心传递配置参数的结构体，包含配置文件路径、数据文件目录等信息。
@@ -64,7 +68,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             try startSocks5Tunnel(serverPort: sock5Port)
 
         } catch {
-            os_log("启动服务时发生错误: %{public}@", error.localizedDescription)
+            Logger().error("启动服务时发生错误: \(error.localizedDescription)")
             throw error
         }
     }
@@ -72,12 +76,15 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     /// 在隧道停止时调用，可在此处释放所有资源、停止相关服务（如 Xray、Tun2SocksKit）。
     ///
     /// - Parameter reason: 系统定义的停止原因，通常可以根据实际需求进行相应处理。
-    override func stopTunnel(with _: NEProviderStopReason) async {
+    override func stopTunnel(with reason: NEProviderStopReason) async {
         // 1. 停止 SOCKS5 隧道
         Socks5Tunnel.quit()
 
         // 2. 停止 Xray 核心
         LibXrayStopXray()
+
+        // 3.输出日志
+        Logger().info("隧道停止, 原因: \(reason.rawValue)")
     }
 
     // MARK: - 启动 Xray
@@ -102,7 +109,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             // 3. 调用 LibXrayRunXray 以启动 Xray 核心
             LibXrayRunXray(base64String)
         } catch {
-            NSLog("编码 RunXrayRequest 失败: \(error.localizedDescription)")
+            Logger().error("Xray请求编码失败: \(error.localizedDescription)")
             throw error
         }
     }
@@ -136,9 +143,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         // 2. 启动隧道
         Socks5Tunnel.run(withConfig: .string(content: socks5Config)) { code in
             if code == 0 {
-                os_log("Tun2Socks 启动成功")
+                Logger().info("Tun2Socks启动成功")
             } else {
-                os_log("Tun2Socks 启动失败，错误代码: %{public}d", code)
+                Logger().error("Tun2Socks启动失败，代码: \(code)")
             }
         }
     }

@@ -36,7 +36,7 @@ struct Configuration {
         else {
             throw NSError(
                 domain: "ConfigurationError",
-                code: 0,
+                code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
             )
         }

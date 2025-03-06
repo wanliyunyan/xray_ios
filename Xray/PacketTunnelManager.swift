@@ -7,7 +7,12 @@
 
 import Combine
 @preconcurrency import NetworkExtension
+import os
 import UIKit
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PacketTunnelManager")
 
 /// 一个单例类，用于管理自定义 VPN（或网络隧道）的连接状态、配置加载与保存等功能。
 ///
@@ -102,7 +107,7 @@ final class PacketTunnelManager: ObservableObject {
                 return manager
             }
         } catch {
-            print("加载或创建 TunnelProviderManager 失败: \(error.localizedDescription)")
+            logger.error("加载或创建 TunnelProviderManager 失败: \(error.localizedDescription)")
             return nil
         }
     }
@@ -118,7 +123,7 @@ final class PacketTunnelManager: ObservableObject {
             manager.isEnabled = true
             try await manager.saveToPreferences()
             try await manager.loadFromPreferences()
-            print("VPN 配置已保存并加载")
+            logger.info("VPN 配置已保存并加载")
         } catch {
             throw NSError(
                 domain: "PacketTunnelManager",
@@ -139,12 +144,12 @@ final class PacketTunnelManager: ObservableObject {
             for manager in managers {
                 let status = manager.connection.status
                 if status == .connected || status == .connecting {
-                    print("检测到其他 VPN 正在运行: \(manager.localizedDescription ?? "未知")")
+                    logger.info("检测到其他 VPN 正在运行: \(manager.localizedDescription ?? "未知")")
                     return true
                 }
             }
         } catch {
-            print("检查其他 VPN 状态失败: \(error.localizedDescription)")
+            logger.error("检查其他 VPN 状态失败: \(error.localizedDescription)")
         }
         return false
     }
@@ -164,7 +169,7 @@ final class PacketTunnelManager: ObservableObject {
                   .windows.first(where: { $0.isKeyWindow })?
                   .rootViewController
             else {
-                print("未找到活动的 UIWindowScene 或 rootViewController")
+                logger.error("未找到活动的 UIWindowScene 或 rootViewController")
                 return
             }
             rootViewController.present(alert, animated: true, completion: nil)
@@ -178,13 +183,13 @@ final class PacketTunnelManager: ObservableObject {
     /// - Throws: 当无法初始化 manager、或端口 / 配置读取失败、或启动出错时，抛出相应错误。
     func start() async throws {
         guard let manager = manager else {
-            throw NSError(domain: "PacketTunnelManager", code: 0,
+            throw NSError(domain: "PacketTunnelManager", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "Manager 未初始化"])
         }
 
         // 1. 检查是否有其他 VPN 正在运行
         if await checkOtherVPNs() {
-            print("检测到其他 VPN 正在运行")
+            logger.info("检测到其他 VPN 正在运行")
             showSwitchVPNAlert()
             return
         }
@@ -196,12 +201,12 @@ final class PacketTunnelManager: ObservableObject {
         guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
               let sock5Port = Int(sock5PortString)
         else {
-            throw NSError(domain: "ConfigurationError", code: 0,
+            throw NSError(domain: "ConfigurationError", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
         }
 
         guard let config = Util.loadFromUserDefaults(key: "configLink") else {
-            throw NSError(domain: "ContentView", code: 0,
+            throw NSError(domain: "ContentView", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"])
         }
 
@@ -225,9 +230,9 @@ final class PacketTunnelManager: ObservableObject {
                 "sock5Port": sock5Port as NSNumber,
                 "path": fileUrl.path as NSString,
             ])
-            print("VPN 启动成功")
+            logger.info("VPN 启动成功")
         } catch let error as NSError {
-            print("连接 VPN 时出错: \(error.localizedDescription), 错误代码: \(error.code)")
+            logger.error("连接 VPN 时出错: \(error.localizedDescription), 错误代码: \(error.code)")
             throw error
         }
     }

@@ -8,7 +8,12 @@
 import Foundation
 import LibXray
 import Network
+import os
 import SwiftUI
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "TrafficStatsView")
 
 /// 一个显示网络流量统计信息的视图，包含下行和上行流量，并每秒更新一次。
 struct TrafficStatsView: View {
@@ -44,7 +49,7 @@ struct TrafficStatsView: View {
                 try initializeTrafficString()
             } catch {
                 // 您可以在此处使用 Alert 或其他方式提示用户错误信息
-                print("初始化流量字符串失败: \(error.localizedDescription)")
+                logger.error("初始化流量字符串失败: \(error.localizedDescription)")
             }
         }
         .onReceive(timer) { _ in
@@ -67,7 +72,7 @@ struct TrafficStatsView: View {
         else {
             throw NSError(
                 domain: "ConfigurationError",
-                code: 0,
+                code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
             )
         }
@@ -79,7 +84,7 @@ struct TrafficStatsView: View {
         if let trafficData = trafficQueryString.data(using: .utf8) {
             base64TrafficString = trafficData.base64EncodedString()
         } else {
-            print("无法将字符串转换为 Data")
+            logger.error("无法将字符串转换为 Data")
         }
     }
 
@@ -92,7 +97,7 @@ struct TrafficStatsView: View {
         guard let decodedData = Data(base64Encoded: responseBase64),
               let decodedString = String(data: decodedData, encoding: .utf8)
         else {
-            print("无法解码 LibXrayQueryStats 返回的数据")
+            logger.error("无法解码 LibXrayQueryStats 返回的数据")
             return
         }
 
@@ -108,42 +113,42 @@ struct TrafficStatsView: View {
     private func parseXrayResponse(_ response: String) {
         // 1. 将字符串转换为 JSON Data
         guard let jsonData = response.data(using: .utf8) else {
-            print("无法将响应字符串转换为 JSON Data")
+            logger.error("无法将响应字符串转换为 JSON Data")
             return
         }
 
         do {
             // 2. 将 JSON Data 转换为字典结构
             guard let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] else {
-                print("JSON 对象不是字典类型")
+                logger.error("JSON 对象不是字典类型")
                 return
             }
 
             // 3. 判断 success 是否为 1，表示请求成功
             guard let success = jsonObject["success"] as? Int, success == 1 else {
-                print("解析失败: success 字段不是 1")
+                logger.error("解析失败: success 字段不是 1")
                 return
             }
 
             // 4. 获取 "data" 字段并确保其为字符串
             guard let dataValue = jsonObject["data"] else {
-                print("在 JSON 对象中找不到 data 字段")
+                logger.error("在 JSON 对象中找不到 data 字段")
                 return
             }
 
             guard let dataString = dataValue as? String else {
-                print("data 字段不是字符串类型")
+                logger.error("data 字段不是字符串类型")
                 return
             }
 
             // 5. 对 data 字段内嵌套的字符串再进行一次 JSON 解析
             guard let nestedJsonData = dataString.data(using: .utf8) else {
-                print("无法将 data 字符串转换为 Data")
+                logger.error("无法将 data 字符串转换为 Data")
                 return
             }
 
             guard let dataDict = try JSONSerialization.jsonObject(with: nestedJsonData, options: []) as? [String: Any] else {
-                print("无法解析嵌套的 JSON 数据")
+                logger.error("无法解析嵌套的 JSON 数据")
                 return
             }
 
@@ -152,7 +157,7 @@ struct TrafficStatsView: View {
                   let inbound = stats["inbound"] as? [String: Any],
                   let socks = inbound["socks"] as? [String: Any]
             else {
-                print("在 dataDict 中找不到 stats 或 inbound 或 socks 节点")
+                logger.error("在 dataDict 中找不到 stats 或 inbound 或 socks 节点")
                 return
             }
 
@@ -160,7 +165,7 @@ struct TrafficStatsView: View {
             guard let socksDownlink = socks["downlink"] as? Int,
                   let socksUplink = socks["uplink"] as? Int
             else {
-                print("无法获取 socks 下行或上行流量字段")
+                logger.error("无法获取 socks 下行或上行流量字段")
                 return
             }
 
@@ -169,7 +174,7 @@ struct TrafficStatsView: View {
             uplinkTraffic = String(socksUplink)
 
         } catch {
-            print("解析 JSON 时出错: \(error)")
+            logger.error("解析 JSON 时出错: \(error)")
         }
     }
 
