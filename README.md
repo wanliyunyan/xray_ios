@@ -1,4 +1,7 @@
 # xray核心的简单例子
+这个项目只是展示了libxray的基础使用方式  
+This project only demonstrates the basic usage of libxray  
+
 实现了最基础的功能，安装以后首次使用需要从别的地方复制配置，类似 **vless://id@ip:port?security=none&encryption=none&type=tcp** 这样的链接，然后从剪切板粘贴进来，或者扫描二维码，配置会保存到 **UserDefaults**，再次使用的时候直接点击连接就可以  
 
 The implementation includes only the most basic functionality. Upon first use after installation, the user needs to copy a configuration from elsewhere, similar to **vless://id@ip:port?security=none&encryption=none&type=tcp**, then paste it from the clipboard or scan a QR code. The configuration will be saved to **UserDefaults**, allowing the user to simply click 连接 for subsequent uses.
@@ -36,3 +39,4 @@ swiftformat .
 我没有ipv6的网络，所以我没法调试代码，主要是修改listen  
 
 I do not have an IPv6 network, so I am unable to debug the code. The main modification involves adjusting the listen setting.
+This project only demonstrates the basic usage of libxray.
