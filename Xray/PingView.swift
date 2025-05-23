@@ -40,18 +40,15 @@ struct PingView: View {
             if isLoading {
                 Text("正在获取网速...")
             } else {
-                // 如果已经获取到 Ping 值，显示结果
-                if isPingFetched {
-                    HStack {
+                HStack {
+                    if isPingFetched {
                         Text("Ping网速:")
                         Text("\(pingSpeed)")
                             .foregroundColor(pingSpeedColor(pingSpeed))
                             .font(.headline)
                         Text("ms").foregroundColor(.black)
                     }
-                } else {
-                    // 未获取到 Ping 值，并且当前处于断开状态，提供点击触发 Ping 的操作
-                    if packetTunnelManager.status == .disconnected {
+                    if packetTunnelManager.status != .connected {
                         Text("点击获取网速")
                             .foregroundColor(.blue)
                             .onTapGesture {
@@ -80,17 +77,17 @@ struct PingView: View {
                       !savedContent.isEmpty
                 else {
                     throw NSError(
-                        domain: "ContentView",
+                        domain: "PingView",
                         code: -1,
                         userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"]
                     )
                 }
 
                 // 2. 生成配置文件的最终字符串
-                let configData = try Configuration().buildConfigurationData(config: savedContent)
+                let configData = try Configuration().buildPingConfigurationData(config: savedContent)
                 guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
                     throw NSError(
-                        domain: "ConfigDataError",
+                        domain: "PingView",
                         code: -1,
                         userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"]
                     )

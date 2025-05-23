@@ -211,7 +211,7 @@ final class PacketTunnelManager: ObservableObject {
         }
 
         // 4. 构建 Xray 配置文件内容并写入 App Group 容器
-        let configData = try Configuration().buildConfigurationData(config: config)
+        let configData = try Configuration().buildRunConfigurationData(config: config)
         guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
             throw NSError(domain: "ConfigDataError", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"])

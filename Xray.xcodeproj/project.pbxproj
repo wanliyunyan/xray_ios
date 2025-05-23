@@ -639,7 +639,7 @@
 			repositoryURL = "https://github.com/wanliyunyan/LibXray";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 25.2.21;
+				minimumVersion = 25.5.16;
 			};
 		};
 		F3E0E5942D54887B007B9B0F /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
@@ -647,7 +647,7 @@
 			repositoryURL = "https://github.com/EbrahimTahernejad/Tun2SocksKit";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 4.8.0;
+				minimumVersion = 4.9.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

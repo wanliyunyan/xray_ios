@@ -9,9 +9,9 @@ The implementation includes only the most basic functionality. Upon first use af
 If your network can freely access GitHub, you can directly click **地理文件** to download them. Once downloaded successfully, they will be displayed on the page. If there are restrictions, it is recommended to first connect to a VPN and then click **地理文件** to download.
 
 ## LibXrayPing
-启动**xray**以后，就不能使用**LibXrayPing**方法，程序会崩，所以连接中的时候隐藏了**点击获取网速**，同时**LibXrayPing**方法只能用一次，具体原因参考[issue](https://github.com/XTLS/libXray/issues/43)  
+启动**xray**以后，就不能使用**LibXrayPing**方法，所以连接中的时候隐藏了**点击获取网速**  
 
-After starting **Xray**, the **LibXrayPing** method can no longer be used, as it will cause the app to crash. Therefore, the **点击获取网速** button is hidden while connected. Additionally, the **LibXrayPing** method can only be used once. For more details, refer to this issue.
+After starting **Xray**, the **LibXrayPing** method can no longer be used, so the **点击获取网速** text is hidden while the VPN is connected.  
 
 ## 测试机型
 iphone 15 plus，系统 ios 17.6.1 和 18  

@@ -27,12 +27,12 @@ import Network
 struct Configuration {
     // MARK: - Public Methods
 
-    /// 生成最终可用于 Xray 的 JSON 格式二进制配置.
+    /// 生成最终可用于 Xray 运行的 JSON 格式二进制配置.
     ///
     /// - Parameter config: 用户从外部复制的分享链接字符串.
     /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
     /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
-    func buildConfigurationData(config: String) throws -> Data {
+    func buildRunConfigurationData(config: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口并转为 NWEndpoint.Port
         guard
             let inboundPortString = Util.loadFromUserDefaults(key: "sock5Port"),
@@ -57,6 +57,40 @@ struct Configuration {
         configuration["routing"] = try buildRoute()
         configuration["stats"] = [:]
         configuration["dns"] = buildDNSConfiguration()
+
+        // 4. 递归移除配置中所有 NSNull 或 "<null>" 值
+        configuration = removeNullValues(from: configuration)
+
+        // 5. 去除第一个 outbound 的 sendThrough 字段
+        configuration = removeSendThroughFromOutbounds(from: configuration)
+
+        // 6. 序列化为 JSON Data 输出
+        return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
+    }
+
+    /// 生成最终可用于 Xray ping的 JSON 格式二进制配置.
+    ///
+    /// - Parameter config: 用户从外部复制的分享链接字符串.
+    /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
+    /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
+    func buildPingConfigurationData(config: String) throws -> Data {
+        // 1. 从 UserDefaults 中获取端口并转为 NWEndpoint.Port
+        guard
+            let inboundPortString = Util.loadFromUserDefaults(key: "sock5Port"),
+            let inboundPort = NWEndpoint.Port(inboundPortString)
+        else {
+            throw NSError(
+                domain: "ConfigurationError",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
+            )
+        }
+
+        // 2. 基于用户分享链接生成 Xray outbounds
+        var configuration = try buildOutInbound(config: config)
+
+        // 3. 添加自定义 inbound、metrics、policy、routing、stats、dns 等
+        configuration["inbounds"] = buildInbound(inboundPort: inboundPort, trafficPort: nil)
 
         // 4. 递归移除配置中所有 NSNull 或 "<null>" 值
         configuration = removeNullValues(from: configuration)
@@ -182,8 +216,8 @@ struct Configuration {
     ///   - trafficPort: 流量统计端口.
     /// - Returns: 含 socks、metricsIn 的 inbound 数组.
     private func buildInbound(
-        inboundPort: NWEndpoint.Port = Constant.sock5Port,
-        trafficPort: NWEndpoint.Port = Constant.trafficPort
+        inboundPort: NWEndpoint.Port,
+        trafficPort: NWEndpoint.Port?
     ) -> [[String: Any]] {
         let socksInbound: [String: Any] = [
             "listen": "127.0.0.1",
@@ -200,9 +234,13 @@ struct Configuration {
             "tag": "socks",
         ]
 
+        if trafficPort == nil {
+            return [socksInbound]
+        }
+
         let metricsInbound: [String: Any] = [
             "listen": "127.0.0.1",
-            "port": Int(trafficPort.rawValue),
+            "port": Int(trafficPort!.rawValue),
             "protocol": "dokodemo-door",
             "settings": [
                 "address": "127.0.0.1",
