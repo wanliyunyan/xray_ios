@@ -390,32 +390,28 @@ struct Configuration {
     ///
     /// - Returns: 包含 hosts、servers 字段的 DNS 配置字典.
     private func buildDNSConfiguration() -> [String: Any] {
+        let fileManager = FileManager.default
+        let assetDirectoryPath = Constant.assetDirectory.path
+        let files = (try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath)) ?? []
+        let useGeoFiles = !files.isEmpty
+
+        var servers: [Any] = []
+        if useGeoFiles {
+            servers.append([
+                "address": "1.1.1.1",
+                "domains": ["geosite:geolocation-!cn"],
+                "expectIPs": ["geoip:!cn"],
+            ])
+            servers.append([
+                "address": "223.5.5.5",
+                "domains": ["geosite:cn"],
+                "expectIPs": ["geoip:cn"],
+            ])
+        }
+        servers.append(contentsOf: ["8.8.8.8", "https://dns.google/dns-query"])
         return [
-            "hosts": [
-                "dns.google": "8.8.8.8",
-            ],
-            "servers": [
-                [
-                    "address": "1.1.1.1",
-                    "domains": [
-                        "geosite:geolocation-!cn",
-                    ],
-                    "expectIPs": [
-                        "geoip:!cn",
-                    ],
-                ],
-                [
-                    "address": "223.5.5.5",
-                    "domains": [
-                        "geosite:cn",
-                    ],
-                    "expectIPs": [
-                        "geoip:cn",
-                    ],
-                ],
-                "8.8.8.8",
-                "https://dns.google/dns-query",
-            ],
+            "hosts": ["dns.google": "8.8.8.8"],
+            "servers": servers,
         ]
     }
 }
