@@ -104,12 +104,12 @@ struct ContentView: View {
                 PingView().environmentObject(PacketTunnelManager.shared)
 
                 // 选择 VPN 工作模式（全局 / 非全局等）
-                VPNModePickerView()
+//                VPNModePickerView()
             }
             .padding()
 
             // 下载相关视图（如果有需要展示或触发下载逻辑）
-            DownloadView()
+//            DownloadView()
 
             // 中间操作区：包含粘贴、扫描和分享按钮
             HStack {

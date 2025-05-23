@@ -230,7 +230,7 @@ final class PacketTunnelManager: ObservableObject {
                 "sock5Port": sock5Port as NSNumber,
                 "path": fileUrl.path as NSString,
             ])
-            logger.info("VPN 启动成功")
+            logger.info("VPN 尝试启动")
         } catch let error as NSError {
             logger.error("连接 VPN 时出错: \(error.localizedDescription), 错误代码: \(error.code)")
             throw error

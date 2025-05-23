@@ -107,8 +107,8 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             let base64String = jsonData.base64EncodedString()
 
             // 3. 调用 LibXrayRunXray 以启动 Xray 核心
-            let a = LibXrayRunXray(base64String)
-            print(a)
+            LibXrayRunXray(base64String)
+
         } catch {
             Logger().error("Xray请求编码失败: \(error.localizedDescription)")
             throw error
