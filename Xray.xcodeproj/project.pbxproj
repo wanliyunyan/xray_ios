@@ -639,7 +639,7 @@
 			repositoryURL = "https://github.com/wanliyunyan/LibXray";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 25.5.16;
+				minimumVersion = 25.6.8;
 			};
 		};
 		F3E0E5942D54887B007B9B0F /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
