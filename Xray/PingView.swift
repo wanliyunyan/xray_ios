@@ -109,7 +109,7 @@ struct PingView: View {
 
                 // 5. 构造 Ping 请求
                 let pingRequest = try createPingRequest(
-                    configPath: fileUrl.path(),
+                    configPath: fileUrl.path,
                     socks5Port: socks5Port
                 )
 
