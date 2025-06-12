@@ -15,20 +15,6 @@ import Tun2SocksKit
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PacketTunnelProvider")
 
-// MARK: - 数据模型
-
-/// 用于向 Xray 核心传递配置参数的结构体，包含配置文件路径、数据文件目录等信息。
-struct RunXrayRequest: Codable {
-    /// Xray 核心所需的数据文件目录（如 geoip、geosite 等）。
-    var datDir: String?
-
-    /// Xray 配置文件的本地路径，用于启动时加载其内容。
-    var configPath: String?
-
-    /// Xray 核心可占用的最大内存（字节为单位），可根据实际需求进行限制。
-    var maxMemory: Int64?
-}
-
 // MARK: - PacketTunnelProvider
 
 /// 核心的 VPN 扩展入口类。通过重写 `startTunnel`、`stopTunnel` 来管理自定义隧道的创建与销毁。
@@ -94,23 +80,23 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     /// - Parameter path: 已生成的 Xray 配置文件路径。
     /// - Throws: 当编码请求或底层调用出现错误时，抛出相应错误。
     private func startXray(path: String) throws {
-        // 1. 构造请求对象，填入配置路径、数据目录、内存限制等
-        let request = RunXrayRequest(
-            datDir: Constant.assetDirectory.path,
-            configPath: path,
-            maxMemory: 50 * 1024 * 1024
-        )
-
         do {
-            // 2. 将请求对象编码为 JSON
-            let jsonData = try JSONEncoder().encode(request)
-            let base64String = jsonData.base64EncodedString()
+            // 1. 构造请求base64字符串
+            var error: NSError?
+            let base64String = LibXrayNewXrayRunRequest(
+                Constant.assetDirectory.path,
+                path,
+                &error
+            )
 
-            // 3. 调用 LibXrayRunXray 以启动 Xray 核心
+            if let err = error {
+                throw err
+            }
+
+            // 2. 调用 LibXrayRunXray 以启动 Xray 核心
             LibXrayRunXray(base64String)
-
         } catch {
-            Logger().error("Xray请求编码失败: \(error.localizedDescription)")
+            Logger().error("Xray调用异常: \(error.localizedDescription)")
             throw error
         }
     }
