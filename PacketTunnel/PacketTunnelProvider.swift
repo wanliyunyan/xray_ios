@@ -29,11 +29,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     /// 在创建或启用隧道时调用，用于启动 Xray 核心、配置虚拟网卡并启动 Tun2SocksKit（Socks5 隧道）。
     ///
-    /// - Parameter options: 传递给隧道的键值对信息，通常包含 `sock5Port` 和 `path` 等。
+    /// - Parameter options: 传递给隧道的键值对信息，通常包含 `socks5Port` 和 `path` 等。
     /// - Throws: 若缺失必要信息或启动过程中发生错误，抛出相应的错误。
     override func startTunnel(options: [String: NSObject]? = nil) async throws {
         // 1. 从 options 中提取 SOCKS5 端口与配置文件路径
-        guard let sock5Port = options?["sock5Port"] as? Int else {
+        guard let socks5Port = options?["socks5Port"] as? Int else {
             throw NSError(domain: "PacketTunnel", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "缺少 SOCKS5 端口配置"])
         }
@@ -51,7 +51,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             try await setTunnelNetworkSettings()
 
             // 4. 启动 SOCKS5 隧道（Tun2SocksKit）
-            try startSocks5Tunnel(serverPort: sock5Port)
+            try startSocks5Tunnel(serverPort: socks5Port)
 
         } catch {
             Logger().error("启动服务时发生错误: \(error.localizedDescription)")

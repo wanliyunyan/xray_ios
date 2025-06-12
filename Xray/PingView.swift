@@ -97,8 +97,8 @@ struct PingView: View {
                 let fileUrl = try Util.createConfigFile(with: mergedConfigString)
 
                 // 4. 读取 SOCKS5 代理端口
-                guard let sock5PortString = Util.loadFromUserDefaults(key: "sock5Port"),
-                      let sock5Port = NWEndpoint.Port(sock5PortString)
+                guard let socks5PortString = Util.loadFromUserDefaults(key: "socks5Port"),
+                      let socks5Port = NWEndpoint.Port(socks5PortString)
                 else {
                     throw NSError(
                         domain: "ConfigurationError",
@@ -110,7 +110,7 @@ struct PingView: View {
                 // 5. 构造 Ping 请求
                 let pingRequest = try createPingRequest(
                     configPath: fileUrl.path(),
-                    sock5Port: sock5Port
+                    socks5Port: socks5Port
                 )
 
                 // 6. 将请求转换成 Base64 再调用 LibXrayPing
@@ -164,17 +164,17 @@ struct PingView: View {
     ///
     /// - Parameters:
     ///   - configPath: 配置文件在本地的路径。
-    ///   - sock5Port: SOCKS5 代理使用的端口号。
+    ///   - socks5Port: SOCKS5 代理使用的端口号。
     /// - Throws: 当参数无效时可能抛出错误。
     /// - Returns: 生成的 `PingRequest` 对象。
     @MainActor
-    private func createPingRequest(configPath: String, sock5Port: NWEndpoint.Port) throws -> PingRequest {
+    private func createPingRequest(configPath: String, socks5Port: NWEndpoint.Port) throws -> PingRequest {
         PingRequest(
             datDir: Constant.assetDirectory.path, // 数据文件目录
             configPath: configPath, // Xray 配置文件路径
             timeout: 30, // 超时时间（秒）
             url: "https://1.1.1.1", // 用于检测的网络地址
-            proxy: "socks5://127.0.0.1:\(sock5Port)" // 使用的代理地址
+            proxy: "socks5://127.0.0.1:\(socks5Port)" // 使用的代理地址
         )
     }
 
