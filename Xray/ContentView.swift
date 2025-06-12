@@ -61,7 +61,7 @@ struct ContentView: View {
     @State private var pingSpeed: Int = 0
 
     /// 用于在界面上显示 SOCKS 端口（本地代理端口）。
-    @State private var sock5Port: String = ""
+    @State private var socks5Port: String = ""
 
     /// 用于在界面上显示流量统计端口。
     @State private var trafficPort: String = ""
@@ -95,7 +95,7 @@ struct ContentView: View {
                 Text("本机端口:")
                     .font(.headline)
                 HStack {
-                    Text("Sock5: \(sock5Port)")
+                    Text("Socks5: \(socks5Port)")
                     Spacer()
                     Text("流量: \(trafficPort)")
                 }
@@ -271,9 +271,9 @@ struct ContentView: View {
                let ports = dataDict["ports"] as? [Int], ports.count == 2
             {
                 // 4. 保存端口到 UserDefaults，并更新本地状态
-                Util.saveToUserDefaults(value: String(ports[0]), key: "sock5Port")
+                Util.saveToUserDefaults(value: String(ports[0]), key: "socks5Port")
                 Util.saveToUserDefaults(value: String(ports[1]), key: "trafficPort")
-                sock5Port = String(ports[0])
+                socks5Port = String(ports[0])
                 trafficPort = String(ports[1])
 
                 logger.info("获取到的端口: \(ports[0]), \(ports[1])")

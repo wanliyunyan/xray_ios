@@ -15,7 +15,7 @@ public enum Constant {
 public extension Constant {
     static let groupName = "group.\(Constant.packageName)"
     static let tunnelName = "\(Constant.packageName).PacketTunnel"
-    static let sock5Port: NWEndpoint.Port = 10808
+    static let socks5Port: NWEndpoint.Port = 10808
     static let trafficPort: NWEndpoint.Port = 49227
 
     private static func createDirectory(at url: URL) -> URL {

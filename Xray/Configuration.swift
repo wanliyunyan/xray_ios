@@ -35,7 +35,7 @@ struct Configuration {
     func buildRunConfigurationData(config: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口并转为 NWEndpoint.Port
         guard
-            let inboundPortString = Util.loadFromUserDefaults(key: "sock5Port"),
+            let inboundPortString = Util.loadFromUserDefaults(key: "socks5Port"),
             let trafficPortString = Util.loadFromUserDefaults(key: "trafficPort"),
             let inboundPort = NWEndpoint.Port(inboundPortString),
             let trafficPort = NWEndpoint.Port(trafficPortString)
@@ -76,7 +76,7 @@ struct Configuration {
     func buildPingConfigurationData(config: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口并转为 NWEndpoint.Port
         guard
-            let inboundPortString = Util.loadFromUserDefaults(key: "sock5Port"),
+            let inboundPortString = Util.loadFromUserDefaults(key: "socks5Port"),
             let inboundPort = NWEndpoint.Port(inboundPortString)
         else {
             throw NSError(
