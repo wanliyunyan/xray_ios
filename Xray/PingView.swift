@@ -36,26 +36,31 @@ struct PingView: View {
 
     var body: some View {
         VStack {
-            // 如果正在请求数据，显示加载提示
-            if isLoading {
-                Text("正在获取网速...")
-            } else {
-                HStack {
-                    if isPingFetched {
-                        Text("Ping网速:")
-                        Text("\(pingSpeed)")
-                            .foregroundColor(pingSpeedColor(pingSpeed))
-                            .font(.headline)
-                        Text("ms").foregroundColor(.black)
-                    }
-                    if packetTunnelManager.status != .connected {
-                        Text("点击获取网速")
-                            .foregroundColor(.blue)
-                            .onTapGesture {
-                                requestPing()
-                            }
-                    }
+            HStack {
+                Text("Ping:")
+                if isLoading {
+                    ProgressView()
+                        .frame(width: 24, height: 24)
+                } else if isPingFetched {
+                    Text("\(pingSpeed)")
+                        .foregroundColor(pingSpeedColor(pingSpeed))
+                        .font(.headline)
                 }
+                Text("ms").foregroundColor(.black)
+                if packetTunnelManager.status != .connected {
+                    Image(systemName: "arrow.clockwise")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(.blue)
+                        .onTapGesture {
+                            requestPing()
+                        }
+                }
+            }
+        }
+        .onAppear {
+            if !isPingFetched {
+                requestPing()
             }
         }
     }
