@@ -21,8 +21,8 @@ iphone 15 plus，系统 ios 17.6.1 和 18
 iphone 12，系统 ios 17.6.1  
 低于17.6.1的版本我没有测试过，很抱歉我就只有一台ios17.6.1的iphone  
 I have not tested versions below 17.6.1. Apologies, as I only have an iPhone running iOS 17.6.1.  
-ios15和ios16参考  
-For iOS 15 and iOS 16, refer to:  
+代码应该支持 iOS15 和 iOS 16  
+The code should support iOS 15 and iOS 16. 
 [ios16无法使用](https://github.com/wanliyunyan/xray_ios/issues/14#issuecomment-2651015275) [ios 16 support](https://github.com/wanliyunyan/xray_ios/issues/16)
 
 ## 测试链接
