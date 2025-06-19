@@ -115,7 +115,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         socks5:
           port: \(port)
-          address: 127.0.0.1
+          address: "::"
           udp: 'udp'
 
         misc:

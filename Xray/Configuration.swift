@@ -220,7 +220,7 @@ struct Configuration {
         trafficPort: NWEndpoint.Port?
     ) -> [[String: Any]] {
         let socksInbound: [String: Any] = [
-            "listen": "127.0.0.1",
+            "listen": "0.0.0.0",
             "port": Int(inboundPort.rawValue),
             "protocol": "socks",
             "sniffing": [
