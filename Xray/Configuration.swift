@@ -396,19 +396,38 @@ struct Configuration {
         let useGeoFiles = !files.isEmpty
 
         var servers: [Any] = []
+
+        // 第一组：指定 googleapis.cn 与 gstatic.com
+        servers.append([
+            "address": "1.1.1.1",
+            "skipFallback": true,
+            "domains": [
+                "domain:googleapis.cn",
+                "domain:gstatic.com",
+            ],
+        ])
+
+        // 第二组：中国地理规则 + 预期 IP
         if useGeoFiles {
             servers.append([
-                "address": "1.1.1.1",
-                "domains": ["geosite:geolocation-!cn"],
-                "expectIPs": ["geoip:!cn"],
-            ])
-            servers.append([
                 "address": "223.5.5.5",
-                "domains": ["geosite:cn"],
-                "expectIPs": ["geoip:cn"],
+                "skipFallback": true,
+                "domains": [
+                    "geosite:cn",
+                ],
+                "expectIPs": [
+                    "geoip:cn",
+                ],
             ])
         }
-        servers.append(contentsOf: ["8.8.8.8", "https://dns.google/dns-query"])
+
+        // 第三组：纯地址字符串，默认 DNS fallback
+        servers.append(contentsOf: [
+            "1.1.1.1",
+            "8.8.8.8",
+            "https://dns.google/dns-query",
+        ])
+
         return [
             "hosts": ["dns.google": "8.8.8.8"],
             "servers": servers,
