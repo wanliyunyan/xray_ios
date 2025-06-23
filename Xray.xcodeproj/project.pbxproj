@@ -647,7 +647,7 @@
 			repositoryURL = "https://github.com/EbrahimTahernejad/Tun2SocksKit";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 4.9.1;
+				minimumVersion = 4.11.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
