@@ -198,7 +198,7 @@ final class PacketTunnelManager: ObservableObject {
         try await saveAndLoad(manager: manager)
 
         // 3. 从 UserDefaults 加载 SOCKS 端口和配置链接
-        。 guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
+        guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
         else {
             throw NSError(
                 domain: "PacketTunnelManager",
