@@ -73,12 +73,12 @@ struct VPNModePickerView: View {
     ///
     /// - Parameter mode: 当前选中的 VPN 模式。
     private func saveModeToUserDefaults(_ mode: VPNMode) {
-        Util.saveToUserDefaults(value: mode.rawValue, key: "VPNMode")
+        UtilStore.saveString(value: mode.rawValue, key: "VPNMode")
     }
 
     /// 从 UserDefaults 读取先前保存的 VPN 模式；如果没有找到，则默认设置为非全局模式。
     private func loadModeFromUserDefaults() {
-        if let modeString = Util.loadFromUserDefaults(key: "VPNMode"),
+        if let modeString = UtilStore.loadString(key: "VPNMode"),
            let mode = VPNMode(rawValue: modeString)
         {
             selectedMode = mode

@@ -198,14 +198,16 @@ final class PacketTunnelManager: ObservableObject {
         try await saveAndLoad(manager: manager)
 
         // 3. 从 UserDefaults 加载 SOCKS 端口和配置链接
-        guard let socks5PortString = Util.loadFromUserDefaults(key: "socks5Port"),
-              let socks5Port = Int(socks5PortString)
+        。 guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
         else {
-            throw NSError(domain: "ConfigurationError", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"])
+            throw NSError(
+                domain: "PacketTunnelManager",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
+            )
         }
 
-        guard let config = Util.loadFromUserDefaults(key: "configLink") else {
+        guard let config = UtilStore.loadString(key: "configLink") else {
             throw NSError(domain: "ContentView", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"])
         }
@@ -227,7 +229,7 @@ final class PacketTunnelManager: ObservableObject {
         // 6. 正式启动 VPN，传入 SOCKS 端口和配置文件路径
         do {
             try manager.connection.startVPNTunnel(options: [
-                "socks5Port": socks5Port as NSNumber,
+                "socks5Port": NSNumber(value: socks5Port.rawValue),
                 "path": fileUrl.path as NSString,
             ])
             logger.info("VPN 尝试启动")

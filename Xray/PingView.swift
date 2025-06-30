@@ -78,7 +78,7 @@ struct PingView: View {
         Task {
             do {
                 // 1. 从 UserDefaults 或其他地方读取配置信息
-                guard let savedContent = Util.loadFromUserDefaults(key: "configLink"),
+                guard let savedContent = UtilStore.loadString(key: "configLink"),
                       !savedContent.isEmpty
                 else {
                     throw NSError(
@@ -102,11 +102,10 @@ struct PingView: View {
                 let fileUrl = try Util.createConfigFile(with: mergedConfigString)
 
                 // 4. 读取 SOCKS5 代理端口
-                guard let socks5PortString = Util.loadFromUserDefaults(key: "socks5Port"),
-                      let socks5Port = NWEndpoint.Port(socks5PortString)
+                guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
                 else {
                     throw NSError(
-                        domain: "ConfigurationError",
+                        domain: "PingView",
                         code: -1,
                         userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
                     )

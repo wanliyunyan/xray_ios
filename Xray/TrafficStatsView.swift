@@ -67,8 +67,7 @@ struct TrafficStatsView: View {
     /// - Throws: 当无法从 UserDefaults 中获取或解析端口数据时抛出错误。
     private func initializeTrafficString() throws {
         // 1. 从 UserDefaults 加载流量端口号字符串
-        guard let trafficPortString = Util.loadFromUserDefaults(key: "trafficPort"),
-              let trafficPort = NWEndpoint.Port(trafficPortString)
+        guard let trafficPort = UtilStore.loadPort(key: "trafficPort")
         else {
             throw NSError(
                 domain: "ConfigurationError",

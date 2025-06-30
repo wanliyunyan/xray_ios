@@ -33,12 +33,10 @@ struct Configuration {
     /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
     /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
     func buildRunConfigurationData(config: String) throws -> Data {
-        // 1. 从 UserDefaults 中获取端口并转为 NWEndpoint.Port
+        // 1. 从 UserDefaults 中获取端口
         guard
-            let inboundPortString = Util.loadFromUserDefaults(key: "socks5Port"),
-            let trafficPortString = Util.loadFromUserDefaults(key: "trafficPort"),
-            let inboundPort = NWEndpoint.Port(inboundPortString),
-            let trafficPort = NWEndpoint.Port(trafficPortString)
+            let socks5Port = UtilStore.loadPort(key: "socks5Port"),
+            let trafficPort = UtilStore.loadPort(key: "trafficPort")
         else {
             throw NSError(
                 domain: "ConfigurationError",
@@ -51,7 +49,7 @@ struct Configuration {
         var configuration = try buildOutInbound(config: config)
 
         // 3. 添加自定义 inbound、metrics、policy、routing、stats、dns 等
-        configuration["inbounds"] = buildInbound(inboundPort: inboundPort, trafficPort: trafficPort)
+        configuration["inbounds"] = buildInbound(inboundPort: socks5Port, trafficPort: trafficPort)
         configuration["metrics"] = buildMetrics()
         configuration["policy"] = buildPolicy()
         configuration["routing"] = try buildRoute()
@@ -74,10 +72,8 @@ struct Configuration {
     /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
     /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
     func buildPingConfigurationData(config: String) throws -> Data {
-        // 1. 从 UserDefaults 中获取端口并转为 NWEndpoint.Port
-        guard
-            let inboundPortString = Util.loadFromUserDefaults(key: "socks5Port"),
-            let inboundPort = NWEndpoint.Port(inboundPortString)
+        // 1. 从 UserDefaults 中获取端口
+        guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
         else {
             throw NSError(
                 domain: "ConfigurationError",
@@ -90,7 +86,7 @@ struct Configuration {
         var configuration = try buildOutInbound(config: config)
 
         // 3. 添加自定义 inbound、metrics、policy、routing、stats、dns 等
-        configuration["inbounds"] = buildInbound(inboundPort: inboundPort, trafficPort: nil)
+        configuration["inbounds"] = buildInbound(inboundPort: socks5Port, trafficPort: nil)
 
         // 4. 递归移除配置中所有 NSNull 或 "<null>" 值
         configuration = removeNullValues(from: configuration)
@@ -292,7 +288,7 @@ struct Configuration {
 
         let fileManager = FileManager.default
         let assetDirectoryPath = Constant.assetDirectory.path
-        let vpnMode = Util.loadFromUserDefaults(key: "VPNMode") ?? VPNMode.nonGlobal.rawValue
+        let vpnMode = UtilStore.loadString(key: "VPNMode") ?? VPNMode.nonGlobal.rawValue
 
         // 在非全局模式下，如果本地有地理规则文件，则执行额外的路由配置
         if vpnMode == VPNMode.nonGlobal.rawValue,

@@ -6,6 +6,7 @@
 //
 
 import LibXray
+import Network
 import os
 import SwiftUI
 
@@ -61,10 +62,10 @@ struct ContentView: View {
     @State private var pingSpeed: Int = 0
 
     /// 用于在界面上显示 SOCKS 端口（本地代理端口）。
-    @State private var socks5Port: String = ""
+    @State private var socks5Port: NWEndpoint.Port = Constant.socks5Port
 
     /// 用于在界面上显示流量统计端口。
-    @State private var trafficPort: String = ""
+    @State private var trafficPort: NWEndpoint.Port = Constant.trafficPort
 
     /// 扫描到的二维码内容。
     @State private var scannedCode: String? = nil
@@ -171,7 +172,11 @@ struct ContentView: View {
         // 在视图出现时执行的逻辑
         .onAppear {
             loadDataFromUserDefaults()
-            fetchFreePorts()
+            let ports = fetchFreePorts()
+            UtilStore.savePort(value: ports[0], key: "socks5Port")
+            UtilStore.savePort(value: ports[1], key: "trafficPort")
+            socks5Port = ports[0]
+            trafficPort = ports[1]
         }
         // 弹出分享配置的模态视图
         .sheet(isPresented: $isShowingShareModal) {
@@ -211,7 +216,7 @@ struct ContentView: View {
 
     /// 从 UserDefaults 中读取上一次保存的配置链接，并解析其中的 ID、IP、端口信息。
     private func loadDataFromUserDefaults() {
-        if let content = Util.loadFromUserDefaults(key: "configLink") {
+        if let content = UtilStore.loadString(key: "configLink") {
             Util.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
         }
     }
@@ -222,10 +227,10 @@ struct ContentView: View {
     private func handlePasteFromClipboard() {
         if let clipboardContent = Util.pasteFromClipboard(), !clipboardContent.isEmpty {
             // 若粘贴板内容与之前保存的不同，则更新
-            let storedContent = Util.loadFromUserDefaults(key: "configLink")
+            let storedContent = UtilStore.loadString(key: "configLink")
             if clipboardContent != storedContent {
                 clipboardText = clipboardContent
-                Util.saveToUserDefaults(value: clipboardContent, key: "configLink")
+                UtilStore.saveString(value: clipboardContent, key: "configLink")
                 Util.parseContent(clipboardContent, idText: &idText, ipText: &ipText, portText: &portText)
             }
         } else {
@@ -242,7 +247,7 @@ struct ContentView: View {
     private func handleScannedCode(_ code: String) {
         logger.info("扫描到的二维码内容: \(code)")
         clipboardText = code
-        Util.saveToUserDefaults(value: clipboardText, key: "configLink")
+        UtilStore.saveString(value: clipboardText, key: "configLink")
         Util.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
         isShowingScanner = false
     }
@@ -250,7 +255,7 @@ struct ContentView: View {
     // MARK: - 本地端口获取
 
     /// 向 `LibXray` 请求可用的两个空闲端口号，并保存在 UserDefaults 中，同时更新页面显示。
-    private func fetchFreePorts() {
+    private func fetchFreePorts() -> [NWEndpoint.Port] {
         // 1. 从 LibXray 获取两个空闲端口 (Base64 编码的字符串)
         let freePortsBase64String = LibXrayGetFreePorts(2)
 
@@ -260,7 +265,7 @@ struct ContentView: View {
             let decodedString = String(data: decodedData, encoding: .utf8)
         else {
             logger.error("Base64 解码失败")
-            return
+            return [Constant.socks5Port, Constant.trafficPort]
         }
 
         // 3. 解析 JSON 并提取端口
@@ -268,20 +273,16 @@ struct ContentView: View {
             if let jsonObject = try JSONSerialization.jsonObject(with: Data(decodedString.utf8), options: []) as? [String: Any],
                let success = jsonObject["success"] as? Bool, success,
                let dataDict = jsonObject["data"] as? [String: Any],
-               let ports = dataDict["ports"] as? [Int], ports.count == 2
+               let ports = dataDict["ports"] as? [NWEndpoint.Port], ports.count == 2
             {
-                // 4. 保存端口到 UserDefaults，并更新本地状态
-                Util.saveToUserDefaults(value: String(ports[0]), key: "socks5Port")
-                Util.saveToUserDefaults(value: String(ports[1]), key: "trafficPort")
-                socks5Port = String(ports[0])
-                trafficPort = String(ports[1])
-
-                logger.info("获取到的端口: \(ports[0]), \(ports[1])")
+                // 4. 返回
+                return ports
             } else {
                 logger.error("解析 JSON 失败或未找到所需字段")
             }
         } catch {
             logger.error("JSON 解析错误: \(error.localizedDescription)")
         }
+        return [Constant.socks5Port, Constant.trafficPort]
     }
 }

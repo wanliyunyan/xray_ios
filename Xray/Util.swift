@@ -10,25 +10,6 @@ import SwiftUI
 
 /// 一个通用的工具枚举，包含项目中常用的用户偏好存取、剪贴板读取、配置写入等功能。
 enum Util {
-    // MARK: - UserDefaults
-
-    /// 将字符串存储到用户默认（UserDefaults）中。
-    ///
-    /// - Parameters:
-    ///   - value: 需要存储的字符串值。
-    ///   - key: 存储时对应的键名。
-    static func saveToUserDefaults(value: String, key: String) {
-        UserDefaults.standard.set(value, forKey: key)
-    }
-
-    /// 从用户默认（UserDefaults）中读取字符串。
-    ///
-    /// - Parameter key: 存储时使用的键名。
-    /// - Returns: 如果存在并且类型匹配，则返回对应的字符串；否则返回 `nil`。
-    static func loadFromUserDefaults(key: String) -> String? {
-        UserDefaults.standard.string(forKey: key)
-    }
-
     // MARK: - 剪贴板操作
 
     /// 从系统剪贴板读取字符串内容。

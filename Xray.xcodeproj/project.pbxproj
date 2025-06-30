@@ -33,6 +33,7 @@
 		3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */; };
 		3BCF8AEB2CA8E5C400723541 /* ShareModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ShareModalView.swift */; };
 		3BF632AC2CB8CF4000FB040B /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */; };
+		F393789D2E125D8800EBC544 /* UtilStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F393789C2E125D8800EBC544 /* UtilStore.swift */; };
 		F3E0E5912D548849007B9B0F /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = F3E0E5902D548849007B9B0F /* LibXray */; };
 		F3E0E5932D548851007B9B0F /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = F3E0E5922D548851007B9B0F /* LibXray */; };
 		F3E0E5962D54887B007B9B0F /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = F3E0E5952D54887B007B9B0F /* Tun2SocksKit */; };
@@ -92,6 +93,7 @@
 		3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatsView.swift; sourceTree = "<group>"; };
 		3BCF8AEA2CA8E5C400723541 /* ShareModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareModalView.swift; sourceTree = "<group>"; };
 		3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeScannerView.swift; sourceTree = "<group>"; };
+		F393789C2E125D8800EBC544 /* UtilStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -143,6 +145,7 @@
 		3B2DA9562C95337E00E8FCB9 /* Xray */ = {
 			isa = PBXGroup;
 			children = (
+				F393789C2E125D8800EBC544 /* UtilStore.swift */,
 				3B3C13882CDA0CB40076B451 /* VPNModePickerView.swift */,
 				3B2DA9992C95379100E8FCB9 /* Info.plist */,
 				3B2DA9952C95346A00E8FCB9 /* Xray.entitlements */,
@@ -313,6 +316,7 @@
 				3B99F5162CA11A8A00CDC946 /* ConnectedDurationView.swift in Sources */,
 				3B3C13892CDA0CB60076B451 /* VPNModePickerView.swift in Sources */,
 				3B2DA99C2C95393600E8FCB9 /* Constant.swift in Sources */,
+				F393789D2E125D8800EBC544 /* UtilStore.swift in Sources */,
 				3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */,
 				3BAD4E2C2CAA747A006868C3 /* PingView.swift in Sources */,
 				3BA6A1DE2C9D75C000FF9E1A /* VPNControlView.swift in Sources */,

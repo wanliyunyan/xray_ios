@@ -79,7 +79,7 @@ struct ShareModalView: View {
     /// 4. 将生成的二维码写入 `qrCodeImage` 状态以供显示。
     private func generateQRCode() {
         // 1. 从 UserDefaults 加载配置信息
-        guard let link = Util.loadFromUserDefaults(key: "configLink"),
+        guard let link = UtilStore.loadString(key: "configLink"),
               !link.isEmpty
         else {
             logger.error("无法生成二维码，因为没有可用的配置内容")
