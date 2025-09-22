@@ -5,7 +5,6 @@
 //  Created by pan on 2024/9/14.
 //
 
-import NetworkExtension
 import SwiftUI
 
 @main

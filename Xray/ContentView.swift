@@ -5,7 +5,6 @@
 //  Created by pan on 2024/9/14.
 //
 
-import LibXray
 import Network
 import os
 import SwiftUI
@@ -14,22 +13,17 @@ import SwiftUI
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
 
-// MARK: - 数据模型
 
-/// 用于封装 Ping 请求参数的结构体，符合 Codable 协议，方便与 JSON 编解码。
-struct PingRequest: Codable {
-    var datDir: String?
-    var configPath: String?
-    var timeout: Int?
-    var url: String?
-    var proxy: String?
-}
 
 // MARK: - 主视图
 
 /// 整个应用的核心主视图，负责展示和管理用户粘贴、二维码扫描、VPN 连接、流量统计、分享等功能模块。
+/// 这是用户交互的主要入口，整合了多种功能，提供便捷的操作界面。
 @MainActor
 struct ContentView: View {
+    
+    private let xrayManager = XrayManager()
+    
     // MARK: - 环境对象
 
     /// 全局共享的 `PacketTunnelManager`，用于获取和更新当前 VPN 的连接状态。
@@ -37,45 +31,46 @@ struct ContentView: View {
 
     // MARK: - 本地状态
 
-    /// 保存剪贴板的内容（例如 VMess / VLESS 配置链接）。
+    /// 保存最近一次粘贴或扫描的配置内容，用于解析和展示。
     @State private var clipboardText: String = ""
 
-    /// 从配置内容中解析出的 ID。
+    /// 从配置内容中解析出的 ID，用于展示服务器身份信息。
     @State private var idText: String = ""
 
-    /// 从配置内容中解析出的 IP 地址或域名。
+    /// 从配置内容中解析出的 IP 地址或域名，用于展示服务器地址信息。
     @State private var ipText: String = ""
 
-    /// 从配置内容中解析出的端口号（如远程服务器端口）。
+    /// 从配置内容中解析出的端口号（如远程服务器端口），用于展示服务器端口信息。
     @State private var portText: String = ""
 
-    /// Xray 配置文件的路径（若使用本地存储或文件管理可用）。
+    /// Xray 配置文件的路径，潜在用于本地存储或文件管理的扩展功能。
     @State private var path: String = ""
 
-    /// 控制 “分享配置” 弹窗是否显示。
+    /// 控制 “分享配置” 弹窗是否显示，管理分享界面的展示状态。
     @State private var isShowingShareModal = false
 
-    /// 控制当剪贴板为空时是否显示提示 Alert。
+    /// 控制当剪贴板为空时是否显示提示 Alert，提醒用户无有效内容。
     @State private var showClipboardEmptyAlert = false
 
-    /// 用于显示或存储当前的 Ping 速度（ms）。
+    /// 用于显示或存储当前的 Ping 速度（ms），用于性能监测和展示。
     @State private var pingSpeed: Int = 0
 
-    /// 用于在界面上显示 SOCKS 端口（本地代理端口）。
+    /// 用于在界面上显示 SOCKS 端口（本地代理端口），便于用户查看代理端口信息。
     @State private var socks5Port: NWEndpoint.Port = Constant.socks5Port
 
-    /// 用于在界面上显示流量统计端口。
+    /// 用于在界面上显示流量统计端口，便于用户查看流量监控端口信息。
     @State private var trafficPort: NWEndpoint.Port = Constant.trafficPort
 
-    /// 扫描到的二维码内容。
+    /// 扫描到的二维码内容，暂存扫描结果用于解析和处理。
     @State private var scannedCode: String? = nil
 
-    /// 控制二维码扫描器视图是否显示。
+    /// 控制二维码扫描器视图是否显示，管理扫描界面的展示状态。
     @State private var isShowingScanner = false
 
     // MARK: - 主布局
 
     var body: some View {
+        // 布局分为顶部信息区、中间操作区、底部控制区，分别展示配置信息、操作按钮和 VPN 控制。
         VStack(alignment: .leading) {
             // 顶部区域：展示配置信息、连接时长、流量统计等
             VStack(alignment: .leading) {
@@ -96,9 +91,9 @@ struct ContentView: View {
                 Text("本机端口:")
                     .font(.headline)
                 HStack {
-                    Text("Socks5: \(socks5Port)")
+                    Text("Socks5: \(socks5Port.rawValue)")
                     Spacer()
-                    Text("流量: \(trafficPort)")
+                    Text("流量: \(trafficPort.rawValue)")
                 }
 
                 // Ping 测速视图
@@ -171,18 +166,19 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // 在视图出现时执行的逻辑
         .onAppear {
+            // 启动时会加载配置、随机分配本机端口并保存到 UserDefaults，确保配置和端口信息初始化
             loadDataFromUserDefaults()
-            let ports = fetchFreePorts()
+            let ports = xrayManager.fetchFreePorts()
             UtilStore.savePort(value: ports[0], key: "socks5Port")
             UtilStore.savePort(value: ports[1], key: "trafficPort")
             socks5Port = ports[0]
             trafficPort = ports[1]
         }
-        // 弹出分享配置的模态视图
+        // 弹出分享配置的模态视图，供用户分享当前配置
         .sheet(isPresented: $isShowingShareModal) {
             ShareModalView(isShowing: $isShowingShareModal)
         }
-        // 剪贴板为空时提示
+        // 剪贴板为空时提示，提醒用户无有效内容可粘贴
         .alert(isPresented: $showClipboardEmptyAlert) {
             Alert(
                 title: Text("剪贴板为空"),
@@ -190,7 +186,7 @@ struct ContentView: View {
                 dismissButton: .default(Text("确定"))
             )
         }
-        // 扫描二维码视图
+        // 扫描二维码视图，允许用户扫描二维码获取配置
         .sheet(isPresented: $isShowingScanner) {
             QRCodeScannerView(scannedCode: $scannedCode)
                 .onChange(of: scannedCode) { _, newCode in
@@ -203,7 +199,7 @@ struct ContentView: View {
 
     // MARK: - VPN 连接操作
 
-    /// 执行异步的 VPN 连接操作。若失败则在控制台打印错误信息。
+    /// 执行异步的 VPN 连接操作。若失败则在控制台打印错误信息，并可用于后续错误处理或提示用户。
     private func connectVPN() async {
         do {
             try await packetTunnelManager.start()
@@ -215,6 +211,7 @@ struct ContentView: View {
     // MARK: - UserDefaults 相关
 
     /// 从 UserDefaults 中读取上一次保存的配置链接，并解析其中的 ID、IP、端口信息。
+    /// 该方法确保应用在重启后自动恢复上次配置，提升用户体验。
     private func loadDataFromUserDefaults() {
         if let content = UtilStore.loadString(key: "configLink") {
             Util.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
@@ -224,6 +221,7 @@ struct ContentView: View {
     // MARK: - 剪贴板处理
 
     /// 从剪贴板读取配置内容，若非空则保存至 UserDefaults 并更新相关字段；否则弹出提示。
+    /// 通过对比新旧内容，避免重复保存和解析，提升效率。
     private func handlePasteFromClipboard() {
         if let clipboardContent = Util.pasteFromClipboard(), !clipboardContent.isEmpty {
             // 若粘贴板内容与之前保存的不同，则更新
@@ -244,6 +242,8 @@ struct ContentView: View {
     /// 处理扫描到的二维码内容，与剪贴板处理逻辑相似，将其保存并解析。
     ///
     /// - Parameter code: 扫描到的二维码字符串。
+    ///
+    /// 此方法与粘贴逻辑保持一致，但来源是二维码扫描，并在保存后关闭扫描器。
     private func handleScannedCode(_ code: String) {
         logger.info("扫描到的二维码内容: \(code)")
         clipboardText = code
@@ -252,37 +252,4 @@ struct ContentView: View {
         isShowingScanner = false
     }
 
-    // MARK: - 本地端口获取
-
-    /// 向 `LibXray` 请求可用的两个空闲端口号，并保存在 UserDefaults 中，同时更新页面显示。
-    private func fetchFreePorts() -> [NWEndpoint.Port] {
-        // 1. 从 LibXray 获取两个空闲端口 (Base64 编码的字符串)
-        let freePortsBase64String = LibXrayGetFreePorts(2)
-
-        // 2. 解析 Base64 并转为 JSON 字符串
-        guard
-            let decodedData = Data(base64Encoded: freePortsBase64String),
-            let decodedString = String(data: decodedData, encoding: .utf8)
-        else {
-            logger.error("Base64 解码失败")
-            return [Constant.socks5Port, Constant.trafficPort]
-        }
-
-        // 3. 解析 JSON 并提取端口
-        do {
-            if let jsonObject = try JSONSerialization.jsonObject(with: Data(decodedString.utf8), options: []) as? [String: Any],
-               let success = jsonObject["success"] as? Bool, success,
-               let dataDict = jsonObject["data"] as? [String: Any],
-               let ports = dataDict["ports"] as? [NWEndpoint.Port], ports.count == 2
-            {
-                // 4. 返回
-                return ports
-            } else {
-                logger.error("解析 JSON 失败或未找到所需字段")
-            }
-        } catch {
-            logger.error("JSON 解析错误: \(error.localizedDescription)")
-        }
-        return [Constant.socks5Port, Constant.trafficPort]
-    }
 }

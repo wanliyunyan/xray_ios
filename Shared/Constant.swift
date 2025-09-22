@@ -17,6 +17,8 @@ public extension Constant {
     static let tunnelName = "\(Constant.packageName).PacketTunnel"
     static let socks5Port: NWEndpoint.Port = 10808
     static let trafficPort: NWEndpoint.Port = 49227
+    static let pingUrl: String = "https://1.1.1.1"
+    static let timeout: Int = 30
 
     private static func createDirectory(at url: URL) -> URL {
         guard FileManager.default.fileExists(atPath: url.path) == false else {

@@ -6,8 +6,6 @@
 //
 
 import Combine
-import Foundation
-import LibXray
 import Network
 import os
 import SwiftUI
@@ -18,6 +16,9 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 /// 一个用于测试网络延迟（Ping）的视图，展示并记录从服务器返回的网速信息。
 struct PingView: View {
+    
+    private let xrayManager = XrayManager()
+    
     // MARK: - 环境变量
 
     /// 自定义的 PacketTunnelManager，用于管理代理隧道的连接状态。
@@ -37,7 +38,7 @@ struct PingView: View {
     var body: some View {
         VStack {
             HStack {
-                Text("Ping:")
+                Text("Ping(\(Constant.pingUrl)):")
                 if isLoading {
                     ProgressView()
                         .frame(width: 24, height: 24)
@@ -72,73 +73,15 @@ struct PingView: View {
     /// 调用此函数后，将首先显示加载状态，等待异步的 Ping 测试完成或出现错误。
     /// 若成功，将更新 `pingSpeed` 和 `isPingFetched`，并关闭加载状态。
     private func requestPing() {
-        // 显示加载动画
         isLoading = true
-
         Task {
             do {
-                // 1. 从 UserDefaults 或其他地方读取配置信息
-                guard let savedContent = UtilStore.loadString(key: "configLink"),
-                      !savedContent.isEmpty
-                else {
-                    throw NSError(
-                        domain: "PingView",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "没有可用的配置，且剪贴板内容为空"]
-                    )
-                }
-
-                // 2. 生成配置文件的最终字符串
-                let configData = try Configuration().buildPingConfigurationData(config: savedContent)
-                guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
-                    throw NSError(
-                        domain: "PingView",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"]
-                    )
-                }
-
-                // 3. 将配置字符串写入临时文件
-                let fileUrl = try Util.createConfigFile(with: mergedConfigString)
-
-                // 4. 读取 SOCKS5 代理端口
-                guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
-                else {
-                    throw NSError(
-                        domain: "PingView",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
-                    )
-                }
-
-                // 5. 构造 Ping 请求
-                let pingRequest = try createPingRequest(
-                    configPath: fileUrl.path,
-                    socks5Port: socks5Port
-                )
-
-                // 6. 将请求转换成 Base64 再调用 LibXrayPing
-                let pingBase64String = try JSONEncoder().encode(pingRequest).base64EncodedString()
-
-                // 7. 解析返回结果
-                let pingResponseBase64 = LibXrayPing(pingBase64String)
-
-                if let pingResult = await decodePingResponse(base64String: pingResponseBase64) {
-                    // 更新本地状态
-                    pingSpeed = pingResult
-                    isPingFetched = true
-                } else {
-                    logger.error("Ping 解码失败")
-                }
-            } catch let error as NSError {
-                // 业务逻辑错误提示
-                logger.error("Ping 请求失败: \(error.localizedDescription)")
+                let result = try await xrayManager.performPing()
+                pingSpeed = result
+                isPingFetched = true
             } catch {
-                // 未知错误
-                logger.error("发生了未知错误: \(error.localizedDescription)")
+                logger.error("Ping 请求失败: \(error.localizedDescription)")
             }
-
-            // 隐藏加载动画
             isLoading = false
         }
     }
@@ -160,54 +103,5 @@ struct PingView: View {
         default:
             return .red // 超过 5000 ms 视为网络极慢或无法连接
         }
-    }
-
-    // MARK: - 辅助方法
-
-    /// 创建一个 `PingRequest` 对象，用于封装需要给后端的完整参数。
-    ///
-    /// - Parameters:
-    ///   - configPath: 配置文件在本地的路径。
-    ///   - socks5Port: SOCKS5 代理使用的端口号。
-    /// - Throws: 当参数无效时可能抛出错误。
-    /// - Returns: 生成的 `PingRequest` 对象。
-    @MainActor
-    private func createPingRequest(configPath: String, socks5Port: NWEndpoint.Port) throws -> PingRequest {
-        PingRequest(
-            datDir: Constant.assetDirectory.path, // 数据文件目录
-            configPath: configPath, // Xray 配置文件路径
-            timeout: 30, // 超时时间（秒）
-            url: "https://1.1.1.1", // 用于检测的网络地址
-            proxy: "socks5://127.0.0.1:\(socks5Port)" // 使用的代理地址
-        )
-    }
-
-    /// 解码 Base64 字符串为 JSON，并从中提取 "data" 字段中的网速信息。
-    ///
-    /// - Parameter base64String: Base64 编码的字符串，包含 Ping 测试结果。
-    /// - Returns: 若成功解析，则返回表示 Ping 延迟（ms）的整数；若解析失败，返回 nil。
-    @MainActor
-    private func decodePingResponse(base64String: String) async -> Int? {
-        guard let decodedData = Data(base64Encoded: base64String),
-              let decodedString = String(data: decodedData, encoding: .utf8),
-              let jsonData = decodedString.data(using: .utf8)
-        else {
-            logger.error("Base64 解码或字符串转 Data 失败")
-            return nil
-        }
-
-        do {
-            if let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
-               let success = jsonObject["success"] as? Bool,
-               success,
-               let data = jsonObject["data"] as? Int
-            {
-                return data
-            }
-        } catch {
-            logger.error("解析 JSON 失败: \(error.localizedDescription)")
-        }
-
-        return nil
     }
 }

@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import LibXray
 import Network
 
 /// `Configuration` 负责生成并整合 Xray 的最终配置.
@@ -24,6 +23,7 @@ import Network
 ///  4. 递归移除空值；
 ///  5. 去除 `sendThrough`；
 ///  6. 将配置序列化输出。
+@MainActor
 struct Configuration {
     // MARK: - Public Methods
 
@@ -32,7 +32,7 @@ struct Configuration {
     /// - Parameter config: 用户从外部复制的分享链接字符串.
     /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
     /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
-    func buildRunConfigurationData(config: String) throws -> Data {
+    func buildRunConfigurationData(configLink: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口
         guard
             let socks5Port = UtilStore.loadPort(key: "socks5Port"),
@@ -46,7 +46,7 @@ struct Configuration {
         }
 
         // 2. 基于用户分享链接生成 Xray outbounds
-        var configuration = try buildOutInbound(config: config)
+        var configuration = try buildOutInbound(configLink: configLink)
 
         // 3. 添加自定义 inbound、metrics、policy、routing、stats、dns 等
         configuration["inbounds"] = buildInbound(inboundPort: socks5Port, trafficPort: trafficPort)
@@ -71,7 +71,7 @@ struct Configuration {
     /// - Parameter config: 用户从外部复制的分享链接字符串.
     /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
     /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
-    func buildPingConfigurationData(config: String) throws -> Data {
+    func buildPingConfigurationData(configLink: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口
         guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
         else {
@@ -83,7 +83,7 @@ struct Configuration {
         }
 
         // 2. 基于用户分享链接生成 Xray outbounds
-        var configuration = try buildOutInbound(config: config)
+        var configuration = try buildOutInbound(configLink: configLink)
 
         // 3. 添加自定义 inbound、metrics、policy、routing、stats、dns 等
         configuration["inbounds"] = buildInbound(inboundPort: socks5Port, trafficPort: nil)
@@ -150,37 +150,19 @@ struct Configuration {
     /// - Parameter config: 配置分享链接.
     /// - Returns: 含 outbounds 的 Xray 配置字典.
     /// - Throws: 当链接字符串无效或解析 Xray JSON 失败时抛出.
-    private func buildOutInbound(config: String) throws -> [String: Any] {
-        // 1. 将原始字符串转为 Data
-        guard let configData = config.data(using: .utf8) else {
-            throw NSError(
-                domain: "InvalidConfig",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "无效的配置字符串"]
-            )
-        }
+    private func buildOutInbound(configLink: String) throws -> [String: Any] {
+        // Use XrayManager to convert config link into base Xray JSON
+        var dataDict = try XrayManager().convertConfigLinkToXrayJson(configLink: configLink)
 
-        // 2. Base64 编码后调用 LibXray 进行转换
-        let base64EncodedConfig = configData.base64EncodedString()
-        let xrayJsonString = LibXrayConvertShareLinksToXrayJson(base64EncodedConfig)
-
-        // 3. 对转换后的字符串再次 Base64 解码，并解析为字典
-        guard
-            let decodedData = Data(base64Encoded: xrayJsonString),
-            let decodedString = String(data: decodedData, encoding: .utf8),
-            let jsonData = decodedString.data(using: .utf8),
-            let jsonDict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
-            let success = jsonDict["success"] as? Bool, success,
-            var dataDict = jsonDict["data"] as? [String: Any],
-            var outboundsArray = dataDict["outbounds"] as? [[String: Any]]
-        else {
+        // Ensure outbounds array exists
+        guard var outboundsArray = dataDict["outbounds"] as? [[String: Any]] else {
             throw NSError(
                 domain: "InvalidXrayJson",
                 code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败"]
+                userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败，未找到 outbounds"]
             )
         }
-
+        
         // 4. 将第一个 outbound 的 tag 改为 "proxy"
         if var firstOutbound = outboundsArray.first {
             firstOutbound["tag"] = "proxy"

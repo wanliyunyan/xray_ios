@@ -5,7 +5,6 @@
 //  Created by pan on 2024/9/20.
 //
 
-import Foundation
 import SwiftUI
 
 /// 一个通用的工具枚举，包含项目中常用的用户偏好存取、剪贴板读取、配置写入等功能。

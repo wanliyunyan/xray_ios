@@ -17,9 +17,11 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 // MARK: - PacketTunnelProvider
 
+extension NSObject: @unchecked Sendable {}
+
 /// 核心的 VPN 扩展入口类。通过重写 `startTunnel`、`stopTunnel` 来管理自定义隧道的创建与销毁。
 /// 内部包含了启动 Xray、设置网络环境以及启动 Socks5 隧道的完整逻辑。
-class PacketTunnelProvider: NEPacketTunnelProvider {
+final class PacketTunnelProvider: NEPacketTunnelProvider {
     // MARK: - 常量
 
     /// 虚拟网络接口的 MTU 值，可根据实际环境进行调整。
@@ -31,21 +33,20 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     ///
     /// - Parameter options: 传递给隧道的键值对信息，通常包含 `socks5Port` 和 `path` 等。
     /// - Throws: 若缺失必要信息或启动过程中发生错误，抛出相应的错误。
-    override func startTunnel(options: [String: NSObject]? = nil) async throws {
+    override func startTunnel(options: [String : NSObject]?) async throws {
         // 1. 从 options 中提取 SOCKS5 端口与配置文件路径
         guard let socks5Port = options?["socks5Port"] as? Int else {
             throw NSError(domain: "PacketTunnel", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "缺少 SOCKS5 端口配置"])
         }
 
-        guard let path = options?["path"] as? String else {
+        guard let base64String = options?["base64String"] as? String else {
             throw NSError(domain: "PacketTunnel", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "缺少配置路径"])
+                          userInfo: [NSLocalizedDescriptionKey: "缺少配置"])
         }
 
         do {
-            // 2. 启动 Xray 核心
-            try startXray(path: path)
+            LibXrayRunXrayFromJSON(base64String)
 
             // 3. 设置隧道网络（虚拟网卡、路由、DNS 等）
             try await setTunnelNetworkSettings()
@@ -71,34 +72,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         // 3.输出日志
         Logger().info("隧道停止, 原因: \(reason.rawValue)")
-    }
-
-    // MARK: - 启动 Xray
-
-    /// 启动 Xray 核心进程，向其传递相关配置和内存限制。
-    ///
-    /// - Parameter path: 已生成的 Xray 配置文件路径。
-    /// - Throws: 当编码请求或底层调用出现错误时，抛出相应错误。
-    private func startXray(path: String) throws {
-        do {
-            // 1. 构造请求base64字符串
-            var error: NSError?
-            let base64String = LibXrayNewXrayRunRequest(
-                Constant.assetDirectory.path,
-                path,
-                &error
-            )
-
-            if let err = error {
-                throw err
-            }
-
-            // 2. 调用 LibXrayRunXray 以启动 Xray 核心
-            LibXrayRunXray(base64String)
-        } catch {
-            Logger().error("Xray调用异常: \(error.localizedDescription)")
-            throw error
-        }
     }
 
     // MARK: - 启动 Socks5 隧道（Tun2SocksKit）

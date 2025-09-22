@@ -5,7 +5,6 @@
 //  Created by pan on 2024/9/20.
 //
 
-import Foundation
 import SwiftUI
 
 /// 一个用于管理和展示 VPN 连接状态及操作（连接 / 断开）的视图。
@@ -17,8 +16,10 @@ struct VPNControlView: View {
 
     // MARK: - 外部依赖
 
-    /// 一个异步方法，用于发起 VPN 连接操作。
-    /// - 注意：您可以在外部实现此方法，以包含必要的端口或参数，并在此处传入。
+    /// 一个由外部注入的异步方法，主要用于触发 VPN 的连接操作。
+    /// 该方法通常会结合 `PacketTunnelManager.start()` 使用，可能包含端口、配置参数等初始化逻辑。
+    /// 这是一个依赖注入点（Dependency Injection），便于在不同场景下（如测试或生产环境）传入不同的实现。
+    /// 在 UI 中点击“连接”按钮时会触发此方法，从而建立 VPN 隧道。
     var connect: () async -> Void
 
     // MARK: - 主视图
