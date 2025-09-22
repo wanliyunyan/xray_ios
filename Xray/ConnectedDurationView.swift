@@ -43,12 +43,21 @@ struct ConnectedDurationView: View {
 
     // MARK: - 辅助方法
 
-    /// 根据连接时间和当前时间，计算并返回格式化后的连接时长字符串。
-    ///
-    /// - Parameters:
-    ///   - connectedDate: 表示 VPN 开始连接的时间。
-    ///   - current: 用于对比计算的当前时间（由 `TimelineView` 提供）。
-    /// - Returns: 格式形如 "HH:mm:ss" 或 "mm:ss" 的字符串。如果小时数为 0，则仅显示 "mm:ss"。
+    /**
+     根据连接时间和当前时间计算并返回格式化后的连接时长字符串。
+
+     - Parameters:
+        - connectedDate: 表示 VPN 开始连接的时间。
+        - current: 用于对比计算的当前时间（由 `TimelineView` 提供）。
+
+     - Returns:
+        格式形如 "HH:mm:ss" 或 "mm:ss" 的字符串。如果小时数为 0，则仅显示 "mm:ss"。
+
+     - Throws:
+
+     - Note:
+        时间差计算基于秒，适用于连接时长的动态刷新显示。
+     */
     private func connectedDateString(connectedDate: Date, current: Date) -> String {
         // 计算绝对时间差（单位：秒）
         let duration = Int64(abs(current.distance(to: connectedDate)))

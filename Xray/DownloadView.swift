@@ -90,9 +90,16 @@ struct DownloadView: View {
     // MARK: - 加载已下载文件列表
 
     /**
-     从应用内的 `Constant.assetDirectory` 路径中，获取当前所有下载后的地理数据库文件名，并更新到 `downloadedFiles`.
+     从应用内的 `Constant.assetDirectory` 路径中获取当前所有下载后的地理数据库文件名，并更新到 `downloadedFiles`。
 
-     - Note: 如果读取失败会在控制台打印错误信息，但不会抛出异常。
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       如果读取失败会在控制台打印错误信息，但不会抛出异常。
      */
     private func loadDownloadedFiles() {
         let fileManager = FileManager.default
@@ -111,8 +118,15 @@ struct DownloadView: View {
     /**
      顺序下载两个地理数据库文件（geoip.dat, geosite.dat），并在下载完成后根据 VPN 状态决定是否重启。
 
-     - Important: 此方法会将 `isDownloading` 置为 `true` 并在结束时还原为 `false`，以便界面更新下载按钮的可用状态。
-     - Note: 若当前 VPN 已连接，则下载完成后会调用 `PacketTunnelManager.shared.restart()` 进行重启。
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       此方法会将 `isDownloading` 置为 `true` 并在结束时还原为 `false`，以便界面更新下载按钮的可用状态。
+       若当前 VPN 已连接，则下载完成后会调用 `PacketTunnelManager.shared.restart()` 进行重启。
      */
     @MainActor
     private func downloadAndUpdateGeoipDat() async {
@@ -165,9 +179,15 @@ struct DownloadView: View {
     /**
      从远程地址下载文件到本地临时目录，返回临时文件的本地 URL。
 
-     - Parameter url: 文件下载链接
-     - Throws: 若网络响应非 200 或下载中遇到网络错误，会抛出 `URLError`
-     - Returns: 下载成功后，位于本地临时目录的临时文件 `URL`
+     - Parameters:
+       - url: 文件下载链接
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       使用 async/await 的 download(from:) API
      */
     private func downloadFile(from url: URL) async throws -> URL {
         // 使用 async/await 的 download(from:) API
@@ -189,9 +209,16 @@ struct DownloadView: View {
     /**
      将临时文件移动到 `Constant.assetDirectory` 指定的文件夹中，并改名为 `fileName`。
 
-     - Parameter fileURL: 下载所得的临时文件路径
-     - Parameter fileName: 目标文件名
-     - Note: 若目标位置已存在同名文件，会先删除旧文件后再进行替换。
+     - Parameters:
+       - fileURL: 下载所得的临时文件路径
+       - fileName: 目标文件名
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       若目标位置已存在同名文件，会先删除旧文件后再进行替换。
      */
     @MainActor
     private func saveFileToDirectory(fileURL: URL, fileName: String) {
@@ -228,8 +255,15 @@ struct DownloadView: View {
     /**
      清空 `Constant.assetDirectory` 文件夹，并在完成后根据 VPN 状态决定是否重启。
 
-     - Important: 会先删除整个文件夹，再新建一个空文件夹，最后刷新 `downloadedFiles` 列表。
-     - Note: 若当前 VPN 已连接，则清空后会尝试重启 VPN。
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       会先删除整个文件夹，再新建一个空文件夹，最后刷新 `downloadedFiles` 列表。
+       若当前 VPN 已连接，则清空后会尝试重启 VPN。
      */
     private func clearAssetDirectory() async {
         let fileManager = FileManager.default

@@ -29,10 +29,18 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
 
     // MARK: - 隧道生命周期
 
-    /// 在创建或启用隧道时调用，用于启动 Xray 核心、配置虚拟网卡并启动 Tun2SocksKit（Socks5 隧道）。
-    ///
-    /// - Parameter options: 传递给隧道的键值对信息，通常包含 `socks5Port` 和 `path` 等。
-    /// - Throws: 若缺失必要信息或启动过程中发生错误，抛出相应的错误。
+    /**
+     在创建或启用隧道时调用，用于启动 Xray 核心、配置虚拟网卡并启动 Tun2SocksKit（Socks5 隧道）。
+
+     - Parameters:
+       - options: 传递给隧道的键值对信息，通常包含 `socks5Port` 和 `path` 等。
+
+     - Returns:
+
+     - Throws: 若缺失必要信息或启动过程中发生错误，抛出相应的错误。
+
+     - Note:
+     */
     override func startTunnel(options: [String: NSObject]?) async throws {
         // 1. 从 options 中提取 SOCKS5 端口与配置文件路径
         guard let socks5Port = options?["socks5Port"] as? Int else {
@@ -60,9 +68,18 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
 
-    /// 在隧道停止时调用，可在此处释放所有资源、停止相关服务（如 Xray、Tun2SocksKit）。
-    ///
-    /// - Parameter reason: 系统定义的停止原因，通常可以根据实际需求进行相应处理。
+    /**
+     在隧道停止时调用，可在此处释放所有资源、停止相关服务（如 Xray、Tun2SocksKit）。
+
+     - Parameters:
+       - reason: 系统定义的停止原因，通常可以根据实际需求进行相应处理。
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+     */
     override func stopTunnel(with reason: NEProviderStopReason) async {
         // 1. 停止 SOCKS5 隧道
         Socks5Tunnel.quit()
@@ -76,10 +93,18 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
 
     // MARK: - 启动 Socks5 隧道（Tun2SocksKit）
 
-    /// 使用 Tun2SocksKit 启动 Socks5 隧道，将指定端口的 SOCKS5 流量引导进虚拟网卡。
-    ///
-    /// - Parameter port: SOCKS5 服务所监听的端口号，默认为 10808。
-    /// - Throws: 若配置字符串生成或启动过程中发生错误，抛出相应错误。
+    /**
+     使用 Tun2SocksKit 启动 Socks5 隧道，将指定端口的 SOCKS5 流量引导进虚拟网卡。
+
+     - Parameters:
+       - serverPort: SOCKS5 服务所监听的端口号，默认为 10808。
+
+     - Returns:
+
+     - Throws: 若配置字符串生成或启动过程中发生错误，抛出相应错误。
+
+     - Note:
+     */
     private func startSocks5Tunnel(serverPort port: Int = 10808) throws {
         // 1. 构造 Socks5 隧道配置
         let socks5Config = """
@@ -112,9 +137,17 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
 
     // MARK: - 配置虚拟网卡
 
-    /// 配置隧道网络设置，如本地虚拟网卡 IP、路由、DNS 服务器等，并应用到当前隧道。
-    ///
-    /// - Throws: 当网络设置应用失败时，抛出相应错误。
+    /**
+     配置隧道网络设置，如本地虚拟网卡 IP、路由、DNS 服务器等，并应用到当前隧道。
+
+     - Parameters:
+
+     - Returns:
+
+     - Throws: 当网络设置应用失败时，抛出相应错误。
+
+     - Note:
+     */
     func setTunnelNetworkSettings() async throws {
         // 1. 创建基础的 NetworkSettings
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "fd00::1")

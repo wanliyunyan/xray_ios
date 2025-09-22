@@ -13,10 +13,18 @@ struct ActionButtonStyle: ButtonStyle {
     /// 按钮的背景颜色。
     var color: Color
 
-    /// 根据给定的配置生成按钮的外观。
-    ///
-    /// - Parameter configuration: 系统提供的配置对象，包含按钮的文本标签和当前状态（是否按下）。
-    /// - Returns: 应用指定样式的按钮视图。
+    /**
+     根据给定配置生成按钮外观。
+
+     - Parameters:
+       - configuration: 系统提供的配置对象，包含按钮的文本标签和当前状态（是否按下）。
+
+     - Returns: 应用指定样式的按钮视图。
+
+     - Throws:
+
+     - Note:
+     */
     func makeBody(configuration: ButtonStyleConfiguration) -> some View {
         configuration.label
             // 让按钮在水平方向上尽量铺满

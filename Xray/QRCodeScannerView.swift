@@ -22,17 +22,23 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
         /// 父视图，便于在回调中访问和更新 `scannedCode`。
         var parent: QRCodeScannerView
 
-        /// 初始化函数。
-        /// - Parameter parent: 父 `QRCodeScannerView` 实例。
         init(parent: QRCodeScannerView) {
             self.parent = parent
         }
 
-        /// 当捕捉到元数据（如二维码）时被调用的回调方法。
-        /// - Parameters:
-        ///   - output: 元数据输出对象（此处用不到可以忽略）。
-        ///   - metadataObjects: 捕捉到的元数据对象数组。
-        ///   - connection: 捕捉连接对象（此处用不到可以忽略）。
+        /**
+         当捕捉到元数据（如二维码）时被调用的回调方法
+
+         - Parameters:
+           - output: 元数据输出对象（此处用不到可以忽略）。
+           - metadataObjects: 捕捉到的元数据对象数组。
+           - connection: 捕捉连接对象（此处用不到可以忽略）。
+         - Returns:
+
+         - Throws:
+
+         - Note:
+         */
         @MainActor func metadataOutput(_: AVCaptureMetadataOutput,
                                        didOutput metadataObjects: [AVMetadataObject],
                                        from _: AVCaptureConnection)
@@ -57,15 +63,25 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
 
     // MARK: - UIViewControllerRepresentable 协议实现
 
-    /// 创建协调器实例。
-    /// - Returns: `Coordinator` 实例。
+    /**
+     创建协调器实例
+     */
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
 
-    /// 创建并返回用于展示二维码扫描界面的 `UIViewController`。
-    /// - Parameter context: 上下文环境对象，提供 `Coordinator` 等信息。
-    /// - Returns: 一个用于展示摄像头预览并进行二维码扫描的 `UIViewController` 实例。
+    /**
+     创建并返回用于展示二维码扫描界面的 `UIViewController`
+
+     - Parameters:
+       - context: 上下文环境对象，提供 `Coordinator` 等信息。
+     - Returns:
+       一个用于展示摄像头预览并进行二维码扫描的 `UIViewController` 实例。
+     - Throws:
+
+     - Note:
+       权限说明：如未获得相机权限会自动请求；若被拒绝可在此处进行 UI 提示。
+     */
     func makeUIViewController(context: Context) -> UIViewController {
         let viewController = UIViewController()
 
@@ -97,21 +113,37 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
         return viewController
     }
 
-    /// 更新 `UIViewController` 时调用，此处无额外操作。
-    /// - Parameters:
-    ///   - uiViewController: 将要更新的 `UIViewController` 实例。
-    ///   - context: 上下文环境对象。
+    /**
+     更新 `UIViewController` 时调用，此处无额外操作
+
+     - Parameters:
+       - uiViewController: 将要更新的 `UIViewController` 实例。
+       - context: 上下文环境对象。
+     - Returns:
+
+     - Throws:
+
+     - Note:
+     */
     func updateUIViewController(_: UIViewController, context _: Context) {
         // 在这里可以根据需要对界面进行更新
     }
 
     // MARK: - 私有辅助方法
 
-    /// 配置二维码扫描相关的捕捉会话和预览图层。
-    /// - Parameters:
-    ///   - viewController: 需要添加摄像头预览图层和进行会话配置的视图控制器。
-    ///   - coordinator: 用于处理元数据输出回调的协调器。
-    /// - Returns: 若成功配置则返回 `UIViewController`，否则返回空。
+    /**
+     配置二维码扫描相关的捕捉会话和预览图层
+
+     - Parameters:
+       - viewController: 需要添加摄像头预览图层和进行会话配置的视图控制器。
+       - coordinator: 用于处理元数据输出回调的协调器。
+     - Returns:
+       若成功配置则返回 `UIViewController`，否则返回空。
+     - Throws:
+
+     - Note:
+       重要提示：如摄像头不可用或添加输入失败时返回 nil。
+     */
     @discardableResult
     private func setupScanner(on viewController: UIViewController,
                               coordinator: Coordinator) -> UIViewController?

@@ -196,7 +196,17 @@ struct ContentView: View {
 
     // MARK: - VPN 连接操作
 
-    /// 执行异步的 VPN 连接操作。若失败则在控制台打印错误信息，并可用于后续错误处理或提示用户。
+    /**
+     执行异步的 VPN 连接操作。
+
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note: 若失败则在控制台打印错误信息，并可用于后续错误处理或提示用户。
+     */
     private func connectVPN() async {
         do {
             try await packetTunnelManager.start()
@@ -207,8 +217,17 @@ struct ContentView: View {
 
     // MARK: - UserDefaults 相关
 
-    /// 从 UserDefaults 中读取上一次保存的配置链接，并解析其中的 ID、IP、端口信息。
-    /// 该方法确保应用在重启后自动恢复上次配置，提升用户体验。
+    /**
+     从 UserDefaults 中读取上一次保存的配置链接，并解析其中的 ID、IP、端口信息。
+
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note: 该方法确保应用在重启后自动恢复上次配置，提升用户体验。
+     */
     private func loadDataFromUserDefaults() {
         if let content = UtilStore.loadString(key: "configLink") {
             Util.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
@@ -217,8 +236,17 @@ struct ContentView: View {
 
     // MARK: - 剪贴板处理
 
-    /// 从剪贴板读取配置内容，若非空则保存至 UserDefaults 并更新相关字段；否则弹出提示。
-    /// 通过对比新旧内容，避免重复保存和解析，提升效率。
+    /**
+     从剪贴板读取配置内容，若非空则保存至 UserDefaults 并更新相关字段；否则弹出提示。
+
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note: 通过对比新旧内容，避免重复保存和解析，提升效率。
+     */
     private func handlePasteFromClipboard() {
         if let clipboardContent = Util.pasteFromClipboard(), !clipboardContent.isEmpty {
             // 若粘贴板内容与之前保存的不同，则更新
@@ -236,11 +264,18 @@ struct ContentView: View {
 
     // MARK: - 二维码扫描
 
-    /// 处理扫描到的二维码内容，与剪贴板处理逻辑相似，将其保存并解析。
-    ///
-    /// - Parameter code: 扫描到的二维码字符串。
-    ///
-    /// 此方法与粘贴逻辑保持一致，但来源是二维码扫描，并在保存后关闭扫描器。
+    /**
+     处理扫描到的二维码内容，与剪贴板处理逻辑相似，将其保存并解析。
+
+     - Parameters:
+        - code: 扫描到的二维码字符串。
+
+     - Returns:
+
+     - Throws:
+
+     - Note: 此方法与粘贴逻辑保持一致，但来源是二维码扫描，并在保存后关闭扫描器。
+     */
     private func handleScannedCode(_ code: String) {
         logger.info("扫描到的二维码内容: \(code)")
         clipboardText = code

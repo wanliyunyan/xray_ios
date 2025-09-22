@@ -35,8 +35,15 @@ struct PingView: View {
 
     // MARK: - 主视图
 
-    /// 视图的主 UI 结构，包含显示 Ping 值、加载指示器以及刷新按钮。
-    /// 根据当前状态动态展示不同的内容，提供用户交互以触发 Ping 请求。
+    /**
+     视图的主 UI 结构，包含显示 Ping 值、加载指示器以及刷新按钮。
+     根据当前状态动态展示不同的内容，提供用户交互以触发 Ping 请求。
+
+     - Parameters:
+     - Returns: 一个表示视图的 `some View` 类型
+     - Throws:
+     - Note: 这是一个计算属性，类似于函数
+     */
     var body: some View {
         VStack {
             HStack {
@@ -70,9 +77,16 @@ struct PingView: View {
 
     // MARK: - 业务逻辑
 
-    /// 执行 Ping 测试的异步方法，调用 XrayManager 进行网络延迟测量。
-    /// 成功时更新 `pingSpeed` 和 `isPingFetched` 状态，失败时记录错误日志。
-    /// 同时控制加载动画的显示与隐藏。
+    /**
+     执行 Ping 测试的异步方法，调用 XrayManager 进行网络延迟测量。
+     成功时更新 `pingSpeed` 和 `isPingFetched` 状态，失败时记录错误日志。
+     同时控制加载动画的显示与隐藏。
+
+     - Parameters:
+     - Returns:
+     - Throws:
+     - Note: 使用 Task 异步执行网络请求，更新 UI 状态
+     */
     private func requestPing() {
         isLoading = true
         Task {
@@ -87,10 +101,20 @@ struct PingView: View {
         }
     }
 
-    /// 根据传入的 Ping 延迟值返回对应的颜色，用于界面视觉反馈。
-    /// 延迟较低返回绿色，适中返回黄色，过高返回红色，未获取到返回黑色。
-    /// - Parameter pingSpeed: 当前的 Ping 延迟值（毫秒）
-    /// - Returns: 对应的颜色对象
+    /**
+     根据传入的 Ping 延迟值返回对应的颜色，用于界面视觉反馈。
+     延迟较低返回绿色，适中返回黄色，过高返回红色，未获取到返回黑色。
+
+     - Parameters:
+       - pingSpeed: 当前的 Ping 延迟值（毫秒）
+     - Returns: 对应的颜色对象
+     - Throws:
+     - Note:
+       - 如果还未获取到 ping 值，保持黑色
+       - 0 ~ 999 ms 视为网络相对畅通，返回绿色
+       - 1000 ~ 4999 ms 视为较慢，返回黄色
+       - 超过 5000 ms 视为网络极慢或无法连接，返回红色
+     */
     private func pingSpeedColor(_ pingSpeed: Int) -> Color {
         // 如果还未获取到 ping 值，保持黑色
         if pingSpeed == 0 {

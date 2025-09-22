@@ -64,10 +64,20 @@ struct TrafficStatsView: View {
 
     // MARK: - 辅助方法
 
-    /// 将字节数转换为带有单位的可读字符串格式，如 “x.xx KB”、“x.xx MB” 或 “x.xx GB”。
-    ///
-    /// - Parameter bytesString: 表示字节数的字符串。如果无法转换为数值，则返回 "0 bytes"。
-    /// - Returns: 带有合适单位（bytes、KB、MB 或 GB）的字符串。
+    /**
+     将字节数转换为带有单位的可读字符串格式，如 “x.xx KB”、“x.xx MB” 或 “x.xx GB”。
+
+     - Parameters:
+       - bytesString: 表示字节数的字符串。如果无法转换为数值，则返回 "0 bytes"。
+
+     - Returns:
+       带有合适单位（bytes、KB、MB 或 GB）的字符串。
+
+     - Throws:
+
+     - Note:
+       如果 bytesString 不能转换为数值，则返回 "0 bytes"。例如，输入 "2048" 返回 "2.00 KB"。
+     */
     private func formatBytes(_ bytesString: String) -> String {
         guard let bytes = Double(bytesString) else { return "0 bytes" }
 

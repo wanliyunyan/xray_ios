@@ -33,9 +33,18 @@ struct VPNControlView: View {
 
     // MARK: - 辅助视图构建
 
-    /// 根据 PacketTunnelManager 的当前状态来返回不同的操作按钮或提示。
-    ///
-    /// - Returns: 不同状态对应的 `View`，包括 “连接” 按钮、“断开” 按钮、加载进度视图、或错误提示文本。
+    /**
+     根据 VPN 的连接状态返回不同的操作按钮或提示视图。
+
+     - Parameters:
+
+     - Returns:
+       不同状态对应的 `View`，包括 “连接” 按钮、“断开” 按钮、加载进度视图或错误提示文本。
+     - Throws:
+
+     - Note:
+       未来可能出现新状态时提供默认提示。
+     */
     @ViewBuilder
     private func vpnControlButton() -> some View {
         switch packetTunnelManager.status {

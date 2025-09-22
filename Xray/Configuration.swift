@@ -20,27 +20,27 @@ import Network
  - 线程模型：标记为 `@MainActor`，便于与依赖的偏好读取、UI 触发流程对齐（不会在方法内部进行 UI 操作）。
  - 依赖与输入：`UserDefaults`（通过 `UtilStore` 读取端口）、`XrayManager`（解析分享链接并产出初始 JSON）。
  - 错误边界：端口缺失/非法、分享链接解析失败、JSON 序列化失败等都会抛错。
-*/
+ */
 @MainActor
 struct Configuration {
     // MARK: - Public Methods
 
     /**
-     生成**用于运行**（含流量统计）的 Xray 配置，并序列化为 JSON Data。
+      生成**用于运行**（含流量统计）的 Xray 配置，并序列化为 JSON Data。
 
-     - 流程概览：
-       1. 从 `UserDefaults` 读取 `socks5Port` 与 `trafficPort`（通过 `UtilStore.loadPort`）；
-       2. 调用 `buildOutInbound(configLink:)` 解析分享链接并得到初始配置（含 outbounds）；
-       3. 注入应用内的 `inbounds / metrics / policy / routing / stats / dns`；
-       4. 递归移除所有空值（`NSNull` / `&lt;null&gt;`）；
-       5. 去除第一个 outbound 的 `sendThrough` 字段（兼容性考虑）；
-       6. 输出为 JSON Data（pretty-printed，便于日志与调试）。
+      - 流程概览：
+        1. 从 `UserDefaults` 读取 `socks5Port` 与 `trafficPort`（通过 `UtilStore.loadPort`）；
+        2. 调用 `buildOutInbound(configLink:)` 解析分享链接并得到初始配置（含 outbounds）；
+        3. 注入应用内的 `inbounds / metrics / policy / routing / stats / dns`；
+        4. 递归移除所有空值（`NSNull` / `&lt;null&gt;`）；
+        5. 去除第一个 outbound 的 `sendThrough` 字段（兼容性考虑）；
+        6. 输出为 JSON Data（pretty-printed，便于日志与调试）。
 
-     - Parameter configLink: 外部复制的分享链接字符串（如 VLESS）。
-     - Returns: 可直接交给 Xray 核心的 JSON 数据。
-     - Throws: 当端口读取失败、分享链接解析失败或 JSON 序列化失败时抛出。
-     - 注意：本方法会注入 metrics/统计相关 inbounds 与路由，适用于“运行态”。
-    */
+      - Parameter configLink: 外部复制的分享链接字符串（如 VLESS）。
+      - Returns: 可直接交给 Xray 核心的 JSON 数据。
+      - Throws: 当端口读取失败、分享链接解析失败或 JSON 序列化失败时抛出。
+      - 注意：本方法会注入 metrics/统计相关 inbounds 与路由，适用于“运行态”。
+     */
     func buildRunConfigurationData(configLink: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口
         guard
@@ -76,16 +76,16 @@ struct Configuration {
     }
 
     /**
-     生成**用于 Ping 测试**的精简 Xray 配置，并序列化为 JSON Data。
+      生成**用于 Ping 测试**的精简 Xray 配置，并序列化为 JSON Data。
 
-     与运行配置的差异：
-     - 仅注入 SOCKS inbound（不包含 metrics/统计端口）；
-     - 省略 `metrics / policy / routing / stats / dns` 中与 Ping 无关的部分，仅保留必要最小集。
+      与运行配置的差异：
+      - 仅注入 SOCKS inbound（不包含 metrics/统计端口）；
+      - 省略 `metrics / policy / routing / stats / dns` 中与 Ping 无关的部分，仅保留必要最小集。
 
-     - Parameter configLink: 外部复制的分享链接字符串。
-     - Returns: 适用于 Ping 请求的 JSON 数据。
-     - Throws: 当端口读取失败、分享链接解析失败或 JSON 序列化失败时抛出。
-    */
+      - Parameter configLink: 外部复制的分享链接字符串。
+      - Returns: 适用于 Ping 请求的 JSON 数据。
+      - Throws: 当端口读取失败、分享链接解析失败或 JSON 序列化失败时抛出。
+     */
     func buildPingConfigurationData(configLink: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口
         guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
@@ -116,12 +116,12 @@ struct Configuration {
     // MARK: - Private Methods
 
     /**
-     移除 `outbounds` 中**第一个 outbound**的 `sendThrough` 字段，以规避部分 Xray 版本的兼容性问题。
+      移除 `outbounds` 中**第一个 outbound**的 `sendThrough` 字段，以规避部分 Xray 版本的兼容性问题。
 
-     - Parameter configuration: 待处理的配置字典。
-     - Returns: 若存在 `outbounds`，将第一个条目的 `sendThrough` 清理后返回；否则原样返回。
-     - 说明：仅处理第一个 outbound；若调用方追加了更多 outbounds，保持其原状。
-    */
+      - Parameter configuration: 待处理的配置字典。
+      - Returns: 若存在 `outbounds`，将第一个条目的 `sendThrough` 清理后返回；否则原样返回。
+      - 说明：仅处理第一个 outbound；若调用方追加了更多 outbounds，保持其原状。
+     */
     private func removeSendThroughFromOutbounds(from configuration: [String: Any]) -> [String: Any] {
         var updatedConfig = configuration
 
@@ -135,16 +135,16 @@ struct Configuration {
     }
 
     /**
-     递归移除配置中所有“空值”，包括 `NSNull` 与字符串 `"<null>"`。
+      递归移除配置中所有“空值”，包括 `NSNull` 与字符串 `"<null>"`。
 
-     - 算法要点：
-       - 对字典：逐键检查；对子字典/字典数组递归处理；
-       - 对标量：若为 `NSNull` 或字面量为 `"<null>";` 则剔除该键；
-       - 其他类型保持不变。
+      - 算法要点：
+        - 对字典：逐键检查；对子字典/字典数组递归处理；
+        - 对标量：若为 `NSNull` 或字面量为 `"<null>";` 则剔除该键；
+        - 其他类型保持不变。
 
-     - Parameter dictionary: 原始配置字典。
-     - Returns: 已清理空值的新字典（不修改入参）。
-    */
+      - Parameter dictionary: 原始配置字典。
+      - Returns: 已清理空值的新字典（不修改入参）。
+     */
     private func removeNullValues(from dictionary: [String: Any]) -> [String: Any] {
         var updatedDictionary = dictionary
 
@@ -164,19 +164,19 @@ struct Configuration {
     }
 
     /**
-     将用户分享的配置链接（如 VLESS）解析为**基础 Xray JSON**，并注入标准化的 outbounds。
+      将用户分享的配置链接（如 VLESS）解析为**基础 Xray JSON**，并注入标准化的 outbounds。
 
-     - 步骤：
-       1. 使用 `XrayManager().convertConfigLinkToXrayJson(configLink:)` 解析分享链接，得到初始字典；
-       2. 确保存在 `outbounds` 数组，若缺失则抛出“解析失败”错误；
-       3. 将第一个 outbound 的 `tag` 规范为 `"proxy"`；
-       4. 追加两个内置 outbound：`freedom`（tag: `"direct"`）与 `blackhole`（tag: `"block"`）；
-       5. 回填到配置字典并返回。
+      - 步骤：
+        1. 使用 `XrayManager().convertConfigLinkToXrayJson(configLink:)` 解析分享链接，得到初始字典；
+        2. 确保存在 `outbounds` 数组，若缺失则抛出“解析失败”错误；
+        3. 将第一个 outbound 的 `tag` 规范为 `"proxy"`；
+        4. 追加两个内置 outbound：`freedom`（tag: `"direct"`）与 `blackhole`（tag: `"block"`）；
+        5. 回填到配置字典并返回。
 
-     - Parameter configLink: 分享链接原文。
-     - Returns: 至少包含规范化 `outbounds` 的配置字典。
-     - Throws: 分享链接无效、或无法解析为合法的 Xray JSON 时抛出。
-    */
+      - Parameter configLink: 分享链接原文。
+      - Returns: 至少包含规范化 `outbounds` 的配置字典。
+      - Throws: 分享链接无效、或无法解析为合法的 Xray JSON 时抛出。
+     */
     private func buildOutInbound(configLink: String) throws -> [String: Any] {
         // 1. 使用 XrayManager 将用户分享的配置链接解析为基础 Xray JSON
         var dataDict = try XrayManager().convertConfigLinkToXrayJson(configLink: configLink)
@@ -217,23 +217,23 @@ struct Configuration {
     }
 
     /**
-     构建应用的 inbounds 集合：**SOCKS 代理**与（可选）**流量统计入口**。
+      构建应用的 inbounds 集合：**SOCKS 代理**与（可选）**流量统计入口**。
 
-     - socksInbound：
-       - 监听 `0.0.0.0`，端口为 `inboundPort`；
-       - 开启 sniffing（`http/tls/quic`），`udp=true`；
-       - `tag = "socks"`，供路由/出站匹配使用。
+      - socksInbound：
+        - 监听 `0.0.0.0`，端口为 `inboundPort`；
+        - 开启 sniffing（`http/tls/quic`），`udp=true`；
+        - `tag = "socks"`，供路由/出站匹配使用。
 
-     - metricsInbound（可选）：
-       - 当 `trafficPort != nil` 时启用；
-       - 使用 `dokodemo-door` 监听 `127.0.0.1:trafficPort`，`tag = "metricsIn"`；
-       - 与路由中的 `metricsOut` 搭配，将度量数据引出到独立出站。
+      - metricsInbound（可选）：
+        - 当 `trafficPort != nil` 时启用；
+        - 使用 `dokodemo-door` 监听 `127.0.0.1:trafficPort`，`tag = "metricsIn"`；
+        - 与路由中的 `metricsOut` 搭配，将度量数据引出到独立出站。
 
-     - Parameters:
-       - inboundPort: SOCKS 代理端口。
-       - trafficPort: 流量统计端口；传入 `nil` 则不创建。
-     - Returns: `[socksInbound]` 或 `[socksInbound, metricsInbound]`。
-    */
+      - Parameters:
+        - inboundPort: SOCKS 代理端口。
+        - trafficPort: 流量统计端口；传入 `nil` 则不创建。
+      - Returns: `[socksInbound]` 或 `[socksInbound, metricsInbound]`。
+     */
     private func buildInbound(
         inboundPort: NWEndpoint.Port,
         trafficPort: NWEndpoint.Port?
@@ -271,9 +271,9 @@ struct Configuration {
     }
 
     /**
-     构建 metrics 出站占位配置（`tag = "metricsOut"`），用于与路由规则联动。
-     实际上不包含复杂字段，仅用于将 `metricsIn` 的流量分流到该出站。
-    */
+      构建 metrics 出站占位配置（`tag = "metricsOut"`），用于与路由规则联动。
+      实际上不包含复杂字段，仅用于将 `metricsIn` 的流量分流到该出站。
+     */
     private func buildMetrics() -> [String: Any] {
         [
             "tag": "metricsOut",
@@ -281,8 +281,8 @@ struct Configuration {
     }
 
     /**
-     构建 `policy` 配置，开启入站/出站的上下行统计开关，便于后续做流量/连接度量。
-    */
+      构建 `policy` 配置，开启入站/出站的上下行统计开关，便于后续做流量/连接度量。
+     */
     private func buildPolicy() -> [String: Any] {
         [
             "system": [
@@ -295,23 +295,23 @@ struct Configuration {
     }
 
     /**
-     构建路由规则集（`routing`）。
+      构建路由规则集（`routing`）。
 
-     - 基线规则：
-       - 设置 `domainStrategy = "AsIs"`；
-       - 将 `metricsIn` 的流量转发到 `metricsOut`。
+      - 基线规则：
+        - 设置 `domainStrategy = "AsIs"`；
+        - 将 `metricsIn` 的流量转发到 `metricsOut`。
 
-     - 非全局模式（`VPNMode.nonGlobal`）下的增强（要求本地 `Constant.assetDirectory` 存在 geo 资源）：
-       - 屏蔽广告域名：`geosite:category-ads-all -&gt; block`；
-       - 国内域名直连：`geosite:private`、`geosite:cn -&gt; direct`；
-       - 国内/私有 IP 直连：`geoip:private`、`geoip:cn -&gt; direct`；
-       - 常见公共 DNS/加速 IP 直连（内置清单）；
-       - 其余端口范围默认走 `"proxy"`。
+      - 非全局模式（`VPNMode.nonGlobal`）下的增强（要求本地 `Constant.assetDirectory` 存在 geo 资源）：
+        - 屏蔽广告域名：`geosite:category-ads-all -&gt; block`；
+        - 国内域名直连：`geosite:private`、`geosite:cn -&gt; direct`；
+        - 国内/私有 IP 直连：`geoip:private`、`geoip:cn -&gt; direct`；
+        - 常见公共 DNS/加速 IP 直连（内置清单）；
+        - 其余端口范围默认走 `"proxy"`。
 
-     - Returns: 完整的 routing 字典。
-     - Throws: 访问本地资源目录失败时抛出。
-     - 注意：全局模式仅保留基线规则；增强规则受本地 geo 资源是否存在的影响。
-    */
+      - Returns: 完整的 routing 字典。
+      - Throws: 访问本地资源目录失败时抛出。
+      - 注意：全局模式仅保留基线规则；增强规则受本地 geo 资源是否存在的影响。
+     */
     private func buildRoute() throws -> [String: Any] {
         var route: [String: Any] = [
             "domainStrategy": "AsIs",
@@ -421,19 +421,19 @@ struct Configuration {
     }
 
     /**
-     构建 DNS 配置，兼顾国内可达性与通用回退。
+      构建 DNS 配置，兼顾国内可达性与通用回退。
 
-     - hosts：
-       - 将 `dns.google` 映射到 `8.8.8.8`。
+      - hosts：
+        - 将 `dns.google` 映射到 `8.8.8.8`。
 
-     - servers：
-       1. 第一条：选择 `1.1.1.1`，并仅对 `googleapis.cn / gstatic.com` 生效（`skipFallback=true`）；
-       2. 若存在本地 geo 文件，追加：
-          - `223.5.5.5` + `geosite:cn` 域名且 `expectIPs=geoip:cn`（提高国内域名解析可控性）；
-       3. 通用回退：`1.1.1.1`、`8.8.8.8`、`https://dns.google/dns-query`。
+      - servers：
+        1. 第一条：选择 `1.1.1.1`，并仅对 `googleapis.cn / gstatic.com` 生效（`skipFallback=true`）；
+        2. 若存在本地 geo 文件，追加：
+           - `223.5.5.5` + `geosite:cn` 域名且 `expectIPs=geoip:cn`（提高国内域名解析可控性）；
+        3. 通用回退：`1.1.1.1`、`8.8.8.8`、`https://dns.google/dns-query`。
 
-     - Returns: 包含 `hosts` 与 `servers` 的 DNS 配置字典。
-    */
+      - Returns: 包含 `hosts` 与 `servers` 的 DNS 配置字典。
+     */
     private func buildDNSConfiguration() -> [String: Any] {
         let fileManager = FileManager.default
         let assetDirectoryPath = Constant.assetDirectory.path

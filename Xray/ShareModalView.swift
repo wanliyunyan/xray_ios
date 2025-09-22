@@ -71,12 +71,21 @@ struct ShareModalView: View {
 
     // MARK: - 业务逻辑
 
-    /// 从本地加载配置信息并生成二维码。
-    ///
-    /// 1. 从 `UserDefaults` 中读取保存的配置信息；
-    /// 2. 若有值则更新 `shareLink`；
-    /// 3. 使用 CoreImage 生成二维码并放大；
-    /// 4. 将生成的二维码写入 `qrCodeImage` 状态以供显示。
+    /**
+     从本地加载配置信息并生成二维码。
+
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       1. 从 `UserDefaults` 中读取保存的配置信息；
+       2. 若有值则更新 `shareLink`；
+       3. 使用 CoreImage 生成二维码并放大；
+       4. 将生成的二维码写入 `qrCodeImage` 状态以供显示。
+     */
     private func generateQRCode() {
         // 1. 从 UserDefaults 加载配置信息
         guard let link = UtilStore.loadString(key: "configLink"),

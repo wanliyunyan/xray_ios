@@ -79,19 +79,35 @@ struct VPNModePickerView: View {
 
     // MARK: - UserDefaults 读写
 
-    /// 通过 `UtilStore` 封装的方法将用户选择的 VPN 模式字符串持久化存储到 UserDefaults。
-    ///
-    /// 该方法确保用户的选择在应用重启后依然有效，提供良好的用户体验。
-    ///
-    /// - Parameter mode: 当前选中的 VPN 模式。
+    /**
+     将用户选择的 VPN 模式持久化到 UserDefaults。
+
+     - Parameters:
+       - mode: 当前选中的 VPN 模式。
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       该方法确保用户的选择在应用重启后依然有效，提供良好的用户体验。
+     */
     private func saveModeToUserDefaults(_ mode: VPNMode) {
         UtilStore.saveString(value: mode.rawValue, key: "VPNMode")
     }
 
-    /// 从 UserDefaults 中加载先前保存的 VPN 模式字符串，并转换为枚举类型。
-    ///
-    /// 如果未找到已保存的值，则默认设置为非全局模式（`nonGlobal`）。
-    /// 该方法保证视图初始化时 `selectedMode` 有合理的默认值，避免状态不一致。
+    /**
+     该方法用于从 UserDefaults 中加载先前保存的 VPN 模式字符串并转换为枚举类型。
+
+     - Parameters:
+
+     - Returns:
+
+     - Throws:
+
+     - Note:
+       如果未找到已保存的值，则默认设置为非全局模式（nonGlobal），确保视图初始化时有合理默认值。
+     */
     private func loadModeFromUserDefaults() {
         if let modeString = UtilStore.loadString(key: "VPNMode"),
            let mode = VPNMode(rawValue: modeString)
