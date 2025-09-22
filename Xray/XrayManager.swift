@@ -15,7 +15,6 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 @MainActor
 struct XrayManager {
-    
     // MARK: - 辅助方法
 
     /// 构造一个 `PingRequest` 请求对象，包含配置文件路径、端口、超时和代理信息。
@@ -35,8 +34,7 @@ struct XrayManager {
             proxy: "socks5://127.0.0.1:\(socks5Port)" // 使用的代理地址
         )
     }
-    
-    
+
     /// 将底层返回的 Base64 编码结果解码并解析为 JSON，从中提取 Ping 延迟值。
     ///
     /// 解析过程分为三步：
@@ -73,7 +71,7 @@ struct XrayManager {
 
         return nil
     }
-    
+
     /// 将 JSON 格式的配置传入 LibXray 并返回 Base64 编码字符串。
     /// 遇到错误时会抛出异常。
     ///
@@ -90,7 +88,7 @@ struct XrayManager {
         }
         return base64String
     }
-    
+
     /// 执行完整的 Ping 测试流程。
     ///
     /// 流程包括：
@@ -107,7 +105,8 @@ struct XrayManager {
     func performPing() async throws -> Int {
         // 1. 读取配置
         guard let savedConfigLink = UtilStore.loadString(key: "configLink"),
-              !savedConfigLink.isEmpty else {
+              !savedConfigLink.isEmpty
+        else {
             throw NSError(domain: "PingView",
                           code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"])
@@ -156,17 +155,18 @@ struct XrayManager {
     func getVersion() throws -> String {
         // 1. 从 LibXray 获取版本号的 Base64 字符串
         let base64Version = LibXrayXrayVersion()
-        
+
         // 2. 解码 Base64
         guard let decodedData = Data(base64Encoded: base64Version),
-              let decodedString = String(data: decodedData, encoding: .utf8) else {
+              let decodedString = String(data: decodedData, encoding: .utf8)
+        else {
             throw NSError(
                 domain: "XrayManager",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "版本号解码失败"]
             )
         }
-        
+
         // 3. 解析 JSON 获取版本号
         let jsonData = Data(decodedString.utf8)
         let versionResponse = try JSONDecoder().decode(VersionResponse.self, from: jsonData)
@@ -180,7 +180,7 @@ struct XrayManager {
             )
         }
     }
-    
+
     /// 查询当前流量统计信息（上下行字节数）。
     ///
     /// 该方法解析多层嵌套 JSON，若成功则返回元组 `(downlink, uplink)` 表示流量统计。
@@ -190,14 +190,14 @@ struct XrayManager {
     func getTrafficStats(trafficPort: NWEndpoint.Port) -> (downlink: Int, uplink: Int)? {
         // 1. 组装可访问的流量查询地址
         let trafficQueryString = "http://127.0.0.1:\(trafficPort)/debug/vars"
-        
+
         // 2. 转为 Data 并进行 Base64 编码
         guard let trafficData = trafficQueryString.data(using: .utf8) else {
             logger.error("无法将字符串转换为 Data")
             return nil
         }
         let base64TrafficString = trafficData.base64EncodedString()
-        
+
         // 3. 使用已保存的 base64TrafficString 向 LibXray 发送查询请求
         let responseBase64 = LibXrayQueryStats(base64TrafficString)
 
@@ -208,7 +208,7 @@ struct XrayManager {
             logger.error("无法解码 LibXrayQueryStats 返回的数据")
             return nil
         }
-        
+
         // 1. 将字符串转换为 JSON Data
         guard let jsonData = decodedString.data(using: .utf8) else {
             logger.error("无法将响应字符串转换为 JSON Data")
@@ -269,13 +269,12 @@ struct XrayManager {
 
             return (downlink: socksDownlink, uplink: socksUplink)
 
-
         } catch {
             logger.error("解析 JSON 时出错: \(error)")
             return nil
         }
     }
-    
+
     /// 调用底层获取两个空闲端口。
     ///
     /// 解析流程为 Base64 解码 → JSON 解析 → 端口数组提取。
@@ -302,17 +301,17 @@ struct XrayManager {
                     print("success 字段不是 Bool 或值不为 true: \(jsonObject["success"] ?? "nil")")
                     return [Constant.socks5Port, Constant.trafficPort]
                 }
-                
+
                 guard let dataDict = jsonObject["data"] as? [String: Any] else {
                     print("data 字段缺失或类型错误: \(jsonObject["data"] ?? "nil")")
                     return [Constant.socks5Port, Constant.trafficPort]
                 }
-                
+
                 guard let portsInt = dataDict["ports"] as? [Int], portsInt.count == 2 else {
                     print("ports 字段缺失或类型错误: \(dataDict["ports"] ?? "nil")")
                     return [Constant.socks5Port, Constant.trafficPort]
                 }
-                
+
                 // 转换成 NWEndpoint.Port
                 let ports = portsInt.compactMap { NWEndpoint.Port(rawValue: UInt16($0)) }
                 return ports
@@ -322,7 +321,7 @@ struct XrayManager {
         }
         return [Constant.socks5Port, Constant.trafficPort]
     }
-    
+
     /// 将分享链接转换为 Xray JSON 配置，解析并返回字典。
     /// 遇到错误时会抛出异常。
     ///

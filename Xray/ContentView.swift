@@ -13,17 +13,14 @@ import SwiftUI
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
 
-
-
 // MARK: - 主视图
 
 /// 整个应用的核心主视图，负责展示和管理用户粘贴、二维码扫描、VPN 连接、流量统计、分享等功能模块。
 /// 这是用户交互的主要入口，整合了多种功能，提供便捷的操作界面。
 @MainActor
 struct ContentView: View {
-    
     private let xrayManager = XrayManager()
-    
+
     // MARK: - 环境对象
 
     /// 全局共享的 `PacketTunnelManager`，用于获取和更新当前 VPN 的连接状态。
@@ -251,5 +248,4 @@ struct ContentView: View {
         Util.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
         isShowingScanner = false
     }
-
 }

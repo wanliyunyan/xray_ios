@@ -1,1 +1,1 @@
---exclude Pods,build            # 排除 Pods 和 build 文件夹
+--exclude Pods/,Carthage/,Build/          # 排除文件夹

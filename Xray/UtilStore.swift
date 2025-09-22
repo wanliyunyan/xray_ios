@@ -13,7 +13,7 @@ import Network
 enum UtilStore {
     private static let suiteName = Constant.groupName
     private static var userDefaults: UserDefaults {
-        return UserDefaults(suiteName: suiteName)!
+        UserDefaults(suiteName: suiteName)!
     }
 
     /// 保存字符串到 UserDefaults。
@@ -106,7 +106,7 @@ enum UtilStore {
     /// - Parameters:
     ///   - value: 要存储的 Codable 类型对象。
     ///   - key: 存储对应的键。
-    static func saveCodableObject<T: Codable>(value: T, key: String) {
+    static func saveCodableObject(value: some Codable, key: String) {
         if let data = try? JSONEncoder().encode(value) {
             userDefaults.set(data, forKey: key)
         }

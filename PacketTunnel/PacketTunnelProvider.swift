@@ -33,7 +33,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     ///
     /// - Parameter options: 传递给隧道的键值对信息，通常包含 `socks5Port` 和 `path` 等。
     /// - Throws: 若缺失必要信息或启动过程中发生错误，抛出相应的错误。
-    override func startTunnel(options: [String : NSObject]?) async throws {
+    override func startTunnel(options: [String: NSObject]?) async throws {
         // 1. 从 options 中提取 SOCKS5 端口与配置文件路径
         guard let socks5Port = options?["socks5Port"] as? Int else {
             throw NSError(domain: "PacketTunnel", code: -1,

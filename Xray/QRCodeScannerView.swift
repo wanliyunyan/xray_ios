@@ -78,7 +78,7 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
                 DispatchQueue.main.async {
                     if granted {
                         // 再次初始化扫描界面
-                        _ = self.setupScanner(on: viewController, coordinator: context.coordinator)
+                        _ = setupScanner(on: viewController, coordinator: context.coordinator)
                     } else {
                         // 权限被拒绝，您可以在此处进行 UI 提示
                     }

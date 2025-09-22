@@ -22,10 +22,9 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 /// 以便于界面实时更新和状态管理。
 @MainActor
 final class PacketTunnelManager: ObservableObject {
-    
     /// 用于生成 Xray 配置请求字符串，辅助构建运行时所需的配置数据。
     private let xrayManager = XrayManager()
-    
+
     // MARK: - 公有静态属性
 
     /// 全局单例，用于在 App 内统一管理 VPN。
@@ -214,7 +213,7 @@ final class PacketTunnelManager: ObservableObject {
     ///
     /// - Throws: 当无法初始化 manager、或端口 / 配置读取失败、或启动出错时，抛出相应错误。
     func start() async throws {
-        guard let manager = manager else {
+        guard let manager else {
             throw NSError(domain: "PacketTunnelManager", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "Manager 未初始化"])
         }
@@ -255,7 +254,7 @@ final class PacketTunnelManager: ObservableObject {
             datDir: Constant.assetDirectory.path,
             configJSON: mergedConfigString
         )
-        
+
         // 5. 正式启动 VPN，传入 SOCKS 端口和配置文件路径
         do {
             try manager.connection.startVPNTunnel(options: [

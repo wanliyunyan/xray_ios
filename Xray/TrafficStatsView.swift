@@ -15,9 +15,8 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 /// 一个显示网络流量统计信息的视图，包含下行和上行流量，并每秒更新一次。
 struct TrafficStatsView: View {
-    
     private let xrayManager = XrayManager()
-    
+
     // MARK: - 环境与状态
 
     /// 通过 @EnvironmentObject 监听应用内的 PacketTunnelManager，用于获取 VPN/隧道的连接状态。

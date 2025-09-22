@@ -10,7 +10,7 @@ import SwiftUI
 /// 显示 Xray 版本号的视图。
 struct VersionView: View {
     private let xrayManager = XrayManager()
-    
+
     // MARK: - State
 
     /// 用于存储当前版本号。如果请求尚未完成，则显示 "Loading..."。

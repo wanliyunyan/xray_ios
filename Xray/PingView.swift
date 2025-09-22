@@ -16,9 +16,8 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 /// 一个用于测试网络延迟（Ping）的视图，展示并记录从服务器返回的网速信息。
 struct PingView: View {
-    
     private let xrayManager = XrayManager()
-    
+
     // MARK: - 环境变量
 
     /// 自定义的 PacketTunnelManager，用于管理代理隧道的连接状态。

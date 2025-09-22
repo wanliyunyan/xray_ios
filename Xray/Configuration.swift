@@ -162,7 +162,7 @@ struct Configuration {
                 userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败，未找到 outbounds"]
             )
         }
-        
+
         // 4. 将第一个 outbound 的 tag 改为 "proxy"
         if var firstOutbound = outboundsArray.first {
             firstOutbound["tag"] = "proxy"
@@ -233,7 +233,7 @@ struct Configuration {
     ///
     /// - Returns: 带 `metricsOut` tag 的字典.
     private func buildMetrics() -> [String: Any] {
-        return [
+        [
             "tag": "metricsOut",
         ]
     }
@@ -242,7 +242,7 @@ struct Configuration {
     ///
     /// - Returns: 包含策略设置的字典.
     private func buildPolicy() -> [String: Any] {
-        return [
+        [
             "system": [
                 "statsInboundDownlink": true,
                 "statsInboundUplink": true,

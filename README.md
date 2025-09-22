@@ -32,7 +32,7 @@ Only VLESS links have been tested. Other types of links have not been tested, so
 
 ## 格式化
 ```shell
-swiftformat .
+swiftformat . --swift-version 6
 ```
 
 ## ipv6
