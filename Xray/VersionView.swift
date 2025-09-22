@@ -32,10 +32,18 @@ struct VersionView: View {
 
     // MARK: - 业务逻辑
 
-    /// 从 LibXray 获取版本号的 Base64 字符串，并进行解码、解析。
-    ///
-    /// 调用 `LibXrayXrayVersion()` 获取版本信息的 Base64 表示，然后解码并转为 JSON 字符串，
-    /// 最后调用 `XrayManager.parseVersion(jsonString:)` 进一步解析。
+    /**
+     获取 Xray 的版本号并更新到界面。
+     
+     处理逻辑：
+     - 调用 `xrayManager.getVersion()` 获取版本号；
+     - 如果成功，赋值给 `versionText`，显示在界面上；
+     - 如果失败，捕获错误并显示错误提示。
+     
+     调用时机：在 `onAppear` 生命周期方法中触发，保证界面加载时自动显示版本号。
+     
+     界面效果：初始值为 `"Loading..."`，完成后显示真实版本或错误信息。
+     */
     private func fetchVersion() {
         do {
             versionText = try xrayManager.getVersion()

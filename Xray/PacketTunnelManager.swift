@@ -23,36 +23,51 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 @MainActor
 final class PacketTunnelManager: ObservableObject {
     /// 用于生成 Xray 配置请求字符串，辅助构建运行时所需的配置数据。
+    ///
+    /// 该属性是 `XrayManager` 的实例，负责将配置数据转换为 Xray 运行所需的请求格式。
+    /// 用于在启动 VPN 时生成 base64 编码的配置字符串，供隧道使用。
     private let xrayManager = XrayManager()
 
     // MARK: - 公有静态属性
 
     /// 全局单例，用于在 App 内统一管理 VPN。
+    ///
+    /// 通过该属性可以获取到唯一的 `PacketTunnelManager` 实例，
+    /// 便于在不同模块或视图中访问和控制 VPN 的连接状态及操作。
     static let shared = PacketTunnelManager()
 
     // MARK: - 私有属性
 
     /// 用于存储任意符合 Combine 取消协议的对象，用以在 deinit 时解除订阅或取消任务。
+    ///
+    /// 该集合保存所有通过 Combine 创建的订阅，确保在对象销毁时能正确取消订阅，避免内存泄漏。
     private var cancellables = Set<AnyCancellable>()
 
     /// VPN 的核心配置载体，保存启动所需的全部信息，包括协议配置、连接状态等。
+    ///
+    /// 该属性为 `NETunnelProviderManager` 的可选实例，管理 VPN 的配置和连接。
+    /// 使用 `@Published` 属性包装器以便在状态变更时通知观察者刷新界面。
     @Published private var manager: NETunnelProviderManager?
 
     // MARK: - 计算属性
 
     /// 返回当前 VPN 的连接状态，如果尚未初始化或无可用配置则返回 nil。
     ///
-    /// 不同状态的应用场景：
+    /// 状态说明：
     /// - `.connected`：VPN 已成功连接，网络流量已通过隧道。
     /// - `.connecting`：VPN 正在尝试连接中，等待建立隧道。
     /// - `.disconnected`：VPN 未连接，处于空闲状态。
     /// - `.disconnecting`：VPN 正在断开连接。
     /// - `.invalid`：VPN 配置无效或不可用。
+    ///
+    /// - Returns: 当前 VPN 连接状态的枚举值，或 nil 表示未初始化。
     var status: NEVPNStatus? {
         manager?.connection.status
     }
 
     /// 返回当前 VPN 的连接开始时间（`connectedDate`），如果尚未连接或无可用配置则为 nil。
+    ///
+    /// - Returns: VPN 连接成功时的开始时间，或 nil 表示未连接。
     var connectedDate: Date? {
         manager?.connection.connectedDate
     }
@@ -60,6 +75,9 @@ final class PacketTunnelManager: ObservableObject {
     // MARK: - 初始化
 
     /// 构造函数，在创建单例时自动调用 `setupManager()` 来加载或创建 VPN 配置。
+    ///
+    /// 该初始化方法为私有，确保类的单例模式。
+    /// 初始化过程中异步加载或创建 VPN 配置，并设置状态监听。
     private init() {
         Task {
             await setupManager()
@@ -70,8 +88,10 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 初始化并设置 VPN 的基础配置，若成功则监听连接状态的变化。
     ///
-    /// 该方法既会尝试加载已有的 VPN 配置，也会在没有配置时自动创建新的配置，
-    /// 并通过通知中心监听 VPN 连接状态变化，以便及时更新界面和内部状态。
+    /// 该方法尝试加载已有的 `NETunnelProviderManager` 配置，若无则创建新配置。
+    /// 成功后通过通知中心监听 VPN 连接状态变化，确保界面能实时响应状态更新。
+    ///
+    /// - Important: 异步方法，调用时需使用 `await`。
     private func setupManager() async {
         // 尝试加载或新建 `NETunnelProviderManager`
         manager = await loadTunnelProviderManager()
@@ -93,11 +113,11 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 从系统加载所有自定义的 TunnelProviderManager，如无可用则创建新的。
     ///
-    /// 除了加载已有配置外，还会自动初始化配置参数，如 `serverAddress` 和 `excludeLocalNetworks`，
-    /// 确保新建的 VPN 配置符合预期。
+    /// 该方法会尝试从系统偏好设置中加载已有的 VPN 配置，
+    /// 若未找到符合条件的配置，则新建一个并进行基础参数配置。
     ///
-    /// - Returns: 返回加载或新建的 `NETunnelProviderManager`。
-    /// - Throws: 若在加载过程中出现系统错误，可能抛出异常（已在方法内捕获并返回 nil）。
+    /// - Returns: 返回加载或新建的 `NETunnelProviderManager` 实例，若发生错误返回 nil。
+    /// - Note: 该方法内部捕获异常并记录日志，不会向外抛出异常。
     private func loadTunnelProviderManager() async -> NETunnelProviderManager? {
         do {
             // 尝试从系统中加载所有可用的 NETunnelProviderManager
@@ -134,10 +154,11 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 将给定的 `NETunnelProviderManager` 保存到系统偏好并重新加载，以使配置生效。
     ///
-    /// 保存到系统偏好后必须立即 reload，以确保配置立即生效，避免配置不同步导致的启动失败。
+    /// 该方法确保 VPN 配置被系统正确识别并立即生效，
+    /// 避免因配置不同步导致的启动失败。
     ///
     /// - Parameter manager: 要保存的 `NETunnelProviderManager` 实例。
-    /// - Throws: 如果保存或加载流程出现错误则抛出。
+    /// - Throws: 如果保存或加载流程出现错误则抛出异常。
     private func saveAndLoad(manager: NETunnelProviderManager) async throws {
         do {
             manager.isEnabled = true
@@ -157,9 +178,10 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 检测系统中是否有其他的自定义 VPN 在连接或正在连接中。
     ///
-    /// 该检查是为了避免多个 VPN 同时运行导致的冲突和连接异常，保证当前 VPN 配置的唯一性。
+    /// 该检查用于避免多个 VPN 同时运行导致的冲突和连接异常，保证当前 VPN 配置的唯一性。
     ///
-    /// - Returns: 如果检测到其他 VPN 正在连接/已连接，则返回 `true`；否则为 `false`。
+    /// - Returns: 如果检测到其他 VPN 正在连接或已连接，则返回 `true`；否则返回 `false`。
+    /// - Note: 该方法内部捕获异常并记录日志，不会向外抛出异常。
     private func checkOtherVPNs() async -> Bool {
         do {
             let managers = try await NETunnelProviderManager.loadAllFromPreferences()
@@ -178,7 +200,8 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 当检测到有其他 VPN 正在使用时，弹出系统原生弹窗提示用户进行切换。
     ///
-    /// 这是系统层级的交互提示，提醒用户手动切换 VPN 配置，避免多 VPN 冲突。
+    /// 该方法在主线程执行，呈现一个 UIAlertController 提示用户手动切换 VPN 配置，
+    /// 避免多个 VPN 同时运行导致的冲突。
     private func showSwitchVPNAlert() {
         DispatchQueue.main.async {
             let alert = UIAlertController(
@@ -204,7 +227,7 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 启动 VPN，并传入必要的配置信息与端口。
     ///
-    /// 启动流程说明：
+    /// 启动流程：
     /// 1. 检查是否有其他 VPN 正在运行，避免冲突。
     /// 2. 保存并加载当前配置，确保配置同步。
     /// 3. 从 UserDefaults 加载 SOCKS 端口和配置链接。
@@ -243,7 +266,7 @@ final class PacketTunnelManager: ObservableObject {
                           userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"])
         }
 
-        // 4. 构建 Xray 配置文件内容并写入 App Group 容器
+        // 4. 构建 Xray 配置文件内容并转换为 base64 字符串
         let configData = try Configuration().buildRunConfigurationData(configLink: configLink)
         guard let mergedConfigString = String(data: configData, encoding: .utf8) else {
             throw NSError(domain: "ConfigDataError", code: -1,
@@ -271,6 +294,7 @@ final class PacketTunnelManager: ObservableObject {
     /// 停止 VPN 连接。
     ///
     /// 通过调用系统 API 停止隧道连接，释放相关资源。
+    /// 该方法同步执行，无返回值。
     func stop() {
         manager?.connection.stopVPNTunnel()
     }
@@ -281,6 +305,7 @@ final class PacketTunnelManager: ObservableObject {
     /// 避免竞态条件和连接冲突，确保重启过程顺利。
     ///
     /// - Throws: 若在停止或启动过程中出现错误，则可能抛出异常。
+    /// - Note: 异步方法，调用时需使用 `await`。
     func restart() async throws {
         // 1. 先停止 VPN
         stop()

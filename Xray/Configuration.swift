@@ -8,30 +8,39 @@
 import Foundation
 import Network
 
-/// `Configuration` 负责生成并整合 Xray 的最终配置.
-///
-/// - 主要作用：
-///   1. 解析用户分享的链接（如 VLESS 等）；
-///   2. 加入本地 inbounds、metrics、policy、routing、stats、dns 等；
-///   3. 去除特定无用字段，防止 Xray 兼容性问题；
-///   4. 最终将配置序列化为 JSON Data 供 Xray 使用.
-///
-/// 配置生成流程包括以下主要步骤：
-///  1. 从 UserDefaults 中加载 SOCKS 端口和流量统计端口；
-///  2. 基于分享链接解析生成 outbounds；
-///  3. 合并 inbound、metrics、policy、routing、stats、dns；
-///  4. 递归移除空值；
-///  5. 去除 `sendThrough`；
-///  6. 将配置序列化输出。
+/**
+ Configuration：负责**从外部分享链接生成完整且可运行的 Xray 配置**（JSON Data），并针对应用的“全局/非全局模式”与本地 geo 资源进行增强与裁剪。
+
+ - 设计目标：
+   - 将用户分享链接（如 VLESS 等）解析为基础 outbounds；
+   - 合并应用侧固定的 inbounds / metrics / policy / routing / dns 等模块；
+   - 清理潜在的兼容性问题（如 `sendThrough`、空值）；
+   - 最终生成可直接交给 Xray 核心使用的 JSON Data。
+
+ - 线程模型：标记为 `@MainActor`，便于与依赖的偏好读取、UI 触发流程对齐（不会在方法内部进行 UI 操作）。
+ - 依赖与输入：`UserDefaults`（通过 `UtilStore` 读取端口）、`XrayManager`（解析分享链接并产出初始 JSON）。
+ - 错误边界：端口缺失/非法、分享链接解析失败、JSON 序列化失败等都会抛错。
+*/
 @MainActor
 struct Configuration {
     // MARK: - Public Methods
 
-    /// 生成最终可用于 Xray 运行的 JSON 格式二进制配置.
-    ///
-    /// - Parameter config: 用户从外部复制的分享链接字符串.
-    /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
-    /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
+    /**
+     生成**用于运行**（含流量统计）的 Xray 配置，并序列化为 JSON Data。
+
+     - 流程概览：
+       1. 从 `UserDefaults` 读取 `socks5Port` 与 `trafficPort`（通过 `UtilStore.loadPort`）；
+       2. 调用 `buildOutInbound(configLink:)` 解析分享链接并得到初始配置（含 outbounds）；
+       3. 注入应用内的 `inbounds / metrics / policy / routing / stats / dns`；
+       4. 递归移除所有空值（`NSNull` / `&lt;null&gt;`）；
+       5. 去除第一个 outbound 的 `sendThrough` 字段（兼容性考虑）；
+       6. 输出为 JSON Data（pretty-printed，便于日志与调试）。
+
+     - Parameter configLink: 外部复制的分享链接字符串（如 VLESS）。
+     - Returns: 可直接交给 Xray 核心的 JSON 数据。
+     - Throws: 当端口读取失败、分享链接解析失败或 JSON 序列化失败时抛出。
+     - 注意：本方法会注入 metrics/统计相关 inbounds 与路由，适用于“运行态”。
+    */
     func buildRunConfigurationData(configLink: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口
         guard
@@ -66,11 +75,17 @@ struct Configuration {
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
 
-    /// 生成最终可用于 Xray ping的 JSON 格式二进制配置.
-    ///
-    /// - Parameter config: 用户从外部复制的分享链接字符串.
-    /// - Returns: 封装完成的 JSON Data，Xray 可直接使用.
-    /// - Throws: 当端口加载失败、或 JSON 生成失败时抛出错误.
+    /**
+     生成**用于 Ping 测试**的精简 Xray 配置，并序列化为 JSON Data。
+
+     与运行配置的差异：
+     - 仅注入 SOCKS inbound（不包含 metrics/统计端口）；
+     - 省略 `metrics / policy / routing / stats / dns` 中与 Ping 无关的部分，仅保留必要最小集。
+
+     - Parameter configLink: 外部复制的分享链接字符串。
+     - Returns: 适用于 Ping 请求的 JSON 数据。
+     - Throws: 当端口读取失败、分享链接解析失败或 JSON 序列化失败时抛出。
+    */
     func buildPingConfigurationData(configLink: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口
         guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
@@ -100,10 +115,13 @@ struct Configuration {
 
     // MARK: - Private Methods
 
-    /// 删除 outbounds 中的第一个 sendThrough 字段，防止 Xray 某些版本出现兼容性问题.
-    ///
-    /// - Parameter configuration: 当前 Xray 配置字典.
-    /// - Returns: 处理后、无 `sendThrough` 的配置字典.
+    /**
+     移除 `outbounds` 中**第一个 outbound**的 `sendThrough` 字段，以规避部分 Xray 版本的兼容性问题。
+
+     - Parameter configuration: 待处理的配置字典。
+     - Returns: 若存在 `outbounds`，将第一个条目的 `sendThrough` 清理后返回；否则原样返回。
+     - 说明：仅处理第一个 outbound；若调用方追加了更多 outbounds，保持其原状。
+    */
     private func removeSendThroughFromOutbounds(from configuration: [String: Any]) -> [String: Any] {
         var updatedConfig = configuration
 
@@ -116,10 +134,17 @@ struct Configuration {
         return updatedConfig
     }
 
-    /// 递归移除字典中所有为 NSNull 或 "<null>" 的值.
-    ///
-    /// - Parameter dictionary: 待处理的 Xray 配置字典.
-    /// - Returns: 移除空值后的新字典.
+    /**
+     递归移除配置中所有“空值”，包括 `NSNull` 与字符串 `"<null>"`。
+
+     - 算法要点：
+       - 对字典：逐键检查；对子字典/字典数组递归处理；
+       - 对标量：若为 `NSNull` 或字面量为 `"<null>";` 则剔除该键；
+       - 其他类型保持不变。
+
+     - Parameter dictionary: 原始配置字典。
+     - Returns: 已清理空值的新字典（不修改入参）。
+    */
     private func removeNullValues(from dictionary: [String: Any]) -> [String: Any] {
         var updatedDictionary = dictionary
 
@@ -138,23 +163,25 @@ struct Configuration {
         return updatedDictionary
     }
 
-    /// 将用户分享的配置链接（如 VLESS）解析为基础 Xray JSON，同时添加自定义 outbounds.
-    ///
-    /// 步骤：
-    /// 1. 将原始字符串转成 Data，并 Base64 编码；
-    /// 2. 调用 LibXrayConvertShareLinksToXrayJson 转换；
-    /// 3. 对转换结果再次 Base64 解码并转为字典；
-    /// 4. 将第一个 outbound 的 tag 改为 "proxy"；
-    /// 5. 追加 freedom("direct")、blackhole("block") 作为额外 outbounds；
-    ///
-    /// - Parameter config: 配置分享链接.
-    /// - Returns: 含 outbounds 的 Xray 配置字典.
-    /// - Throws: 当链接字符串无效或解析 Xray JSON 失败时抛出.
+    /**
+     将用户分享的配置链接（如 VLESS）解析为**基础 Xray JSON**，并注入标准化的 outbounds。
+
+     - 步骤：
+       1. 使用 `XrayManager().convertConfigLinkToXrayJson(configLink:)` 解析分享链接，得到初始字典；
+       2. 确保存在 `outbounds` 数组，若缺失则抛出“解析失败”错误；
+       3. 将第一个 outbound 的 `tag` 规范为 `"proxy"`；
+       4. 追加两个内置 outbound：`freedom`（tag: `"direct"`）与 `blackhole`（tag: `"block"`）；
+       5. 回填到配置字典并返回。
+
+     - Parameter configLink: 分享链接原文。
+     - Returns: 至少包含规范化 `outbounds` 的配置字典。
+     - Throws: 分享链接无效、或无法解析为合法的 Xray JSON 时抛出。
+    */
     private func buildOutInbound(configLink: String) throws -> [String: Any] {
-        // Use XrayManager to convert config link into base Xray JSON
+        // 1. 使用 XrayManager 将用户分享的配置链接解析为基础 Xray JSON
         var dataDict = try XrayManager().convertConfigLinkToXrayJson(configLink: configLink)
 
-        // Ensure outbounds array exists
+        // 2. 校验解析结果中是否包含 outbounds 数组；若缺失则视为配置无效并抛错
         guard var outboundsArray = dataDict["outbounds"] as? [[String: Any]] else {
             throw NSError(
                 domain: "InvalidXrayJson",
@@ -163,13 +190,15 @@ struct Configuration {
             )
         }
 
-        // 4. 将第一个 outbound 的 tag 改为 "proxy"
+        // 3. 将第一个 outbound 的 tag 标准化为 "proxy"，确保后续路由规则能够正确匹配
         if var firstOutbound = outboundsArray.first {
             firstOutbound["tag"] = "proxy"
             outboundsArray[0] = firstOutbound
         }
 
-        // 5. 追加 freedom 和 blackhole
+        // 4. 追加内置出站配置：
+        //    - freedom：直连（tag: direct）
+        //    - blackhole：阻断（tag: block）
         let freedomObject: [String: Any] = [
             "protocol": "freedom",
             "tag": "direct",
@@ -182,17 +211,29 @@ struct Configuration {
         ]
         outboundsArray.append(blockObject)
 
-        // 6. 更新 outbounds
+        // 5. 更新配置字典中的 outbounds，并返回最终结果
         dataDict["outbounds"] = outboundsArray
         return dataDict
     }
 
-    /// 构建两个 inbound 配置：一个用于 SOCKS 代理服务，一个用于流量统计.
-    ///
-    /// - Parameters:
-    ///   - inboundPort: SOCKS 代理端口.
-    ///   - trafficPort: 流量统计端口.
-    /// - Returns: 含 socks、metricsIn 的 inbound 数组.
+    /**
+     构建应用的 inbounds 集合：**SOCKS 代理**与（可选）**流量统计入口**。
+
+     - socksInbound：
+       - 监听 `0.0.0.0`，端口为 `inboundPort`；
+       - 开启 sniffing（`http/tls/quic`），`udp=true`；
+       - `tag = "socks"`，供路由/出站匹配使用。
+
+     - metricsInbound（可选）：
+       - 当 `trafficPort != nil` 时启用；
+       - 使用 `dokodemo-door` 监听 `127.0.0.1:trafficPort`，`tag = "metricsIn"`；
+       - 与路由中的 `metricsOut` 搭配，将度量数据引出到独立出站。
+
+     - Parameters:
+       - inboundPort: SOCKS 代理端口。
+       - trafficPort: 流量统计端口；传入 `nil` 则不创建。
+     - Returns: `[socksInbound]` 或 `[socksInbound, metricsInbound]`。
+    */
     private func buildInbound(
         inboundPort: NWEndpoint.Port,
         trafficPort: NWEndpoint.Port?
@@ -229,18 +270,19 @@ struct Configuration {
         return [socksInbound, metricsInbound]
     }
 
-    /// 构建 metrics 配置（仅含一个简单的 tag）.
-    ///
-    /// - Returns: 带 `metricsOut` tag 的字典.
+    /**
+     构建 metrics 出站占位配置（`tag = "metricsOut"`），用于与路由规则联动。
+     实际上不包含复杂字段，仅用于将 `metricsIn` 的流量分流到该出站。
+    */
     private func buildMetrics() -> [String: Any] {
         [
             "tag": "metricsOut",
         ]
     }
 
-    /// 构建 policy 配置，用于统计上下行流量.
-    ///
-    /// - Returns: 包含策略设置的字典.
+    /**
+     构建 `policy` 配置，开启入站/出站的上下行统计开关，便于后续做流量/连接度量。
+    */
     private func buildPolicy() -> [String: Any] {
         [
             "system": [
@@ -252,10 +294,24 @@ struct Configuration {
         ]
     }
 
-    /// 根据 VPN 模式构建路由规则，主要针对非全局模式添加一些直连或屏蔽策略.
-    ///
-    /// - Throws: 访问文件失败时抛出.
-    /// - Returns: 包含 routing 配置信息的字典.
+    /**
+     构建路由规则集（`routing`）。
+
+     - 基线规则：
+       - 设置 `domainStrategy = "AsIs"`；
+       - 将 `metricsIn` 的流量转发到 `metricsOut`。
+
+     - 非全局模式（`VPNMode.nonGlobal`）下的增强（要求本地 `Constant.assetDirectory` 存在 geo 资源）：
+       - 屏蔽广告域名：`geosite:category-ads-all -&gt; block`；
+       - 国内域名直连：`geosite:private`、`geosite:cn -&gt; direct`；
+       - 国内/私有 IP 直连：`geoip:private`、`geoip:cn -&gt; direct`；
+       - 常见公共 DNS/加速 IP 直连（内置清单）；
+       - 其余端口范围默认走 `"proxy"`。
+
+     - Returns: 完整的 routing 字典。
+     - Throws: 访问本地资源目录失败时抛出。
+     - 注意：全局模式仅保留基线规则；增强规则受本地 geo 资源是否存在的影响。
+    */
     private func buildRoute() throws -> [String: Any] {
         var route: [String: Any] = [
             "domainStrategy": "AsIs",
@@ -364,9 +420,20 @@ struct Configuration {
         return route
     }
 
-    /// 构建 DNS 配置，包含 hosts 映射与自定义的 DNS 服务器.
-    ///
-    /// - Returns: 包含 hosts、servers 字段的 DNS 配置字典.
+    /**
+     构建 DNS 配置，兼顾国内可达性与通用回退。
+
+     - hosts：
+       - 将 `dns.google` 映射到 `8.8.8.8`。
+
+     - servers：
+       1. 第一条：选择 `1.1.1.1`，并仅对 `googleapis.cn / gstatic.com` 生效（`skipFallback=true`）；
+       2. 若存在本地 geo 文件，追加：
+          - `223.5.5.5` + `geosite:cn` 域名且 `expectIPs=geoip:cn`（提高国内域名解析可控性）；
+       3. 通用回退：`1.1.1.1`、`8.8.8.8`、`https://dns.google/dns-query`。
+
+     - Returns: 包含 `hosts` 与 `servers` 的 DNS 配置字典。
+    */
     private func buildDNSConfiguration() -> [String: Any] {
         let fileManager = FileManager.default
         let assetDirectoryPath = Constant.assetDirectory.path
