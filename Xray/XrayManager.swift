@@ -101,7 +101,7 @@ struct XrayManager {
      */
     func makeRunFromJSONRequest(datDir: String, configJSON: String) throws -> String {
         var error: NSError?
-        let base64String = LibXrayNewXrayRunFromJSONRequest(datDir, configJSON, &error)
+        let base64String = LibXrayNewXrayRunFromJSONRequest(datDir, "", configJSON, &error)
         if let err = error {
             throw err
         }
@@ -265,7 +265,8 @@ struct XrayManager {
 
             // 判断 success 是否为 1，表示请求成功
             guard let success = jsonObject["success"] as? Int, success == 1 else {
-                logger.error("解析失败: success 字段不是 1")
+                let errorMessage = jsonObject["error"] as? String ?? "未知错误"
+                logger.error("\(errorMessage)")
                 return nil
             }
 
