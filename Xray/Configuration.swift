@@ -39,7 +39,6 @@ struct Configuration {
       - Parameter configLink: 外部复制的分享链接字符串（如 VLESS）。
       - Returns: 可直接交给 Xray 核心的 JSON 数据。
       - Throws: 当端口读取失败、分享链接解析失败或 JSON 序列化失败时抛出。
-      - 注意：本方法会注入 metrics/统计相关 inbounds 与路由，适用于“运行态”。
      */
     func buildRunConfigurationData(configLink: String) throws -> Data {
         // 1. 从 UserDefaults 中获取端口
@@ -58,8 +57,8 @@ struct Configuration {
         var configuration = try buildOutInbound(configLink: configLink)
 
         // 3. 添加自定义 inbound、metrics、policy、routing、stats、dns 等
-        configuration["inbounds"] = buildInbound(inboundPort: socks5Port, trafficPort: trafficPort)
-        configuration["metrics"] = buildMetrics()
+        configuration["inbounds"] = buildInbound(inboundPort: socks5Port)
+        configuration["metrics"] = buildMetrics(trafficPort: trafficPort)
         configuration["policy"] = buildPolicy()
         configuration["routing"] = try buildRoute()
         configuration["stats"] = [:]
@@ -79,7 +78,7 @@ struct Configuration {
       生成**用于 Ping 测试**的精简 Xray 配置，并序列化为 JSON Data。
 
       与运行配置的差异：
-      - 仅注入 SOCKS inbound（不包含 metrics/统计端口）；
+      - 仅注入 SOCKS inbound；
       - 省略 `metrics / policy / routing / stats / dns` 中与 Ping 无关的部分，仅保留必要最小集。
 
       - Parameter configLink: 外部复制的分享链接字符串。
@@ -101,7 +100,7 @@ struct Configuration {
         var configuration = try buildOutInbound(configLink: configLink)
 
         // 3. 添加自定义 inbound、metrics、policy、routing、stats、dns 等
-        configuration["inbounds"] = buildInbound(inboundPort: socks5Port, trafficPort: nil)
+        configuration["inbounds"] = buildInbound(inboundPort: socks5Port)
 
         // 4. 递归移除配置中所有 NSNull 或 "<null>" 值
         configuration = removeNullValues(from: configuration)
@@ -224,19 +223,13 @@ struct Configuration {
         - 开启 sniffing（`http/tls/quic`），`udp=true`；
         - `tag = "socks"`，供路由/出站匹配使用。
 
-      - metricsInbound（可选）：
-        - 当 `trafficPort != nil` 时启用；
-        - 使用 `dokodemo-door` 监听 `127.0.0.1:trafficPort`，`tag = "metricsIn"`；
-        - 与路由中的 `metricsOut` 搭配，将度量数据引出到独立出站。
-
       - Parameters:
         - inboundPort: SOCKS 代理端口。
         - trafficPort: 流量统计端口；传入 `nil` 则不创建。
-      - Returns: `[socksInbound]` 或 `[socksInbound, metricsInbound]`。
+      - Returns: `[socksInbound]`。
      */
     private func buildInbound(
-        inboundPort: NWEndpoint.Port,
-        trafficPort: NWEndpoint.Port?
+        inboundPort: NWEndpoint.Port
     ) -> [[String: Any]] {
         let socksInbound: [String: Any] = [
             "listen": "0.0.0.0",
@@ -253,30 +246,18 @@ struct Configuration {
             "tag": "socks",
         ]
 
-        if trafficPort == nil {
-            return [socksInbound]
-        }
-
-        let metricsInbound: [String: Any] = [
-            "listen": "127.0.0.1",
-            "port": Int(trafficPort!.rawValue),
-            "protocol": "dokodemo-door",
-            "settings": [
-                "address": "127.0.0.1",
-            ],
-            "tag": "metricsIn",
-        ]
-
-        return [socksInbound, metricsInbound]
+        return [socksInbound]
     }
 
     /**
-      构建 metrics 出站占位配置（`tag = "metricsOut"`），用于与路由规则联动。
-      实际上不包含复杂字段，仅用于将 `metricsIn` 的流量分流到该出站。
+      包含的变量:
+        stats 包括所有的 inbound outbound user 数据
+        observatory 包含了 observatory 观测结果
      */
-    private func buildMetrics() -> [String: Any] {
+    private func buildMetrics(trafficPort: NWEndpoint.Port) -> [String: Any] {
         [
-            "tag": "metricsOut",
+            "tag": "Metrics",
+            "listen": "127.0.0.1:\(trafficPort.rawValue)"
         ]
     }
 
@@ -299,7 +280,6 @@ struct Configuration {
 
       - 基线规则：
         - 设置 `domainStrategy = "AsIs"`；
-        - 将 `metricsIn` 的流量转发到 `metricsOut`。
 
       - 非全局模式（`VPNMode.nonGlobal`）下的增强（要求本地 `Constant.assetDirectory` 存在 geo 资源）：
         - 屏蔽广告域名：`geosite:category-ads-all -&gt; block`；
@@ -316,11 +296,7 @@ struct Configuration {
         var route: [String: Any] = [
             "domainStrategy": "AsIs",
             "rules": [
-                [
-                    "inboundTag": ["metricsIn"],
-                    "outboundTag": "metricsOut",
-                    "type": "field",
-                ],
+
             ],
         ]
 
