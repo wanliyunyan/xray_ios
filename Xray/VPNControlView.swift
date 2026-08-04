@@ -7,23 +7,18 @@
 
 import SwiftUI
 
-/// 一个用于管理和展示 VPN 连接状态及操作（连接 / 断开）的视图。
+/// 根据系统 VPN 状态显示连接、断开、进度或错误控件。
+///
+/// 视图本身不构建配置：连接操作由父视图以异步闭包注入，停止操作直接交给共享的
+/// `PacketTunnelManager`。这种拆分让控件只负责状态映射和用户交互。
 struct VPNControlView: View {
-    // MARK: - 环境变量
-
-    /// 通过 EnvironmentObject 获取到全局的 PacketTunnelManager，用于读写 VPN 的连接状态。
+    /// 提供当前 `NEVPNStatus`，并执行停止操作。
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
-    // MARK: - 外部依赖
-
-    /// 一个由外部注入的异步方法，主要用于触发 VPN 的连接操作。
-    /// 该方法通常会结合 `PacketTunnelManager.start()` 使用，可能包含端口、配置参数等初始化逻辑。
-    /// 这是一个依赖注入点（Dependency Injection），便于在不同场景下（如测试或生产环境）传入不同的实现。
-    /// 在 UI 中点击“连接”按钮时会触发此方法，从而建立 VPN 隧道。
+    /// 用户点击“连接”时执行的异步操作，通常调用 `PacketTunnelManager.start()`。
     var connect: () async -> Void
 
-    // MARK: - 主视图
-
+    /// 将状态相关控件放在具有统一内边距的容器中。
     var body: some View {
         VStack {
             vpnControlButton()
@@ -31,25 +26,22 @@ struct VPNControlView: View {
         .padding()
     }
 
-    // MARK: - 辅助视图构建
-
-    /**
-     根据 VPN 的连接状态返回不同的操作按钮或提示视图。
-
-     - Parameters:
-
-     - Returns:
-       不同状态对应的 `View`，包括 “连接” 按钮、“断开” 按钮、加载进度视图或错误提示文本。
-     - Throws:
-
-     - Note:
-       未来可能出现新状态时提供默认提示。
-     */
+    /// 根据 `NEVPNStatus` 构建唯一的操作控件或状态提示。
+    ///
+    /// 状态映射：
+    /// - `.connected`：红色“断开”按钮；
+    /// - `.disconnected`：绿色“连接”按钮；
+    /// - `.connecting/.reasserting`：显示连接进度；
+    /// - `.disconnecting`：显示断开进度；
+    /// - `.invalid/nil`：提示无法取得状态；
+    /// - 未来新增状态：显示未知状态，避免遗漏分支。
+    ///
+    /// - Returns: 与当前系统连接状态对应的 SwiftUI 视图。
     @ViewBuilder
     private func vpnControlButton() -> some View {
         switch packetTunnelManager.status {
         case .connected:
-            // 已连接：显示“断开”按钮
+            // 已连接时唯一允许的操作是请求系统停止隧道。
             Button("断开") {
                 packetTunnelManager.stop()
             }
@@ -57,7 +49,7 @@ struct VPNControlView: View {
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .disconnected:
-            // 已断开：显示“连接”按钮
+            // 连接闭包是 async，使用 Task 从同步按钮事件进入异步流程。
             Button("连接") {
                 Task {
                     await connect()
@@ -67,26 +59,24 @@ struct VPNControlView: View {
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .connecting, .reasserting:
-            // 连接中或重新连接中：显示加载进度
+            // reasserting 表示系统正在重新建立或应用隧道状态。
             VStack {
                 ProgressView("连接中...")
             }
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .disconnecting:
-            // 断开中：显示加载进度
+            // 停止是异步状态转换，完成前禁用其他操作。
             VStack {
                 ProgressView("断开中...")
             }
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .invalid, .none:
-            // 无效或无法获取的状态
             Text("无法获取 VPN 状态")
                 .frame(maxWidth: .infinity, alignment: .center)
 
         @unknown default:
-            // 未来可能出现的新状态
             Text("未知状态")
                 .frame(maxWidth: .infinity, alignment: .center)
         }

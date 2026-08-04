@@ -8,42 +8,44 @@
 @preconcurrency import AVFoundation
 import SwiftUI
 
-/// 一个 SwiftUI 视图，用于扫描二维码并将扫描结果通过 `scannedCode` 传递出去。
+/// 将 AVFoundation 二维码扫描器桥接为 SwiftUI 视图。
+///
+/// 视图负责检查或请求相机权限、建立捕捉会话、显示后置摄像头预览，并把首个识别到的
+/// 二维码字符串写入 `scannedCode`。父视图监听绑定变化后保存配置并关闭 Sheet。
 struct QRCodeScannerView: UIViewControllerRepresentable {
-    // MARK: - 属性
-
-    /// 绑定属性，用于存储扫描到的二维码内容。当二维码扫描成功后会更新此属性。
+    /// 扫描结果绑定；识别成功后写入二维码的原始字符串。
     @Binding var scannedCode: String?
 
     // MARK: - Coordinator
 
-    /// 用于协调二维码扫描的类，负责处理元数据输出的回调。
+    /// 将 AVFoundation 元数据回调桥接回 SwiftUI 绑定。
+    ///
+    /// `AVCaptureMetadataOutputObjectsDelegate` 由 UIKit/AVFoundation 持有，Coordinator
+    /// 保存父 Representable 值，以便回调时更新 `scannedCode`。
     class Coordinator: NSObject, @preconcurrency AVCaptureMetadataOutputObjectsDelegate {
-        /// 父视图，便于在回调中访问和更新 `scannedCode`。
+        /// 当前 SwiftUI Representable 值，包含扫描结果绑定。
         var parent: QRCodeScannerView
 
+        /// 创建回调协调器。
+        /// - Parameter parent: 创建 Coordinator 的二维码扫描视图。
         init(parent: QRCodeScannerView) {
             self.parent = parent
         }
 
-        /**
-         当捕捉到元数据（如二维码）时被调用的回调方法
-
-         - Parameters:
-           - output: 元数据输出对象（此处用不到可以忽略）。
-           - metadataObjects: 捕捉到的元数据对象数组。
-           - connection: 捕捉连接对象（此处用不到可以忽略）。
-         - Returns:
-
-         - Throws:
-
-         - Note:
-         */
+        /// 处理捕捉会话输出的二维码元数据。
+        ///
+        /// 方法只读取数组中的第一个对象，并要求它可转换为
+        /// `AVMetadataMachineReadableCodeObject` 且包含字符串。成功后触发系统振动，并在主队列
+        /// 更新 SwiftUI 绑定；无有效内容时直接忽略本次回调。
+        ///
+        /// - Parameters:
+        ///   - output: AVFoundation 元数据输出，本实现不需要读取。
+        ///   - metadataObjects: 当前帧识别出的元数据对象。
+        ///   - connection: 产生回调的捕捉连接，本实现不需要读取。
         @MainActor func metadataOutput(_: AVCaptureMetadataOutput,
                                        didOutput metadataObjects: [AVMetadataObject],
                                        from _: AVCaptureConnection)
         {
-            // 若检测到元数据，获取第一个有效对象
             guard let metadataObject = metadataObjects.first,
                   let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject,
                   let stringValue = readableObject.stringValue
@@ -51,60 +53,50 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
                 return
             }
 
-            // 扫描到二维码后，震动提示
             AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
 
-            // 更新扫描结果
             DispatchQueue.main.async {
                 self.parent.scannedCode = stringValue
             }
         }
     }
 
-    // MARK: - UIViewControllerRepresentable 协议实现
+    // MARK: - UIViewControllerRepresentable
 
-    /**
-     创建协调器实例
-     */
+    /// 创建 AVFoundation 代理使用的 Coordinator。
+    /// - Returns: 持有当前扫描结果绑定的协调器。
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
 
-    /**
-     创建并返回用于展示二维码扫描界面的 `UIViewController`
-
-     - Parameters:
-       - context: 上下文环境对象，提供 `Coordinator` 等信息。
-     - Returns:
-       一个用于展示摄像头预览并进行二维码扫描的 `UIViewController` 实例。
-     - Throws:
-
-     - Note:
-       权限说明：如未获得相机权限会自动请求；若被拒绝可在此处进行 UI 提示。
-     */
+    /// 创建摄像头预览控制器，并根据当前授权状态初始化扫描器。
+    ///
+    /// 授权状态处理：
+    /// - `.notDetermined`：请求相机权限，允许后在主队列配置捕捉会话；
+    /// - `.authorized`：立即配置扫描器；
+    /// - `.denied/.restricted`：保持空白控制器，不启动摄像头；
+    /// - 未知新状态：同样保持空白，避免错误访问硬件。
+    ///
+    /// - Parameter context: SwiftUI 提供的上下文，用于取得 Coordinator。
+    /// - Returns: 承载摄像头预览层的 `UIViewController`。
     func makeUIViewController(context: Context) -> UIViewController {
         let viewController = UIViewController()
 
-        // 1. 检查相机权限
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         switch status {
         case .notDetermined:
-            // 如果尚未请求权限，则请求一次
             AVCaptureDevice.requestAccess(for: .video) { granted in
                 DispatchQueue.main.async {
                     if granted {
-                        // 再次初始化扫描界面
                         _ = setupScanner(on: viewController, coordinator: context.coordinator)
                     } else {
-                        // 权限被拒绝，您可以在此处进行 UI 提示
+                        // 未授权时保留空白预览，不尝试创建 AVCaptureDeviceInput。
                     }
                 }
             }
         case .authorized:
-            // 已授权，直接设置扫描功能
             setupScanner(on: viewController, coordinator: context.coordinator)
         case .denied, .restricted:
-            // 权限被拒绝或受限制，您可以在此处进行 UI 提示
             break
         @unknown default:
             break
@@ -113,80 +105,62 @@ struct QRCodeScannerView: UIViewControllerRepresentable {
         return viewController
     }
 
-    /**
-     更新 `UIViewController` 时调用，此处无额外操作
-
-     - Parameters:
-       - uiViewController: 将要更新的 `UIViewController` 实例。
-       - context: 上下文环境对象。
-     - Returns:
-
-     - Throws:
-
-     - Note:
-     */
+    /// SwiftUI 状态更新不需要修改底层控制器；捕捉会话由创建阶段持续运行。
     func updateUIViewController(_: UIViewController, context _: Context) {
-        // 在这里可以根据需要对界面进行更新
     }
 
-    // MARK: - 私有辅助方法
+    // MARK: - Scanner Setup
 
-    /**
-     配置二维码扫描相关的捕捉会话和预览图层
-
-     - Parameters:
-       - viewController: 需要添加摄像头预览图层和进行会话配置的视图控制器。
-       - coordinator: 用于处理元数据输出回调的协调器。
-     - Returns:
-       若成功配置则返回 `UIViewController`，否则返回空。
-     - Throws:
-
-     - Note:
-       重要提示：如摄像头不可用或添加输入失败时返回 nil。
-     */
+    /// 配置二维码捕捉会话和摄像头预览层。
+    ///
+    /// 完整流程：
+    /// 1. 创建 `AVCaptureSession` 并取得默认视频设备；
+    /// 2. 创建摄像头输入，在 Session 支持时加入；
+    /// 3. 创建元数据输出，把代理设为 Coordinator，并限定只识别 `.qr`；
+    /// 4. 创建填充控制器边界的 `AVCaptureVideoPreviewLayer`；
+    /// 5. 在后台队列启动会话，避免阻塞主线程。
+    ///
+    /// - Parameters:
+    ///   - viewController: 需要承载摄像头预览层的控制器。
+    ///   - coordinator: 接收二维码元数据并回写 SwiftUI 绑定的协调器。
+    /// - Returns: 配置成功时返回传入控制器；摄像头不可用或输入创建失败时返回 `nil`。
     @discardableResult
     private func setupScanner(on viewController: UIViewController,
                               coordinator: Coordinator) -> UIViewController?
     {
-        // 创建捕捉会话
         let captureSession = AVCaptureSession()
 
-        // 获取默认的视频捕捉设备（后置摄像头）
+        // 使用系统默认视频设备，通常对应后置摄像头。
         guard let videoCaptureDevice = AVCaptureDevice.default(for: .video) else {
             return nil
         }
 
-        // 尝试将捕捉设备作为输入添加到会话中
         do {
             let videoInput = try AVCaptureDeviceInput(device: videoCaptureDevice)
             if captureSession.canAddInput(videoInput) {
                 captureSession.addInput(videoInput)
             }
         } catch {
-            // 如果添加输入失败，可以在此处处理错误（例如提示用户或记录日志）
             return nil
         }
 
-        // 创建元数据输出并设置代理，用于捕获二维码数据
         let metadataOutput = AVCaptureMetadataOutput()
         if captureSession.canAddOutput(metadataOutput) {
+            // 元数据回调在主队列执行，保证可以直接协调 SwiftUI 状态。
             captureSession.addOutput(metadataOutput)
             metadataOutput.setMetadataObjectsDelegate(coordinator, queue: DispatchQueue.main)
-            // 仅扫描二维码（如果需要支持其他条码可自行添加）
             metadataOutput.metadataObjectTypes = [.qr]
         }
 
-        // 创建预览图层，用于显示摄像头捕捉到的内容
         let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        // 裁剪填充整个控制器，避免预览出现黑边。
         previewLayer.videoGravity = .resizeAspectFill
         previewLayer.frame = viewController.view.bounds
 
-        // 将预览图层添加到视图控制器的视图上
         viewController.view.layer.addSublayer(previewLayer)
 
-        // 在后台线程启动会话，避免阻塞主线程
+        // 启动会话可能阻塞，放到用户交互优先级的后台队列。
         DispatchQueue.global(qos: .userInitiated).async {
-            // 启动会话
             captureSession.startRunning()
         }
 

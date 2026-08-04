@@ -12,35 +12,30 @@ import SwiftUI
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "VPNMode")
 
-/// VPN 工作模式枚举，定义了两种主要的路由模式：
+/// VPN 的流量路由模式。
 ///
-/// - `global`（全局模式）：所有流量都会通过 VPN 进行转发，适用于需要全局代理的场景。
-/// - `nonGlobal`（非全局模式）：仅特定流量通过 VPN，其它流量直接访问互联网，适合分流需求。
-///
-/// 该枚举用于控制 VPN 的路由行为，方便用户根据需求选择合适的模式。
+/// 原始值直接用于界面显示和 App Group 持久化，`Configuration.buildRoute()` 根据保存值决定
+/// 是否注入 geo 分流规则。
 enum VPNMode: String {
+    /// 不添加国内直连或广告阻断规则，TCP/UDP 流量最终使用代理出站。
     case global = "全局"
+
+    /// geo 资源可用时，国内和私有流量直连、广告阻断，其余流量使用代理出站。
     case nonGlobal = "非全局"
 }
 
-/// 提供 UI 组件让用户在全局模式和非全局模式之间切换 VPN 路由模式。
+/// 提供全局和非全局路由模式选择，并与 App Group 偏好保持同步。
 ///
-/// - 状态管理：使用 `@State` 管理当前选中的模式，并与 `UserDefaults` 同步。
-/// - 与 VPN 管理交互：当用户切换模式时，如果 VPN 已连接，会通过 `PacketTunnelManager` 自动重启 VPN，确保新模式生效。
-/// - 持久化逻辑：视图加载时会从 `UserDefaults` 恢复上次的选择，保证一致性。
-/// - 使用场景：常用于应用设置页面，方便用户根据需要快速切换代理模式。
+/// 视图出现时恢复上次选择；用户切换后立即持久化。如果 VPN 已连接，会等待隧道重启，
+/// 使 `Configuration` 重新构建路由规则并交给新的 Packet Tunnel 实例。
 struct VPNModePickerView: View {
-    // MARK: - 属性
-
-    /// 当前选中的 VPN 模式，与 `UserDefaults` 中存储的值保持同步。
-    /// 视图初始化时会从 `UserDefaults` 读取上一次保存的模式，用户切换时会更新该值并持久化。
+    /// 当前选择的路由模式；没有有效持久化值时默认非全局。
     @State private var selectedMode: VPNMode = .nonGlobal
 
-    /// 从环境中获取全局的 PacketTunnelManager，用于判断 VPN 状态并在必要时重启。
+    /// 提供连接状态和重启能力。
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
-    // MARK: - 主视图
-
+    /// 构建分段选择器，并处理模式变化和初始恢复。
     var body: some View {
         VStack(alignment: .leading) {
             Text("路由模式:")
@@ -53,13 +48,12 @@ struct VPNModePickerView: View {
                     .tag(VPNMode.global)
             }
             .pickerStyle(SegmentedPickerStyle())
-            // 当用户切换 Picker 的值时，立即执行以下逻辑
             .onChange(of: selectedMode) { _, newMode in
-                // 保存用户新选择的模式到 UserDefaults，确保设置持久化
+                // 先持久化新模式，确保随后的 restart 使用最新路由选择。
                 saveModeToUserDefaults(newMode)
 
-                // 如果当前 VPN 已处于连接状态，则重启 VPN 以应用新的路由模式
                 if packetTunnelManager.status == .connected {
+                    // 只有运行中的 Xray 需要重启；未连接时下次启动自然读取新值。
                     Task {
                         do {
                             try await packetTunnelManager.restart()
@@ -71,43 +65,23 @@ struct VPNModePickerView: View {
                 }
             }
         }
-        // 视图出现时，从 UserDefaults 读取用户上一次选择的 VPN 模式。
         .onAppear {
             loadModeFromUserDefaults()
         }
     }
 
-    // MARK: - UserDefaults 读写
+    // MARK: - Persistence
 
-    /**
-     将用户选择的 VPN 模式持久化到 UserDefaults。
-
-     - Parameters:
-       - mode: 当前选中的 VPN 模式。
-
-     - Returns:
-
-     - Throws:
-
-     - Note:
-       该方法确保用户的选择在应用重启后依然有效，提供良好的用户体验。
-     */
+    /// 将当前路由模式保存到 App Group 偏好。
+    ///
+    /// - Parameter mode: 用户刚选择的模式，按枚举原始中文值保存。
     private func saveModeToUserDefaults(_ mode: VPNMode) {
         UtilStore.saveString(value: mode.rawValue, key: "VPNMode")
     }
 
-    /**
-     该方法用于从 UserDefaults 中加载先前保存的 VPN 模式字符串并转换为枚举类型。
-
-     - Parameters:
-
-     - Returns:
-
-     - Throws:
-
-     - Note:
-       如果未找到已保存的值，则默认设置为非全局模式（nonGlobal），确保视图初始化时有合理默认值。
-     */
+    /// 从 App Group 偏好恢复已保存的路由模式。
+    ///
+    /// 字符串缺失或无法转换为 `VPNMode` 时回退为 `.nonGlobal`，保证配置构建始终有确定值。
     private func loadModeFromUserDefaults() {
         if let modeString = UtilStore.loadString(key: "VPNMode"),
            let mode = VPNMode(rawValue: modeString)

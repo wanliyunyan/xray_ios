@@ -7,16 +7,16 @@
 
 import SwiftUI
 
-/// 显示 Xray 版本号的视图。
+/// 读取并显示底层 Xray Core 版本号。
+///
+/// 视图出现时同步调用统一 LibXray 接口。请求完成前显示 `Loading...`；成功后显示版本号，
+/// 失败时直接把本地化错误描述写入文本，便于用户和开发者定位底层库问题。
 struct VersionView: View {
+    /// 提供 Xray Core 版本查询能力。
     private let xrayManager = XrayManager()
 
-    // MARK: - State
-
-    /// 用于存储当前版本号。如果请求尚未完成，则显示 "Loading..."。
+    /// 当前展示文本，初始为加载提示，随后替换为版本号或错误信息。
     @State private var versionText: String = "Loading..."
-
-    // MARK: - Body
 
     var body: some View {
         VStack {
@@ -30,20 +30,9 @@ struct VersionView: View {
         }
     }
 
-    // MARK: - 业务逻辑
-
-    /**
-     获取 Xray 的版本号并更新到界面。
-
-     - Parameters:
-
-     - Returns:
-
-     - Throws:
-
-     - Note:
-     调用 `xrayManager.getVersion()` 获取版本号；成功更新 `versionText`，失败时显示错误提示；调用时机在 `onAppear`，界面效果初始为 `"Loading..."`，完成后显示结果或错误信息。
-     */
+    /// 调用 `XrayManager.getVersion()` 并更新展示状态。
+    ///
+    /// 方法不继续抛出错误，因为版本号是辅助信息，不应阻断主界面；错误会转换为可见文本。
     private func fetchVersion() {
         do {
             versionText = try xrayManager.getVersion()

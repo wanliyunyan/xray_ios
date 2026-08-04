@@ -13,29 +13,35 @@ import SwiftUI
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "TrafficStatsView")
 
-/// 一个显示网络流量统计信息的视图，包含下行和上行流量，并每秒更新一次。
+/// 每秒读取并显示当前 Xray TUN 入站的累计上下行流量。
+///
+/// 视图从 App Group 偏好恢复 Metrics 端口，只在 VPN 为 `.connected` 时请求本地
+/// `/debug/vars`。查询结果是连接期间的累计字节数，而不是瞬时带宽；查询失败时保留上一次
+/// 成功值，等待下一次定时刷新重试。
 struct TrafficStatsView: View {
+    /// 封装本地 Metrics HTTP 请求与 JSON 解析。
     private let xrayManager = XrayManager()
 
     // MARK: - 环境与状态
 
-    /// 通过 @EnvironmentObject 监听应用内的 PacketTunnelManager，用于获取 VPN/隧道的连接状态。
+    /// 用于判断隧道是否已连接，未连接时不发起无效 Metrics 请求。
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
-    /// 记录当前的下行流量（单位字节，字符串类型便于处理和显示）。
+    /// 当前 TUN 入站累计下行字节数，以字符串保存供格式化显示。
     @State private var downlinkTraffic: String = "0"
 
-    /// 记录当前的上行流量（单位字节，字符串类型便于处理和显示）。
+    /// 当前 TUN 入站累计上行字节数，以字符串保存供格式化显示。
     @State private var uplinkTraffic: String = "0"
 
-    /// 保存从 UserDefaults 加载的流量端口号。
+    /// 从 App Group 偏好加载的 Metrics HTTP 服务端口。
     @State private var trafficPort: NWEndpoint.Port?
 
-    /// 定时器：每隔 1 秒触发一次，用于刷新流量数据。
+    /// 在主 RunLoop common mode 下每秒触发一次流量刷新。
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     // MARK: - 主视图
 
+    /// 展示格式化后的累计流量，并安装端口加载和每秒刷新逻辑。
     var body: some View {
         VStack(alignment: .leading) {
             Text("流量统计:")
@@ -44,7 +50,7 @@ struct TrafficStatsView: View {
             Text("上行流量: \(formatBytes(uplinkTraffic))")
         }
         .onAppear {
-            // 视图出现时，加载流量端口号
+            // Metrics 端口由 ContentView 分配，并用于构建 Xray metrics 配置。
             if let port = UtilStore.loadPort(key: "trafficPort") {
                 trafficPort = port
             } else {
@@ -52,11 +58,13 @@ struct TrafficStatsView: View {
             }
         }
         .onReceive(timer) { _ in
-            // 仅在隧道状态为已连接且 trafficPort 有效时才进行流量查询
+            // Metrics 仅在隧道运行期间可用。
             if packetTunnelManager.status == .connected, let port = trafficPort {
-                if let stats = xrayManager.getTrafficStats(trafficPort: port) {
-                    downlinkTraffic = String(stats.downlink)
-                    uplinkTraffic = String(stats.uplink)
+                Task {
+                    if let stats = await xrayManager.getTrafficStats(trafficPort: port) {
+                        downlinkTraffic = String(stats.downlink)
+                        uplinkTraffic = String(stats.uplink)
+                    }
                 }
             }
         }
@@ -64,20 +72,11 @@ struct TrafficStatsView: View {
 
     // MARK: - 辅助方法
 
-    /**
-     将字节数转换为带有单位的可读字符串格式，如 “x.xx KB”、“x.xx MB” 或 “x.xx GB”。
-
-     - Parameters:
-       - bytesString: 表示字节数的字符串。如果无法转换为数值，则返回 "0 bytes"。
-
-     - Returns:
-       带有合适单位（bytes、KB、MB 或 GB）的字符串。
-
-     - Throws:
-
-     - Note:
-       如果 bytesString 不能转换为数值，则返回 "0 bytes"。例如，输入 "2048" 返回 "2.00 KB"。
-     */
+    /// 将累计字节数字符串转换为易读单位。
+    ///
+    /// - Parameter bytesString: 十进制字节数字符串。
+    /// - Returns: 小于 1 KB 时显示整数 bytes，其余按 1024 进制显示两位小数的 KB、MB 或 GB；
+    ///   输入无法转换为数字时返回 `"0 bytes"`。
     private func formatBytes(_ bytesString: String) -> String {
         guard let bytes = Double(bytesString) else { return "0 bytes" }
 

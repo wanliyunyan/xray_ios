@@ -33,11 +33,11 @@
 		3BC43D562CA2A76D00733C84 /* TrafficStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatsView.swift */; };
 		3BCF8AEB2CA8E5C400723541 /* ShareModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ShareModalView.swift */; };
 		3BF632AC2CB8CF4000FB040B /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BF632AB2CB8CF4000FB040B /* QRCodeScannerView.swift */; };
+		F3512AEE3020878B00917C2D /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = F3512AED3020878B00917C2D /* LibXray */; };
+		F40000013000000000000001 /* LibXrayRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40000043000000000000001 /* LibXrayRuntime.swift */; };
+		F40000023000000000000001 /* LibXrayRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40000043000000000000001 /* LibXrayRuntime.swift */; };
+		F40000033000000000000001 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = F3512AED3020878B00917C2D /* LibXray */; };
 		F393789D2E125D8800EBC544 /* UtilStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F393789C2E125D8800EBC544 /* UtilStore.swift */; };
-		F3A929722FA05A34004B2C07 /* Tun2SocksKit in Frameworks */ = {isa = PBXBuildFile; productRef = F3A929712FA05A34004B2C07 /* Tun2SocksKit */; };
-		F3A929742FA05A34004B2C07 /* Tun2SocksKitC in Frameworks */ = {isa = PBXBuildFile; productRef = F3A929732FA05A34004B2C07 /* Tun2SocksKitC */; };
-		F3A929772FA05A53004B2C07 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = F3A929762FA05A53004B2C07 /* LibXray */; };
-		F3A929792FA05A5A004B2C07 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = F3A929782FA05A5A004B2C07 /* LibXray */; };
 		F3C520642E7D55D5007F09E1 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C520632E7D55D5007F09E1 /* Model.swift */; };
 		F3F329F32E7D4ECA00907A7E /* XrayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F329F22E7D4ECA00907A7E /* XrayManager.swift */; };
 /* End PBXBuildFile section */
@@ -98,6 +98,7 @@
 		F393789C2E125D8800EBC544 /* UtilStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilStore.swift; sourceTree = "<group>"; };
 		F3C520632E7D55D5007F09E1 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
 		F3F329F22E7D4ECA00907A7E /* XrayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XrayManager.swift; sourceTree = "<group>"; };
+		F40000043000000000000001 /* LibXrayRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibXrayRuntime.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,7 +106,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F3A929772FA05A53004B2C07 /* LibXray in Frameworks */,
+				F40000033000000000000001 /* LibXray in Frameworks */,
 				3BA6A1D82C9D731100FF9E1A /* libresolv.9.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -114,11 +115,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F3A929742FA05A34004B2C07 /* Tun2SocksKitC in Frameworks */,
+				F3512AEE3020878B00917C2D /* LibXray in Frameworks */,
 				3B2DA9882C95344600E8FCB9 /* NetworkExtension.framework in Frameworks */,
 				3B2DA9AB2C953B7E00E8FCB9 /* libresolv.9.tbd in Frameworks */,
-				F3A929792FA05A5A004B2C07 /* LibXray in Frameworks */,
-				F3A929722FA05A34004B2C07 /* Tun2SocksKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -198,6 +197,7 @@
 			isa = PBXGroup;
 			children = (
 				3B2DA99B2C95393600E8FCB9 /* Constant.swift */,
+				F40000043000000000000001 /* LibXrayRuntime.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -221,7 +221,7 @@
 			);
 			name = Xray;
 			packageProductDependencies = (
-				F3A929762FA05A53004B2C07 /* LibXray */,
+				F3512AED3020878B00917C2D /* LibXray */,
 			);
 			productName = Xray;
 			productReference = 3B2DA9542C95337E00E8FCB9 /* Xray.app */;
@@ -241,9 +241,7 @@
 			);
 			name = PacketTunnel;
 			packageProductDependencies = (
-				F3A929712FA05A34004B2C07 /* Tun2SocksKit */,
-				F3A929732FA05A34004B2C07 /* Tun2SocksKitC */,
-				F3A929782FA05A5A004B2C07 /* LibXray */,
+				F3512AED3020878B00917C2D /* LibXray */,
 			);
 			productName = PacketTunnel;
 			productReference = 3B2DA9852C95344600E8FCB9 /* PacketTunnel.appex */;
@@ -277,8 +275,7 @@
 			);
 			mainGroup = 3B2DA94B2C95337E00E8FCB9;
 			packageReferences = (
-				F3A929702FA05A34004B2C07 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */,
-				F3A929752FA05A53004B2C07 /* XCRemoteSwiftPackageReference "LibXray" */,
+				F3512AEC3020878B00917C2D /* XCRemoteSwiftPackageReference "LibXray" */,
 			);
 			productRefGroup = 3B2DA9552C95337E00E8FCB9 /* Products */;
 			projectDirPath = "";
@@ -315,6 +312,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F40000013000000000000001 /* LibXrayRuntime.swift in Sources */,
 				3B2DA99F2C95398600E8FCB9 /* PacketTunnelManager.swift in Sources */,
 				F3F329F32E7D4ECA00907A7E /* XrayManager.swift in Sources */,
 				3BA6A1E22C9D779A00FF9E1A /* Util.swift in Sources */,
@@ -342,6 +340,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F40000023000000000000001 /* LibXrayRuntime.swift in Sources */,
 				3B2DA98B2C95344600E8FCB9 /* PacketTunnelProvider.swift in Sources */,
 				3B2DA99D2C95393600E8FCB9 /* Constant.swift in Sources */,
 			);
@@ -646,43 +645,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		F3A929702FA05A34004B2C07 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */ = {
+		F3512AEC3020878B00917C2D /* XCRemoteSwiftPackageReference "LibXray" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/EbrahimTahernejad/Tun2SocksKit";
+			repositoryURL = "https://github.com/wanliyunyan/LibXray.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 5.14.4;
-			};
-		};
-		F3A929752FA05A53004B2C07 /* XCRemoteSwiftPackageReference "LibXray" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/wanliyunyan/LibXray";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 26.3.27;
+				minimumVersion = 26.7.28;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		F3A929712FA05A34004B2C07 /* Tun2SocksKit */ = {
+		F3512AED3020878B00917C2D /* LibXray */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F3A929702FA05A34004B2C07 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
-			productName = Tun2SocksKit;
-		};
-		F3A929732FA05A34004B2C07 /* Tun2SocksKitC */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F3A929702FA05A34004B2C07 /* XCRemoteSwiftPackageReference "Tun2SocksKit" */;
-			productName = Tun2SocksKitC;
-		};
-		F3A929762FA05A53004B2C07 /* LibXray */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F3A929752FA05A53004B2C07 /* XCRemoteSwiftPackageReference "LibXray" */;
-			productName = LibXray;
-		};
-		F3A929782FA05A5A004B2C07 /* LibXray */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F3A929752FA05A53004B2C07 /* XCRemoteSwiftPackageReference "LibXray" */;
+			package = F3512AEC3020878B00917C2D /* XCRemoteSwiftPackageReference "LibXray" */;
 			productName = LibXray;
 		};
 /* End XCSwiftPackageProductDependency section */
