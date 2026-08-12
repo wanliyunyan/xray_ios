@@ -1,5 +1,7 @@
 # Xray iOS
 
+English documentation: [README.en.md](README.en.md)
+
 一个基于 SwiftUI、Network Extension 和 [LibXray](https://github.com/wanliyunyan/LibXray) 的 iOS Xray TUN 示例应用。
 
 这是一个面向开发者的最小可运行示例，不是开箱即用的商业 VPN 客户端。应用从 VLESS 分享链接生成 Xray 配置，通过 `PacketTunnel` 扩展接管系统流量，并提供基础的路由、诊断、资源管理和配置分享功能。
