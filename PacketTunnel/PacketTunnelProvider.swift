@@ -113,9 +113,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
 
     /// 注入 utun 文件描述符，校验配置并启动 Xray。
     ///
-    /// 该方法在专用串行队列执行。启动前先调用 `testXray`，随后清理可能残留的旧实例，
-    /// 再调用 `runXray`。由于启动调用成功并不一定代表 Core 已进入运行状态，最后还会通过
-    /// `getXrayState` 做一次确认。
+    /// 该方法在专用串行队列执行。清理可能残留的旧实例后，通过 `runXrayFromJson`
+    /// 直接传入完整 JSON 启动。由于启动调用成功并不一定代表 Core 已进入运行状态，
+    /// 最后还会通过 `getXrayState` 做一次确认。
     ///
     /// - Parameters:
     ///   - rawConfig: 主 App 传入、尚未注入运行时环境变量的 JSON 字符串。
@@ -133,15 +133,10 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
                     rawConfig,
                     tunnelFileDescriptor: tunnelFileDescriptor
                 )
-                let configURL = try LibXrayRuntime.writeConfig(
-                    runtimeConfig,
-                    named: "ios-vpn-runtime.json"
-                )
 
-                // 2. 先校验配置，再停止残留实例并启动新实例。
-                try LibXrayRuntime.test(configURL: configURL)
+                // 2. 停止残留实例后直接传入 JSON 启动，无需写配置文件。
                 try? LibXrayRuntime.stop()
-                try LibXrayRuntime.run(configURL: configURL)
+                try LibXrayRuntime.run(configJSON: runtimeConfig)
 
                 // 3. 只有底层明确进入 running 状态，系统隧道才算启动成功。
                 guard try LibXrayRuntime.isRunning() else {

@@ -97,38 +97,14 @@ enum LibXrayRuntime {
         return response["data"] as? [String: Any]
     }
 
-    /// 将运行配置写入 App Group 的配置目录。
+    /// 通过 LibXray 的 `runXrayFromJson` 直接传入配置 JSON 启动 Xray Core。
     ///
-    /// - Parameters:
-    ///   - config: 完整的 Xray JSON 配置字符串。
-    ///   - fileName: 配置文件名，不包含目录路径。
-    /// - Returns: 写入后的共享文件 URL。
-    /// - Throws: 文件无法以 UTF-8 原子写入时抛出文件系统错误。
-    static func writeConfig(_ config: String, named fileName: String) throws -> URL {
-        let destination = Constant.configDirectory.appendingPathComponent(fileName)
-        try config.write(to: destination, atomically: true, encoding: .utf8)
-        return destination
-    }
-
-    /// 通过 LibXray 的 `testXray` 方法校验配置文件。
-    ///
-    /// - Parameter configURL: 已写入共享目录的配置文件 URL。
-    /// - Throws: 配置语法无效、资源缺失或底层校验失败时抛出错误。
-    static func test(configURL: URL) throws {
-        _ = try invoke(
-            method: "testXray",
-            payload: ["configPath": configURL.path]
-        )
-    }
-
-    /// 通过 LibXray 的 `runXray` 方法启动 Xray Core。
-    ///
-    /// - Parameter configURL: 已通过校验的运行配置文件 URL。
+    /// - Parameter configJSON: 完整的 Xray JSON 配置字符串，无需落盘。
     /// - Throws: Xray 无法加载配置或启动运行时状态时抛出错误。
-    static func run(configURL: URL) throws {
+    static func run(configJSON: String) throws {
         _ = try invoke(
-            method: "runXray",
-            payload: ["configPath": configURL.path]
+            method: "runXrayFromJson",
+            payload: ["configJSON": configJSON]
         )
     }
 

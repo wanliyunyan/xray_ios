@@ -65,7 +65,7 @@ enum Util {
     /// 在 App Group 容器根目录创建或覆盖配置文件。
     ///
     /// 内容以 UTF-8 原子写入，避免 LibXray 在写入过程中读到部分 JSON。该方法主要用于
-    /// Ping 配置；Packet Tunnel 的最终运行配置由 `LibXrayRuntime.writeConfig` 写到专用目录。
+    /// Ping 配置；Packet Tunnel 运行配置通过 `runXrayFromJson` 直接传 JSON，不再落盘。
     ///
     /// - Parameters:
     ///   - content: 需要写入的完整文本，通常为 Xray JSON。
