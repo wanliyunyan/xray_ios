@@ -53,7 +53,7 @@ struct Configuration {
         configuration["env"] = buildEnvironment(from: configuration["env"])
         configuration["metrics"] = buildMetrics(trafficPort: trafficPort)
         configuration["policy"] = buildPolicy()
-        configuration["routing"] = try buildRoute()
+        configuration["routing"] = buildRoute()
         configuration["stats"] = [:]
         configuration["dns"] = buildDNSConfiguration()
 
@@ -293,7 +293,7 @@ struct Configuration {
     /// - 最后一条兜底规则始终把其余 TCP/UDP 流量交给 `proxy`。
     ///
     /// - Returns: 可写入 Xray `routing` 字段的字典。
-    private func buildRoute() throws -> [String: Any] {
+    private func buildRoute() -> [String: Any] {
         var route: [String: Any] = [
             "domainStrategy": "AsIs",
             "rules": [

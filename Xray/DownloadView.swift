@@ -145,7 +145,7 @@ struct DownloadView: View {
                     logger.error("VPN 重启失败：\(error.localizedDescription)")
                 }
             } else {
-                logger.error("VPN 未处于连接状态，跳过重启")
+                logger.info("VPN 未处于连接状态，跳过重启")
             }
         } catch {
             logger.error("文件下载或保存失败: \(error.localizedDescription)")

@@ -44,17 +44,11 @@ struct ContentView: View {
     /// 从分享链接解析出的远端服务器端口。
     @State private var portText: String = ""
 
-    /// 预留的配置文件路径状态；当前连接流程直接把 JSON Data 传给扩展。
-    @State private var path: String = ""
-
     /// 控制分享配置 Sheet 的显示状态。
     @State private var isShowingShareModal = false
 
     /// 控制剪贴板无有效文本时的提示 Alert。
     @State private var showClipboardEmptyAlert = false
-
-    /// 预留的主界面 Ping 结果；实际结果由 `PingView` 自己管理。
-    @State private var pingSpeed: Int = 0
 
     /// Ping 配置中本地 SOCKS 入站使用的端口。
     @State private var socks5Port: NWEndpoint.Port = Constant.socks5Port
