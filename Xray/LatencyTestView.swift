@@ -29,25 +29,25 @@ struct LatencyTestView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
     /// 最近一次成功测试得到的延迟，单位为毫秒。
-    @State private var pingSpeed: Int = 0
+    @State private var latencyMilliseconds: Int = 0
 
     /// 是否至少成功取得过一次结果，用于区分零值占位和真实显示状态。
-    @State private var isPingFetched: Bool = false
+    @State private var hasLatencyResult = false
 
     /// 当前是否有 Ping 任务执行，用于显示固定尺寸的加载指示器。
-    @State private var isLoading: Bool = false
+    @State private var isTesting = false
 
     /// 根据加载状态、测试结果和 VPN 状态组合延迟文本与刷新入口。
     var body: some View {
         VStack {
             HStack {
-                Text("Ping(\(AppConstants.pingUrl)):")
-                if isLoading {
+                Text("Ping(\(AppConstants.pingURL.absoluteString)):")
+                if isTesting {
                     ProgressView()
                         .frame(width: 24, height: 24)
-                } else if isPingFetched {
-                    Text("\(pingSpeed)")
-                        .foregroundColor(pingSpeedColor(pingSpeed))
+                } else if hasLatencyResult {
+                    Text("\(latencyMilliseconds)")
+                        .foregroundColor(latencyColor(for: latencyMilliseconds))
                         .font(.headline)
                 }
                 Text("ms").foregroundColor(.black)
@@ -58,15 +58,15 @@ struct LatencyTestView: View {
                         .frame(width: 24, height: 24)
                         .foregroundColor(.blue)
                         .onTapGesture {
-                            requestPing()
+                            runLatencyTest()
                         }
                 }
             }
         }
         .onAppear {
             // 首次出现自动测试；已有成功结果时避免因父视图刷新重复请求。
-            if !isPingFetched {
-                requestPing()
+            if !hasLatencyResult {
+                runLatencyTest()
             }
         }
     }
@@ -75,36 +75,36 @@ struct LatencyTestView: View {
 
     /// 异步执行延迟测试，并同步加载状态和最后一次成功结果。
     ///
-    /// 方法立即进入加载状态，然后创建主 Actor 继承任务调用 `XrayService.performPing()`。
+    /// 方法立即进入加载状态，然后创建主 Actor 继承任务调用 `XrayService.measureLatency()`。
     /// 成功时同时更新延迟和已获取标记；失败时保留上一次成功值并记录错误。任务结束后无论
     /// 成败都会关闭加载指示器。
-    private func requestPing() {
-        isLoading = true
+    private func runLatencyTest() {
+        isTesting = true
         Task {
             do {
-                let result = try await xrayService.performPing()
-                pingSpeed = result
-                isPingFetched = true
+                let measuredLatency = try await xrayService.measureLatency()
+                latencyMilliseconds = measuredLatency
+                hasLatencyResult = true
             } catch {
                 logger.error("Ping 请求失败: \(error.localizedDescription)")
             }
-            isLoading = false
+            isTesting = false
         }
     }
 
     /// 按延迟区间返回状态颜色。
     ///
-    /// - Parameter pingSpeed: 当前延迟，单位为毫秒。
+    /// - Parameter latencyMilliseconds: 当前延迟，单位为毫秒。
     /// - Returns:
     ///   - `0`：黑色，表示尚无有效结果；
     ///   - `< 1000`：绿色，表示延迟相对较低；
     ///   - `1000 ..< 5000`：黄色，表示连接较慢；
     ///   - `>= 5000`：红色，表示连接很慢或接近超时。
-    private func pingSpeedColor(_ pingSpeed: Int) -> Color {
-        if pingSpeed == 0 {
+    private func latencyColor(for latencyMilliseconds: Int) -> Color {
+        if latencyMilliseconds == 0 {
             return .black
         }
-        switch pingSpeed {
+        switch latencyMilliseconds {
         case ..<1000:
             return .green
         case 1000 ..< 5000:

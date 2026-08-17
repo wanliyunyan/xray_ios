@@ -32,35 +32,32 @@ struct DashboardView: View {
     /// 全局 VPN 管理器，驱动连接控制并向子视图提供系统状态。
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
-    /// 最近一次从剪贴板或二维码导入的原始分享链接。
-    @State private var clipboardText: String = ""
-
     /// 从分享链接 `user` 字段解析出的节点用户标识。
-    @State private var idText: String = ""
+    @State private var nodeIdentifier: String = ""
 
     /// 从分享链接 `host` 字段解析出的服务器地址或域名。
-    @State private var ipText: String = ""
+    @State private var serverHost: String = ""
 
     /// 从分享链接解析出的远端服务器端口。
-    @State private var portText: String = ""
+    @State private var serverPort: String = ""
 
     /// 控制分享配置 Sheet 的显示状态。
-    @State private var isShowingShareModal = false
+    @State private var isShareSheetPresented = false
 
     /// 控制剪贴板无有效文本时的提示 Alert。
-    @State private var showClipboardEmptyAlert = false
+    @State private var isClipboardEmptyAlertPresented = false
 
     /// Ping 配置中本地 SOCKS 入站使用的端口。
-    @State private var socks5Port: NWEndpoint.Port = AppConstants.socks5Port
+    @State private var socksPort: NWEndpoint.Port = AppConstants.defaultSocksPort
 
     /// Xray Metrics HTTP 服务和流量查询共同使用的端口。
-    @State private var trafficPort: NWEndpoint.Port = AppConstants.trafficPort
+    @State private var metricsPort: NWEndpoint.Port = AppConstants.defaultMetricsPort
 
     /// 二维码扫描器最近返回的原始文本。
-    @State private var scannedCode: String? = nil
+    @State private var scannedShareLink: String?
 
     /// 控制二维码扫描器 Sheet 的显示状态。
-    @State private var isShowingScanner = false
+    @State private var isScannerPresented = false
 
     // MARK: - Body
 
@@ -72,9 +69,9 @@ struct DashboardView: View {
                 Text("vps信息:")
                     .font(.headline)
 
-                LabeledValueRow(label: "ID:", text: idText)
-                LabeledValueRow(label: "IP地址:", text: AppUtilities.maskIPAddress(ipText))
-                LabeledValueRow(label: "端口:", text: portText)
+                LabeledValueRow(label: "ID:", value: nodeIdentifier)
+                LabeledValueRow(label: "IP地址:", value: IPAddressFormatter.masked(serverHost))
+                LabeledValueRow(label: "端口:", value: serverPort)
 
                 // 连接相关数据拆分为独立视图，各自只监听所需状态。
                 ConnectionDurationView()
@@ -83,12 +80,12 @@ struct DashboardView: View {
                 Text("本机端口:")
                     .font(.headline)
                 HStack {
-                    Text("Socks5: \(socks5Port.rawValue)")
+                    Text("Socks5: \(socksPort.rawValue)")
                     Spacer()
-                    Text("流量: \(trafficPort.rawValue)")
+                    Text("流量: \(metricsPort.rawValue)")
                 }
 
-                LatencyTestView().environmentObject(PacketTunnelManager.shared)
+                LatencyTestView()
                 VPNRoutingModePickerView()
             }
             .padding()
@@ -99,7 +96,7 @@ struct DashboardView: View {
             // 配置操作区：剪贴板导入、摄像头扫描和二维码分享。
             HStack {
                 Button(action: {
-                    handlePasteFromClipboard()
+                    importShareLinkFromClipboard()
                 }) {
                     HStack {
                         Image(systemName: "clipboard")
@@ -112,7 +109,7 @@ struct DashboardView: View {
                 Spacer()
 
                 Button(action: {
-                    isShowingScanner = true
+                    isScannerPresented = true
                 }) {
                     HStack {
                         Image(systemName: "qrcode.viewfinder")
@@ -125,7 +122,7 @@ struct DashboardView: View {
                 Spacer()
 
                 Button(action: {
-                    isShowingShareModal = true
+                    isShareSheetPresented = true
                 }) {
                     HStack {
                         Image(systemName: "square.and.arrow.up")
@@ -139,7 +136,7 @@ struct DashboardView: View {
 
             // 根据系统连接状态显示连接、断开或进度控件。
             VPNConnectionControlView {
-                await connectVPN()
+                await startVPN()
             }
 
             // 底部展示当前 LibXray 内置的 Xray Core 版本。
@@ -151,32 +148,40 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
-            // 恢复节点摘要，并为 Ping 与 Metrics 分配一组本地空闲端口。
-            // 端口同时写入 App Group，保证后续配置构建和查询使用相同值。
-            loadDataFromUserDefaults()
-            let ports = xrayService.fetchFreePorts()
-            AppGroupStore.savePort(value: ports[0], key: "socks5Port")
-            AppGroupStore.savePort(value: ports[1], key: "trafficPort")
-            socks5Port = ports[0]
-            trafficPort = ports[1]
+            restoreSavedShareLink()
+            Task {
+                let allocatedPorts = await xrayService.allocateLocalPorts()
+                guard
+                    let newSocksPort = NWEndpoint.Port(rawValue: allocatedPorts.socksPort),
+                    let newMetricsPort = NWEndpoint.Port(rawValue: allocatedPorts.metricsPort)
+                else {
+                    logger.error("Xray 返回了无效的本地端口")
+                    return
+                }
+
+                socksPort = newSocksPort
+                metricsPort = newMetricsPort
+                AppGroupStore.savePort(newSocksPort, forKey: "socks5Port")
+                AppGroupStore.savePort(newMetricsPort, forKey: "trafficPort")
+            }
         }
-        .sheet(isPresented: $isShowingShareModal) {
+        .sheet(isPresented: $isShareSheetPresented) {
             // 分享视图从 App Group 读取当前链接并生成二维码。
-            ConfigurationShareView(isShowing: $isShowingShareModal)
+            ConfigurationShareView(isPresented: $isShareSheetPresented)
         }
-        .alert(isPresented: $showClipboardEmptyAlert) {
+        .alert(isPresented: $isClipboardEmptyAlertPresented) {
             Alert(
                 title: Text("剪贴板为空"),
                 message: Text("没有从剪贴板获取到内容"),
                 dismissButton: .default(Text("确定"))
             )
         }
-        .sheet(isPresented: $isShowingScanner) {
+        .sheet(isPresented: $isScannerPresented) {
             // 扫描结果变化后立即保存、解析并关闭扫描器。
-            QRCodeScannerView(scannedCode: $scannedCode)
-                .onChange(of: scannedCode) { _, newCode in
-                    if let code = newCode {
-                        handleScannedCode(code)
+            QRCodeScannerView(scannedCode: $scannedShareLink)
+                .onChange(of: scannedShareLink) { _, newShareLink in
+                    if let newShareLink {
+                        importShareLinkFromQRCode(newShareLink)
                     }
                 }
         }
@@ -188,7 +193,7 @@ struct DashboardView: View {
     ///
     /// 具体配置构建、冲突检查和系统启动由 `PacketTunnelManager.start()` 完成。这里捕获错误，
     /// 防止按钮触发的异步任务把异常传播出 SwiftUI 事件边界。
-    private func connectVPN() async {
+    private func startVPN() async {
         do {
             try await packetTunnelManager.start()
         } catch {
@@ -200,9 +205,9 @@ struct DashboardView: View {
     ///
     /// 偏好中没有 `configLink` 时保持空状态；存在时只解析用于展示的 user、host 和 port，
     /// 不在此处调用 LibXray 或验证完整节点配置。
-    private func loadDataFromUserDefaults() {
-        if let content = AppGroupStore.loadString(key: "configLink") {
-            AppUtilities.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
+    private func restoreSavedShareLink() {
+        if let shareLink = AppGroupStore.loadString(forKey: "configLink") {
+            updateNodeSummary(from: shareLink)
         }
     }
 
@@ -210,29 +215,38 @@ struct DashboardView: View {
     ///
     /// 只有非空且与已保存内容不同的字符串才会写入 App Group 并重新解析摘要，避免重复更新
     /// SwiftUI 状态。剪贴板为空或不包含字符串时记录日志，并显示用户提示。
-    private func handlePasteFromClipboard() {
-        if let clipboardContent = AppUtilities.pasteFromClipboard(), !clipboardContent.isEmpty {
-            let storedContent = AppGroupStore.loadString(key: "configLink")
+    private func importShareLinkFromClipboard() {
+        if let clipboardContent = ClipboardService.readString() {
+            let storedContent = AppGroupStore.loadString(forKey: "configLink")
             if clipboardContent != storedContent {
-                clipboardText = clipboardContent
-                AppGroupStore.saveString(value: clipboardContent, key: "configLink")
-                AppUtilities.parseContent(clipboardContent, idText: &idText, ipText: &ipText, portText: &portText)
+                AppGroupStore.saveString(clipboardContent, forKey: "configLink")
+                updateNodeSummary(from: clipboardContent)
             }
         } else {
             logger.info("剪贴板内容为空")
-            showClipboardEmptyAlert = true
+            isClipboardEmptyAlertPresented = true
         }
     }
 
     /// 保存并解析扫描到的分享链接，然后关闭扫描器。
     ///
-    /// - Parameter code: AVFoundation 从二维码中读取的原始分享链接文本。
+    /// - Parameter shareLink: AVFoundation 从二维码中读取的原始分享链接文本。
     /// - Note: 与剪贴板导入不同，扫码结果会直接覆盖当前配置，因为每次扫描都代表明确选择。
-    private func handleScannedCode(_ code: String) {
-        logger.info("扫描到的二维码内容: \(code)")
-        clipboardText = code
-        AppGroupStore.saveString(value: clipboardText, key: "configLink")
-        AppUtilities.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
-        isShowingScanner = false
+    private func importShareLinkFromQRCode(_ shareLink: String) {
+        logger.info("扫描到的二维码内容: \(shareLink)")
+        AppGroupStore.saveString(shareLink, forKey: "configLink")
+        updateNodeSummary(from: shareLink)
+        scannedShareLink = nil
+        isScannerPresented = false
+    }
+
+    /// Applies the displayable node details from a saved or newly imported share link.
+    private func updateNodeSummary(from shareLink: String) {
+        guard let summary = ShareLinkParser.parse(shareLink) else {
+            return
+        }
+        nodeIdentifier = summary.identifier
+        serverHost = summary.host
+        serverPort = summary.port
     }
 }

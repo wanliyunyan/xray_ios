@@ -19,10 +19,10 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 /// 如果资源在 VPN 已连接时发生变化，会等待隧道重启，让 Xray 重新加载最新资源。
 struct GeoAssetDownloadView: View {
     /// 下载流程是否正在执行；为 `true` 时禁用下载和清空按钮，避免并发修改目录。
-    @State private var isDownloading: Bool = false
+    @State private var isUpdatingAssets = false
 
     /// 当前共享资源目录中的文件名，用于在界面确认已安装资源。
-    @State private var downloadedFiles: [String] = []
+    @State private var installedAssetFiles: [String] = []
 
     /// 提供资源更新、清理操作以及已下载文件列表。
     var body: some View {
@@ -31,7 +31,7 @@ struct GeoAssetDownloadView: View {
             HStack {
                 Button(action: {
                     Task {
-                        await downloadAndUpdateGeoipDat()
+                        await downloadGeoAssets()
                     }
                 }) {
                     HStack {
@@ -42,12 +42,12 @@ struct GeoAssetDownloadView: View {
                     }
                 }
                 .padding()
-                .disabled(isDownloading)
-                .foregroundColor(isDownloading ? .gray : .blue)
+                .disabled(isUpdatingAssets)
+                .foregroundColor(isUpdatingAssets ? .gray : .blue)
 
                 Button(action: {
                     Task {
-                        await clearAssetDirectory()
+                        await removeGeoAssets()
                     }
                 }) {
                     HStack {
@@ -58,18 +58,18 @@ struct GeoAssetDownloadView: View {
                     }
                 }
                 .padding()
-                .disabled(isDownloading)
-                .foregroundColor(isDownloading ? .gray : .blue)
+                .disabled(isUpdatingAssets)
+                .foregroundColor(isUpdatingAssets ? .gray : .blue)
             }
 
             // 目录为空时不显示占位行；存在文件时横向列出名称。
-            if !downloadedFiles.isEmpty {
+            if !installedAssetFiles.isEmpty {
                 HStack {
                     Text("已下载:")
                         .padding(.top)
 
-                    ForEach(downloadedFiles, id: \.self) { file in
-                        Text(file)
+                    ForEach(installedAssetFiles, id: \.self) { fileName in
+                        Text(fileName)
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .padding(.leading, 10)
@@ -78,7 +78,7 @@ struct GeoAssetDownloadView: View {
             }
         }
         .onAppear {
-            loadDownloadedFiles()
+            refreshInstalledAssets()
         }
     }
 
@@ -86,15 +86,15 @@ struct GeoAssetDownloadView: View {
 
     /// 刷新共享资源目录中的文件名列表。
     ///
-    /// 读取 `AppConstants.assetDirectory` 的直接子项并替换 `downloadedFiles`。读取失败不会清空
+    /// 读取 `AppConstants.assetDirectoryURL` 的直接子项并替换 `installedAssetFiles`。读取失败不会清空
     /// 现有界面状态，也不会向外抛出，只记录文件系统错误供排查。
-    private func loadDownloadedFiles() {
+    private func refreshInstalledAssets() {
         let fileManager = FileManager.default
-        let assetDirectoryPath = AppConstants.assetDirectory.path
+        let assetDirectoryPath = AppConstants.assetDirectoryURL.path
 
         do {
-            let files = try fileManager.contentsOfDirectory(atPath: assetDirectoryPath)
-            downloadedFiles = files
+            let fileNames = try fileManager.contentsOfDirectory(atPath: assetDirectoryPath)
+            installedAssetFiles = fileNames
         } catch {
             logger.error("加载文件失败: \(error.localizedDescription)")
         }
@@ -103,7 +103,7 @@ struct GeoAssetDownloadView: View {
     /// 顺序更新 geoip 和 geosite 文件，并在需要时重启已连接的 VPN。
     ///
     /// 流程如下：
-    /// 1. 将 `isDownloading` 设为 `true`，阻止重复操作；
+    /// 1. 将 `isUpdatingAssets` 设为 `true`，阻止重复操作；
     /// 2. 依次下载 geoip 与 geosite 到 URLSession 临时目录；
     /// 3. 将临时文件移动到共享资源目录并替换同名旧文件；
     /// 4. 每保存一个文件后刷新界面列表；
@@ -112,28 +112,28 @@ struct GeoAssetDownloadView: View {
     ///
     /// 下载或保存错误在本方法统一记录，不继续抛给 SwiftUI 按钮任务。
     @MainActor
-    private func downloadAndUpdateGeoipDat() async {
-        let urls = [
+    private func downloadGeoAssets() async {
+        let downloadSources = [
             ("https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat", "geoip.dat"),
             ("https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat", "geosite.dat"),
         ]
 
-        isDownloading = true
+        isUpdatingAssets = true
 
         do {
             // 两个文件顺序处理，避免同时替换共享目录内容。
-            for (urlString, fileName) in urls {
-                guard let url = URL(string: urlString) else {
-                    logger.error("无效的下载链接: \(urlString)")
+            for (remoteURLString, destinationFileName) in downloadSources {
+                guard let remoteURL = URL(string: remoteURLString) else {
+                    logger.error("无效的下载链接: \(remoteURLString)")
                     continue
                 }
 
                 // URLSession 先把响应保存到系统管理的临时文件。
-                let downloadedTempURL = try await downloadFile(from: url)
+                let temporaryFileURL = try await downloadTemporaryFile(from: remoteURL)
 
                 // 移动到 Xray 共享资源目录，并刷新已下载列表。
-                saveFileToDirectory(fileURL: downloadedTempURL, fileName: fileName)
-                loadDownloadedFiles()
+                installAssetFile(from: temporaryFileURL, as: destinationFileName)
+                refreshInstalledAssets()
             }
 
             // 已运行的 Xray 不会自动重新加载 geo 文件，需要重启隧道。
@@ -151,16 +151,16 @@ struct GeoAssetDownloadView: View {
             logger.error("文件下载或保存失败: \(error.localizedDescription)")
         }
 
-        isDownloading = false
+        isUpdatingAssets = false
     }
 
     /// 下载文件到系统临时目录，并校验 HTTP 响应。
     ///
-    /// - Parameter url: 资源文件的远程下载地址。
+    /// - Parameter remoteURL: 资源文件的远程下载地址。
     /// - Returns: URLSession 创建的临时文件 URL；调用方必须在任务结束前移动该文件。
     /// - Throws: 网络下载失败，或响应不是 HTTP 200 时抛出错误。
-    private func downloadFile(from url: URL) async throws -> URL {
-        let (tempLocalURL, response) = try await URLSession.shared.download(from: url)
+    private func downloadTemporaryFile(from remoteURL: URL) async throws -> URL {
+        let (temporaryFileURL, response) = try await URLSession.shared.download(from: remoteURL)
 
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200
@@ -168,28 +168,28 @@ struct GeoAssetDownloadView: View {
             throw URLError(.badServerResponse)
         }
 
-        return tempLocalURL
+        return temporaryFileURL
     }
 
     /// 将临时文件移动到共享资源目录，并替换同名旧文件。
     ///
     /// - Parameters:
-    ///   - fileURL: URLSession 返回的临时文件位置。
-    ///   - fileName: 目标文件名，例如 `geoip.dat` 或 `geosite.dat`。
+    ///   - temporaryFileURL: URLSession 返回的临时文件位置。
+    ///   - destinationFileName: 目标文件名，例如 `geoip.dat` 或 `geosite.dat`。
     /// - Note: 方法会在目录缺失时创建目录；临时文件不存在或文件操作失败时记录日志并返回。
     @MainActor
-    private func saveFileToDirectory(fileURL: URL, fileName: String) {
+    private func installAssetFile(from temporaryFileURL: URL, as destinationFileName: String) {
         let fileManager = FileManager.default
-        let destinationURL = URL(fileURLWithPath: AppConstants.assetDirectory.path).appendingPathComponent(fileName)
+        let destinationURL = AppConstants.assetDirectoryURL.appendingPathComponent(destinationFileName)
 
         do {
             // 正常情况下 AppConstants 已创建目录；这里保留防御性检查，应对目录被外部删除。
-            if !fileManager.fileExists(atPath: AppConstants.assetDirectory.path) {
-                try fileManager.createDirectory(at: AppConstants.assetDirectory, withIntermediateDirectories: true)
+            if !fileManager.fileExists(atPath: AppConstants.assetDirectoryURL.path) {
+                try fileManager.createDirectory(at: AppConstants.assetDirectoryURL, withIntermediateDirectories: true)
             }
 
-            guard fileManager.fileExists(atPath: fileURL.path) else {
-                logger.error("临时文件不存在: \(fileURL.path)")
+            guard fileManager.fileExists(atPath: temporaryFileURL.path) else {
+                logger.error("临时文件不存在: \(temporaryFileURL.path)")
                 return
             }
 
@@ -198,8 +198,8 @@ struct GeoAssetDownloadView: View {
                 try fileManager.removeItem(at: destinationURL)
             }
 
-            try fileManager.moveItem(at: fileURL, to: destinationURL)
-            logger.info("\(fileName) 文件已成功移动到 \(destinationURL.path)")
+            try fileManager.moveItem(at: temporaryFileURL, to: destinationURL)
+            logger.info("\(destinationFileName) 文件已成功移动到 \(destinationURL.path)")
         } catch {
             logger.error("文件保存失败: \(error.localizedDescription)")
         }
@@ -212,12 +212,12 @@ struct GeoAssetDownloadView: View {
     /// DNS 构建回到不依赖 geo 文件的分支。
     ///
     /// 文件操作和 VPN 重启错误只写入日志，不继续抛给 SwiftUI 按钮任务。
-    private func clearAssetDirectory() async {
+    private func removeGeoAssets() async {
         let fileManager = FileManager.default
-        let assetDirectoryPath = AppConstants.assetDirectory.path
+        let assetDirectoryPath = AppConstants.assetDirectoryURL.path
 
         do {
-            // 删除全部旧资源后立即重建，保持 AppConstants.assetDirectory 始终可写。
+            // 删除全部旧资源后立即重建，保持 AppConstants.assetDirectoryURL 始终可写。
             if fileManager.fileExists(atPath: assetDirectoryPath) {
                 try fileManager.removeItem(atPath: assetDirectoryPath)
                 logger.info("已删除文件夹: \(assetDirectoryPath)")
@@ -226,7 +226,7 @@ struct GeoAssetDownloadView: View {
             try fileManager.createDirectory(atPath: assetDirectoryPath, withIntermediateDirectories: true)
             logger.info("已重新创建文件夹: \(assetDirectoryPath)")
 
-            downloadedFiles.removeAll()
+            installedAssetFiles.removeAll()
 
             // 已运行实例需要重启才能释放旧资源并采用无 geo 文件的配置。
             if PacketTunnelManager.shared.status == .connected {

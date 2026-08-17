@@ -14,29 +14,29 @@ public enum AppConstants {
     ///
     /// 该值用于派生 App Group 和 Packet Tunnel 扩展标识。构建配置未提供 `APP_ID`
     /// 时返回 `"unknown"`，便于尽早暴露配置问题。
-    public static let packageName = Bundle.main.infoDictionary?["APP_ID"] as? String ?? "unknown"
+    public static let applicationIdentifier = Bundle.main.infoDictionary?["APP_ID"] as? String ?? "unknown"
 }
 
 public extension AppConstants {
     // MARK: - Identifiers and Defaults
 
     /// App 与 Packet Tunnel 扩展共同访问的 App Group 标识。
-    static let groupName = "group.\(AppConstants.packageName)"
+    static let appGroupIdentifier = "group.\(AppConstants.applicationIdentifier)"
 
     /// `NETunnelProviderProtocol` 使用的 Packet Tunnel 扩展 Bundle Identifier。
-    static let tunnelName = "\(AppConstants.packageName).PacketTunnel"
+    static let tunnelProviderIdentifier = "\(AppConstants.applicationIdentifier).PacketTunnel"
 
     /// LibXray Ping 流程使用的默认本地 SOCKS5 端口。
-    static let socks5Port: NWEndpoint.Port = 10808
+    static let defaultSocksPort: NWEndpoint.Port = 10808
 
     /// Xray Metrics HTTP 服务使用的默认监听端口。
-    static let trafficPort: NWEndpoint.Port = 49227
+    static let defaultMetricsPort: NWEndpoint.Port = 49227
 
     /// 延迟测试访问的目标地址。
-    static let pingUrl: String = "https://1.1.1.1"
+    static let pingURL: URL = URL(string: "https://1.1.1.1")!
 
     /// LibXray Ping 请求的超时时间，单位为秒。
-    static let timeout: Int = 30
+    static let pingTimeout: Int = 30
 
     /// 主 App 通过 `startVPNTunnel(options:)` 传给扩展的原始 JSON 配置键。
     static let tunnelConfigurationOptionKey = "xrayConfig"
@@ -63,8 +63,8 @@ public extension AppConstants {
     ///
     /// 目录结构固定为 `Library/Application Support/Xray`，主 App 和 Packet Tunnel
     /// 扩展通过相同路径访问运行配置和资源文件。
-    static let homeDirectory: URL = {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupName) else {
+    static let xrayDirectoryURL: URL = {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             fatalError("无法加载共享文件路径")
         }
         let url = containerURL.appendingPathComponent("Library/Application Support/Xray")
@@ -72,8 +72,8 @@ public extension AppConstants {
     }()
 
     /// 存放 `geoip.dat`、`geosite.dat` 等 Xray 资源文件的共享目录。
-    static let assetDirectory = createDirectory(at: homeDirectory.appending(component: "assets", directoryHint: .isDirectory))
+    static let assetDirectoryURL = createDirectory(at: xrayDirectoryURL.appending(component: "assets", directoryHint: .isDirectory))
 
     /// 存放 LibXray 校验和运行所需 JSON 配置的共享目录。
-    static let configDirectory = createDirectory(at: homeDirectory.appending(component: "configs", directoryHint: .isDirectory))
+    static let configDirectoryURL = createDirectory(at: xrayDirectoryURL.appending(component: "configs", directoryHint: .isDirectory))
 }

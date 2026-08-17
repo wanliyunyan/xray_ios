@@ -17,9 +17,10 @@ import Network
 /// - 合并 Xray 资源目录环境变量，清理空值和不兼容的 `sendThrough` 字段；
 /// - 最终序列化为可交给 LibXray 或 Packet Tunnel 扩展的 JSON 数据。
 ///
-/// 类型运行在主 Actor，因为它会读取 App Group 偏好，并由 SwiftUI 操作流程直接调用。
-@MainActor
-struct XrayConfigurationBuilder {
+/// 构建主 App 和 Packet Tunnel 扩展使用的 Xray 运行配置。
+actor XrayConfigurationBuilder {
+    private let coreClient = XrayCoreClient.shared
+
     // MARK: - Public API
 
     /// 生成正式 VPN 连接使用的完整运行配置。
@@ -32,12 +33,12 @@ struct XrayConfigurationBuilder {
     /// 5. 移除所有出站的 `sendThrough`，避免错误绑定本机接口；
     /// 6. 使用易于排查的 pretty-printed 格式序列化为 JSON。
     ///
-    /// - Parameter configLink: 用户保存的分享链接。
+    /// - Parameter shareLink: 用户保存的分享链接。
     /// - Returns: 可交给 Packet Tunnel 扩展的 JSON 数据。
     /// - Throws: Metrics 端口缺失、分享链接转换失败或 JSON 无法序列化时抛出错误。
-    func buildRunConfigurationData(configLink: String) throws -> Data {
+    func makeVPNConfigurationData(from shareLink: String) async throws -> Data {
         // 1. Metrics 端口必须和流量视图读取的端口保持一致。
-        guard let trafficPort = AppGroupStore.loadPort(key: "trafficPort") else {
+        guard let metricsPort = AppGroupStore.loadPort(forKey: "trafficPort") else {
             throw NSError(
                 domain: "ConfigurationError",
                 code: -1,
@@ -46,20 +47,20 @@ struct XrayConfigurationBuilder {
         }
 
         // 2. 从分享链接取得代理出站，并补齐应用依赖的固定出站。
-        var configuration = try buildOutInbound(configLink: configLink)
+        var configuration = try await makeBaseConfiguration(from: shareLink)
 
         // 3. 注入正式运行所需的所有应用侧配置片段。
-        configuration["inbounds"] = buildTunInbound()
-        configuration["env"] = buildEnvironment(from: configuration["env"])
-        configuration["metrics"] = buildMetrics(trafficPort: trafficPort)
-        configuration["policy"] = buildPolicy()
-        configuration["routing"] = buildRoute()
+        configuration["inbounds"] = makeTunInbound()
+        configuration["env"] = makeEnvironment(from: configuration["env"])
+        configuration["metrics"] = makeMetricsConfiguration(on: metricsPort)
+        configuration["policy"] = makePolicy()
+        configuration["routing"] = makeRoutingConfiguration()
         configuration["stats"] = [:]
-        configuration["dns"] = buildDNSConfiguration()
+        configuration["dns"] = makeDNSConfiguration()
 
         // 4. 清理转换结果中的空值和不兼容字段。
         configuration = removeNullValues(from: configuration)
-        configuration = removeSendThroughFromOutbounds(from: configuration)
+        configuration = removeSendThrough(from: configuration)
 
         // 5. 输出可读 JSON，便于检查最终落盘配置。
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
@@ -68,15 +69,15 @@ struct XrayConfigurationBuilder {
     /// 生成 LibXray 延迟测试使用的精简配置。
     ///
     /// 与正式运行配置不同，此配置只注入本地 SOCKS 入站和资源目录，不包含 TUN、Metrics、
-    /// Policy、Routing、Stats 或 DNS。`XrayService.performPing()` 会把它写入共享文件，再让
+    /// Policy、Routing、Stats 或 DNS。`XrayService.measureLatency()` 会把它写入共享文件，再让
     /// LibXray 通过该 SOCKS 代理访问测试地址。
     ///
-    /// - Parameter configLink: 用户保存的分享链接。
+    /// - Parameter shareLink: 用户保存的分享链接。
     /// - Returns: 可写入 Ping 配置文件的 JSON 数据。
     /// - Throws: SOCKS5 端口缺失、分享链接转换失败或 JSON 无法序列化时抛出错误。
-    func buildPingConfigurationData(configLink: String) throws -> Data {
+    func makeLatencyTestConfigurationData(from shareLink: String) async throws -> Data {
         // 1. SOCKS 入站端口必须和 Ping 请求中的代理地址保持一致。
-        guard let socks5Port = AppGroupStore.loadPort(key: "socks5Port")
+        guard let socksPort = AppGroupStore.loadPort(forKey: "socks5Port")
         else {
             throw NSError(
                 domain: "ConfigurationError",
@@ -86,15 +87,15 @@ struct XrayConfigurationBuilder {
         }
 
         // 2. 复用与正式运行相同的代理出站规范化逻辑。
-        var configuration = try buildOutInbound(configLink: configLink)
+        var configuration = try await makeBaseConfiguration(from: shareLink)
 
         // 3. Ping 只需要 SOCKS 入站和 Xray 资源目录。
-        configuration["inbounds"] = buildSocksInbound(inboundPort: socks5Port)
-        configuration["env"] = buildEnvironment(from: configuration["env"])
+        configuration["inbounds"] = makeSocksInbound(on: socksPort)
+        configuration["env"] = makeEnvironment(from: configuration["env"])
 
         // 4. 清理后输出精简 JSON。
         configuration = removeNullValues(from: configuration)
-        configuration = removeSendThroughFromOutbounds(from: configuration)
+        configuration = removeSendThrough(from: configuration)
 
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
@@ -105,7 +106,7 @@ struct XrayConfigurationBuilder {
     ///
     /// - Parameter configuration: 待规范化的完整配置字典。
     /// - Returns: 包含清理后 `outbounds` 的新字典；没有出站数组时原样返回。
-    private func removeSendThroughFromOutbounds(from configuration: [String: Any]) -> [String: Any] {
+    private func removeSendThrough(from configuration: [String: Any]) -> [String: Any] {
         var updatedConfig = configuration
 
         if let outbounds = configuration["outbounds"] as? [[String: Any]] {
@@ -147,18 +148,25 @@ struct XrayConfigurationBuilder {
     /// 解析分享链接并规范化应用依赖的三个出站标签。
     ///
     /// 处理步骤：
-    /// 1. 使用 `XrayService` 调用 LibXray 转换分享链接；
+    /// 1. 使用 `XrayCoreClient` 调用 LibXray 转换分享链接；
     /// 2. 校验转换结果包含非空 `outbounds`；
     /// 3. 将第一个出站的 tag 统一改为 `proxy`；
     /// 4. 缺少时分别追加 `freedom/direct` 和 `blackhole/block`。
     ///
-    /// - Parameter configLink: 原始分享链接文本。
+    /// - Parameter shareLink: 原始分享链接文本。
     /// - Returns: 保留 LibXray 其他字段、并具有稳定出站标签的配置字典。
     /// - Throws: 分享链接转换失败，或结果缺少有效出站时抛出错误。
-    private func buildOutInbound(configLink: String) throws -> [String: Any] {
-        var dataDict = try XrayService().convertConfigLinkToXrayJson(configLink: configLink)
+    private func makeBaseConfiguration(from shareLink: String) async throws -> [String: Any] {
+        let data = try await coreClient.convertShareLinkToXrayJSON(shareLink)
+        guard var configuration = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(
+                domain: "InvalidXrayJSON",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败"]
+            )
+        }
 
-        guard var outboundsArray = dataDict["outbounds"] as? [[String: Any]] else {
+        guard var outbounds = configuration["outbounds"] as? [[String: Any]] else {
             throw NSError(
                 domain: "InvalidXrayJson",
                 code: -1,
@@ -166,7 +174,7 @@ struct XrayConfigurationBuilder {
             )
         }
 
-        guard var firstOutbound = outboundsArray.first else {
+        guard var firstOutbound = outbounds.first else {
             throw NSError(
                 domain: "InvalidXrayJson",
                 code: -1,
@@ -174,40 +182,40 @@ struct XrayConfigurationBuilder {
             )
         }
         firstOutbound["tag"] = "proxy"
-        outboundsArray[0] = firstOutbound
+        outbounds[0] = firstOutbound
 
-        let freedomObject: [String: Any] = [
+        let directOutbound: [String: Any] = [
             "protocol": "freedom",
             "tag": "direct",
         ]
-        let blockObject: [String: Any] = [
+        let blockOutbound: [String: Any] = [
             "protocol": "blackhole",
             "tag": "block",
         ]
 
-        if !outboundsArray.contains(where: { $0["tag"] as? String == "direct" }) {
-            outboundsArray.append(freedomObject)
+        if !outbounds.contains(where: { $0["tag"] as? String == "direct" }) {
+            outbounds.append(directOutbound)
         }
-        if !outboundsArray.contains(where: { $0["tag"] as? String == "block" }) {
-            outboundsArray.append(blockObject)
+        if !outbounds.contains(where: { $0["tag"] as? String == "block" }) {
+            outbounds.append(blockOutbound)
         }
 
-        dataDict["outbounds"] = outboundsArray
-        return dataDict
+        configuration["outbounds"] = outbounds
+        return configuration
     }
 
     /// 构建仅供 Ping 测试使用的 SOCKS 入站。
     ///
     /// 入站监听全部本地地址，启用 TCP/UDP 嗅探和 UDP 转发，tag 固定为 `socks`。
     ///
-    /// - Parameter inboundPort: SOCKS 服务监听端口。
+    /// - Parameter port: SOCKS 服务监听端口。
     /// - Returns: 可直接写入 Xray `inbounds` 的单元素数组。
-    private func buildSocksInbound(
-        inboundPort: NWEndpoint.Port
+    private func makeSocksInbound(
+        on port: NWEndpoint.Port
     ) -> [[String: Any]] {
         let socksInbound: [String: Any] = [
             "listen": "0.0.0.0",
-            "port": Int(inboundPort.rawValue),
+            "port": Int(port.rawValue),
             "protocol": "socks",
             "sniffing": [
                 "enabled": true,
@@ -230,7 +238,7 @@ struct XrayConfigurationBuilder {
     /// Metrics 流量查询依赖该名称。
     ///
     /// - Returns: 可直接写入 Xray `inbounds` 的单元素数组。
-    private func buildTunInbound() -> [[String: Any]] {
+    private func makeTunInbound() -> [[String: Any]] {
         let tunInbound: [String: Any] = [
             "protocol": "tun",
             "sniffing": [
@@ -250,29 +258,29 @@ struct XrayConfigurationBuilder {
 
     /// 合并现有环境变量，并指定共享的 Xray 资源目录。
     ///
-    /// - Parameter existingValue: LibXray 基础配置中已有的 `env` 值；非字典时按空字典处理。
+    /// - Parameter existingEnvironment: LibXray 基础配置中已有的 `env` 值；非字典时按空字典处理。
     /// - Returns: 保留原字段并写入 `xray.location.asset` 的环境字典。
-    private func buildEnvironment(from existingValue: Any?) -> [String: Any] {
-        var environment = existingValue as? [String: Any] ?? [:]
-        environment["xray.location.asset"] = AppConstants.assetDirectory.path
+    private func makeEnvironment(from existingEnvironment: Any?) -> [String: Any] {
+        var environment = existingEnvironment as? [String: Any] ?? [:]
+        environment["xray.location.asset"] = AppConstants.assetDirectoryURL.path
         return environment
     }
 
     /// 构建只监听回环地址的 Metrics HTTP 服务配置。
     ///
-    /// - Parameter trafficPort: App 随机分配并持久化的监听端口。
+    /// - Parameter metricsPort: App 随机分配并持久化的监听端口。
     /// - Returns: Xray `metrics` 配置；流量视图通过 `/debug/vars` 读取统计值。
-    private func buildMetrics(trafficPort: NWEndpoint.Port) -> [String: Any] {
+    private func makeMetricsConfiguration(on metricsPort: NWEndpoint.Port) -> [String: Any] {
         [
             "tag": "Metrics",
-            "listen": "127.0.0.1:\(trafficPort.rawValue)"
+            "listen": "127.0.0.1:\(metricsPort.rawValue)"
         ]
     }
 
     /// 开启入站和出站的上下行流量统计。
     ///
     /// - Returns: 写入 Xray `policy.system` 的四个统计开关。
-    private func buildPolicy() -> [String: Any] {
+    private func makePolicy() -> [String: Any] {
         [
             "system": [
                 "statsInboundDownlink": true,
@@ -293,8 +301,8 @@ struct XrayConfigurationBuilder {
     /// - 最后一条兜底规则始终把其余 TCP/UDP 流量交给 `proxy`。
     ///
     /// - Returns: 可写入 Xray `routing` 字段的字典。
-    private func buildRoute() -> [String: Any] {
-        var route: [String: Any] = [
+    private func makeRoutingConfiguration() -> [String: Any] {
+        var routing: [String: Any] = [
             "domainStrategy": "AsIs",
             "rules": [
 
@@ -302,17 +310,17 @@ struct XrayConfigurationBuilder {
         ]
 
         let fileManager = FileManager.default
-        let assetDirectoryPath = AppConstants.assetDirectory.path
-        let vpnMode = AppGroupStore.loadString(key: "VPNMode") ?? VPNMode.nonGlobal.rawValue
+        let assetDirectoryPath = AppConstants.assetDirectoryURL.path
+        let routingMode = AppGroupStore.loadString(forKey: "VPNMode") ?? VPNRoutingMode.nonGlobal.rawValue
 
         // geo 规则依赖本地资源文件，仅在非全局模式下启用。
-        if vpnMode == VPNMode.nonGlobal.rawValue,
+        if routingMode == VPNRoutingMode.nonGlobal.rawValue,
            let files = try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath),
            !files.isEmpty
         {
-            var rulesArray = route["rules"] as? [[String: Any]] ?? []
+            var rules = routing["rules"] as? [[String: Any]] ?? []
 
-            rulesArray.append([
+            rules.append([
                 "type": "field",
                 "outboundTag": "block",
                 "domain": [
@@ -320,7 +328,7 @@ struct XrayConfigurationBuilder {
                 ],
             ])
 
-            rulesArray.append([
+            rules.append([
                 "type": "field",
                 "outboundTag": "direct",
                 "domain": [
@@ -329,7 +337,7 @@ struct XrayConfigurationBuilder {
                 ],
             ])
 
-            rulesArray.append([
+            rules.append([
                 "type": "field",
                 "outboundTag": "direct",
                 "ip": [
@@ -339,7 +347,7 @@ struct XrayConfigurationBuilder {
             ])
 
             // 常见国内公共 DNS 地址直连。
-            rulesArray.append([
+            rules.append([
                 "type": "field",
                 "outboundTag": "direct",
                 "ip": [
@@ -381,18 +389,18 @@ struct XrayConfigurationBuilder {
                 ],
             ])
 
-            route["rules"] = rulesArray
+            routing["rules"] = rules
         }
 
-        var rulesArray = route["rules"] as? [[String: Any]] ?? []
-        rulesArray.append([
+        var rules = routing["rules"] as? [[String: Any]] ?? []
+        rules.append([
             "type": "field",
             "network": ["tcp", "udp"],
             "outboundTag": "proxy",
         ])
-        route["rules"] = rulesArray
+        routing["rules"] = rules
 
-        return route
+        return routing
     }
 
     /// 构建兼顾国外解析与国内分流的 DNS 配置。
@@ -404,9 +412,9 @@ struct XrayConfigurationBuilder {
     /// 4. `dns.google` 固定映射到 `8.8.8.8`，避免解析 DoH 主机时产生循环依赖。
     ///
     /// - Returns: 包含 `hosts` 与 `servers` 的 Xray DNS 字典。
-    private func buildDNSConfiguration() -> [String: Any] {
+    private func makeDNSConfiguration() -> [String: Any] {
         let fileManager = FileManager.default
-        let assetDirectoryPath = AppConstants.assetDirectory.path
+        let assetDirectoryPath = AppConstants.assetDirectoryURL.path
         let files = (try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath)) ?? []
         let useGeoFiles = !files.isEmpty
 

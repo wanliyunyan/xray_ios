@@ -88,7 +88,8 @@ English documentation: [README.en.md](README.en.md)
 分享链接
    │
    ▼
-LibXray.convertShareLinksToXrayJson
+XrayCoreClient
+   └─ LibXray.convertShareLinksToXrayJson
    │
    ▼
 XrayConfigurationBuilder
@@ -105,7 +106,7 @@ PacketTunnelProvider
    ├─ 配置 IPv4/IPv6 默认路由和 DNS
    ├─ 查找 Network Extension 创建的 utun FD
    ├─ 注入 env.xray.tun.fd
-   └─ testXray → runXray → getXrayState
+   └─ LibXrayRuntime.start → isXrayRunning
    ```
 
 主 App 和扩展使用同一个 App Group 共享配置、端口和 geo 资源。运行配置位于 `Library/Application Support/Xray/configs`，资源位于 `Library/Application Support/Xray/assets`。
@@ -128,15 +129,26 @@ PacketTunnelProvider
 ├── Xray/                         # SwiftUI 主 App、配置构建和 VPN 管理
 │   ├── DashboardView.swift
 │   ├── XrayConfigurationBuilder.swift
+│   ├── XrayCoreClient.swift
 │   ├── PacketTunnelManager.swift
 │   ├── XrayService.swift
+│   ├── AppGroupStore.swift
+│   ├── ClipboardService.swift
+│   ├── ShareLinkParser.swift
+│   ├── SharedConfigurationFileStore.swift
+│   ├── IPAddressFormatter.swift
 │   ├── VPNConnectionControlView.swift
 │   ├── VPNRoutingModePickerView.swift
 │   ├── GeoAssetDownloadView.swift
 │   ├── LatencyTestView.swift
 │   ├── TrafficStatisticsView.swift
 │   ├── QRCodeScannerView.swift
-│   └── ConfigurationShareView.swift
+│   ├── ConfigurationShareView.swift
+│   ├── ConnectionDurationView.swift
+│   ├── LabeledValueRow.swift
+│   ├── PrimaryActionButtonStyle.swift
+│   ├── XrayVersionView.swift
+│   └── XrayApp.swift
 ├── PacketTunnel/                 # Network Extension，负责 utun 和 Xray 生命周期
 │   └── PacketTunnelProvider.swift
 ├── Shared/                       # 主 App 与扩展共享的运行时和常量

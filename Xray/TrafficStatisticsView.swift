@@ -27,14 +27,14 @@ struct TrafficStatisticsView: View {
     /// 用于判断隧道是否已连接，未连接时不发起无效 Metrics 请求。
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
-    /// 当前 TUN 入站累计下行字节数，以字符串保存供格式化显示。
-    @State private var downlinkTraffic: String = "0"
+    /// 当前 TUN 入站累计下行字节数。
+    @State private var downlinkBytes = 0
 
-    /// 当前 TUN 入站累计上行字节数，以字符串保存供格式化显示。
-    @State private var uplinkTraffic: String = "0"
+    /// 当前 TUN 入站累计上行字节数。
+    @State private var uplinkBytes = 0
 
     /// 从 App Group 偏好加载的 Metrics HTTP 服务端口。
-    @State private var trafficPort: NWEndpoint.Port?
+    @State private var metricsPort: NWEndpoint.Port?
 
     /// 在主 RunLoop common mode 下每秒触发一次流量刷新。
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -46,24 +46,24 @@ struct TrafficStatisticsView: View {
         VStack(alignment: .leading) {
             Text("流量统计:")
                 .font(.headline)
-            Text("下行流量: \(formatBytes(downlinkTraffic))")
-            Text("上行流量: \(formatBytes(uplinkTraffic))")
+            Text("下行流量: \(formatBytes(downlinkBytes))")
+            Text("上行流量: \(formatBytes(uplinkBytes))")
         }
         .onAppear {
             // Metrics 端口由 DashboardView 分配，并用于构建 Xray metrics 配置。
-            if let port = AppGroupStore.loadPort(key: "trafficPort") {
-                trafficPort = port
+            if let port = AppGroupStore.loadPort(forKey: "trafficPort") {
+                metricsPort = port
             } else {
                 logger.error("无法从 UserDefaults 加载端口或端口格式不正确")
             }
         }
         .onReceive(timer) { _ in
             // Metrics 仅在隧道运行期间可用。
-            if packetTunnelManager.status == .connected, let port = trafficPort {
+            if packetTunnelManager.status == .connected, let port = metricsPort {
                 Task {
-                    if let stats = await xrayService.getTrafficStats(trafficPort: port) {
-                        downlinkTraffic = String(stats.downlink)
-                        uplinkTraffic = String(stats.uplink)
+                    if let stats = await xrayService.fetchTrafficStatistics(on: port) {
+                        downlinkBytes = stats.downlinkBytes
+                        uplinkBytes = stats.uplinkBytes
                     }
                 }
             }
@@ -72,13 +72,13 @@ struct TrafficStatisticsView: View {
 
     // MARK: - 辅助方法
 
-    /// 将累计字节数字符串转换为易读单位。
+    /// 将累计字节数转换为易读单位。
     ///
-    /// - Parameter bytesString: 十进制字节数字符串。
+    /// - Parameter byteCount: 累计字节数。
     /// - Returns: 小于 1 KB 时显示整数 bytes，其余按 1024 进制显示两位小数的 KB、MB 或 GB；
-    ///   输入无法转换为数字时返回 `"0 bytes"`。
-    private func formatBytes(_ bytesString: String) -> String {
-        guard let bytes = Double(bytesString) else { return "0 bytes" }
+    ///   小于 1 KB 时直接显示整数值。
+    private func formatBytes(_ byteCount: Int) -> String {
+        let bytes = Double(byteCount)
 
         let kilobyte = 1024.0
         let megabyte = kilobyte * 1024
@@ -91,7 +91,7 @@ struct TrafficStatisticsView: View {
         } else if bytes >= kilobyte {
             return String(format: "%.2f KB", bytes / kilobyte)
         } else {
-            return "\(Int(bytes)) bytes"
+            return "\(byteCount) bytes"
         }
     }
 }

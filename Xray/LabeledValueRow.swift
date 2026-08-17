@@ -16,13 +16,13 @@ struct LabeledValueRow: View {
     var label: String
 
     /// 右侧由分享链接解析得到的实际内容。
-    var text: String
+    var value: String
 
     /// 构建单行标签和值布局。
     var body: some View {
         HStack {
             Text(label)
-            Text(text)
+            Text(value)
                 .lineLimit(1)
                 .truncationMode(.tail)
         }

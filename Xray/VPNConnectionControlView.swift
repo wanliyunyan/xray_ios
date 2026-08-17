@@ -16,12 +16,12 @@ struct VPNConnectionControlView: View {
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
     /// 用户点击“连接”时执行的异步操作，通常调用 `PacketTunnelManager.start()`。
-    var connect: () async -> Void
+    var onConnect: () async -> Void
 
     /// 将状态相关控件放在具有统一内边距的容器中。
     var body: some View {
         VStack {
-            vpnControlButton()
+            connectionControl()
         }
         .padding()
     }
@@ -38,24 +38,24 @@ struct VPNConnectionControlView: View {
     ///
     /// - Returns: 与当前系统连接状态对应的 SwiftUI 视图。
     @ViewBuilder
-    private func vpnControlButton() -> some View {
+    private func connectionControl() -> some View {
         switch packetTunnelManager.status {
         case .connected:
             // 已连接时唯一允许的操作是请求系统停止隧道。
             Button("断开") {
                 packetTunnelManager.stop()
             }
-            .buttonStyle(PrimaryActionButtonStyle(color: .red))
+            .buttonStyle(PrimaryActionButtonStyle(backgroundColor: .red))
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .disconnected:
             // 连接闭包是 async，使用 Task 从同步按钮事件进入异步流程。
             Button("连接") {
                 Task {
-                    await connect()
+                    await onConnect()
                 }
             }
-            .buttonStyle(PrimaryActionButtonStyle(color: .green))
+            .buttonStyle(PrimaryActionButtonStyle(backgroundColor: .green))
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .connecting, .reasserting:

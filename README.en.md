@@ -86,7 +86,8 @@ The project uses Swift Package Manager for LibXray:
 Share link
    │
    ▼
-LibXray.convertShareLinksToXrayJson
+XrayCoreClient
+   └─ LibXray.convertShareLinksToXrayJson
    │
    ▼
 XrayConfigurationBuilder
@@ -103,7 +104,7 @@ PacketTunnelProvider
    ├─ Configure IPv4/IPv6 default routes and DNS
    ├─ Find the utun FD created by Network Extension
    ├─ Inject env.xray.tun.fd
-   └─ testXray → runXray → getXrayState
+   └─ LibXrayRuntime.start → isXrayRunning
    ```
 
 The app and extension share configuration, ports, and geo assets through the same App Group. Runtime configs are stored under `Library/Application Support/Xray/configs`; assets are stored under `Library/Application Support/Xray/assets`.
@@ -126,15 +127,26 @@ The app and extension share configuration, ports, and geo assets through the sam
 ├── Xray/                         # SwiftUI app, configuration, and VPN management
 │   ├── DashboardView.swift
 │   ├── XrayConfigurationBuilder.swift
+│   ├── XrayCoreClient.swift
 │   ├── PacketTunnelManager.swift
 │   ├── XrayService.swift
+│   ├── AppGroupStore.swift
+│   ├── ClipboardService.swift
+│   ├── ShareLinkParser.swift
+│   ├── SharedConfigurationFileStore.swift
+│   ├── IPAddressFormatter.swift
 │   ├── VPNConnectionControlView.swift
 │   ├── VPNRoutingModePickerView.swift
 │   ├── GeoAssetDownloadView.swift
 │   ├── LatencyTestView.swift
 │   ├── TrafficStatisticsView.swift
 │   ├── QRCodeScannerView.swift
-│   └── ConfigurationShareView.swift
+│   ├── ConfigurationShareView.swift
+│   ├── ConnectionDurationView.swift
+│   ├── LabeledValueRow.swift
+│   ├── PrimaryActionButtonStyle.swift
+│   ├── XrayVersionView.swift
+│   └── XrayApp.swift
 ├── PacketTunnel/                 # Network Extension and Xray lifecycle
 │   └── PacketTunnelProvider.swift
 ├── Shared/                       # Runtime and constants shared by both targets

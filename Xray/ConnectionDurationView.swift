@@ -25,9 +25,9 @@ struct ConnectionDurationView: View {
                 if let connectedDate = packetTunnelManager.connectedDate {
                     // 连接期间每秒重新计算一次显示文本。
                     TimelineView(.periodic(from: Date(), by: 1.0)) { context in
-                        Text(connectedDateString(
-                            connectedDate: connectedDate,
-                            current: context.date
+                        Text(formattedDuration(
+                            from: connectedDate,
+                            to: context.date
                         ))
                         .monospacedDigit()
                     }
@@ -43,12 +43,12 @@ struct ConnectionDurationView: View {
     /// 计算并格式化连接开始时间到当前时间的间隔。
     ///
     /// - Parameters:
-    ///   - connectedDate: NetworkExtension 记录的连接建立时间。
-    ///   - current: `TimelineView` 当前刷新时刻。
+    ///   - startDate: NetworkExtension 记录的连接建立时间。
+    ///   - endDate: `TimelineView` 当前刷新时刻。
     /// - Returns: 一小时内为 `mm:ss`，达到一小时后为 `HH:mm:ss`。
     /// - Note: 使用绝对时间差，避免系统时钟变化导致界面出现负数。
-    private func connectedDateString(connectedDate: Date, current: Date) -> String {
-        let duration = Int64(abs(current.distance(to: connectedDate)))
+    private func formattedDuration(from startDate: Date, to endDate: Date) -> String {
+        let duration = Int64(abs(startDate.distance(to: endDate)))
 
         let hours = duration / 3600
         let minutes = (duration % 3600) / 60

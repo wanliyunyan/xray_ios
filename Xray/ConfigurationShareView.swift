@@ -19,7 +19,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 /// 关闭操作通过外部绑定控制 Sheet；配置缺失或图像生成失败时保留加载提示并记录日志。
 struct ConfigurationShareView: View {
     /// 父视图控制 Sheet 展示状态的绑定，点击关闭按钮时写入 `false`。
-    @Binding var isShowing: Bool
+    @Binding var isPresented: Bool
 
     /// 当前持久化的原始分享链接，用于文本展示和二维码输入。
     @State private var shareLink: String = ""
@@ -58,10 +58,10 @@ struct ConfigurationShareView: View {
             }
             .navigationBarTitle("分享配置", displayMode: .inline)
             .navigationBarItems(trailing: Button("关闭") {
-                isShowing = false
+                isPresented = false
             })
             .onAppear {
-                generateQRCode()
+                generateQRCodeImage()
             }
         }
     }
@@ -78,9 +78,9 @@ struct ConfigurationShareView: View {
     ///
     /// 整数倍缩放配合 `.interpolation(.none)` 可以保持二维码模块边界清晰。任何一步失败都会
     /// 记录具体原因并保持 `qrCodeImage == nil`。
-    private func generateQRCode() {
+    private func generateQRCodeImage() {
         // 1. 分享内容始终以 App Group 中当前保存的链接为准。
-        guard let link = AppGroupStore.loadString(key: "configLink"),
+        guard let link = AppGroupStore.loadString(forKey: "configLink"),
               !link.isEmpty
         else {
             logger.error("无法生成二维码，因为没有可用的配置内容")

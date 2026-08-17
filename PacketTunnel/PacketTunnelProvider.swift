@@ -17,7 +17,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 /// Packet Tunnel 扩展入口，将 NetworkExtension 创建的 utun 交给 Xray TUN 入站处理。
 final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     /// utun 与 Xray TUN 入站共同使用的最大传输单元。
-    private let mtu = 1500
+    private let tunnelMTU = 1500
 
     /// 串行执行 Xray 的启动和停止，避免生命周期调用交叉修改底层状态。
     private let runtimeQueue = DispatchQueue(label: "xray.packet-tunnel-runtime")
@@ -41,9 +41,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         completionHandler: @escaping @Sendable (Error?) -> Void
     ) {
         guard
-            let configData = options?[AppConstants.tunnelConfigurationOptionKey] as? Data,
-            let rawConfig = String(data: configData, encoding: .utf8),
-            !rawConfig.isEmpty
+            let configurationData = options?[AppConstants.tunnelConfigurationOptionKey] as? Data,
+            let configurationJSON = String(data: configurationData, encoding: .utf8),
+            !configurationJSON.isEmpty
         else {
             completionHandler(
                 NSError(
@@ -73,11 +73,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
                 completionHandler(error)
                 return
             }
-            self.findTunnelFileDescriptor { result in
-                switch result {
+            self.findTunnelFileDescriptor { fileDescriptorResult in
+                switch fileDescriptorResult {
                 case .success(let fileDescriptor):
-                    self.startXray(
-                        rawConfig: rawConfig,
+                    self.startXrayRuntime(
+                        configurationJSON: configurationJSON,
                         tunnelFileDescriptor: fileDescriptor,
                         completionHandler: completionHandler
                     )
@@ -118,28 +118,28 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     /// 最后还会通过 `getXrayState` 做一次确认。
     ///
     /// - Parameters:
-    ///   - rawConfig: 主 App 传入、尚未注入运行时环境变量的 JSON 字符串。
+    ///   - configurationJSON: 主 App 传入、尚未注入运行时环境变量的 JSON 字符串。
     ///   - tunnelFileDescriptor: NetworkExtension 创建的 utun socket 文件描述符。
     ///   - completionHandler: 返回最终启动结果的系统回调。
-    private func startXray(
-        rawConfig: String,
+    private func startXrayRuntime(
+        configurationJSON: String,
         tunnelFileDescriptor: Int32,
         completionHandler: @escaping @Sendable (Error?) -> Void
     ) {
         runtimeQueue.async {
             do {
                 // 1. 合并资源目录与 utun FD，生成扩展进程最终使用的配置。
-                let runtimeConfig = try self.prepareRuntimeConfig(
-                    rawConfig,
+                let runtimeConfigurationJSON = try self.makeRuntimeConfiguration(
+                    configurationJSON,
                     tunnelFileDescriptor: tunnelFileDescriptor
                 )
 
                 // 2. 停止残留实例后直接传入 JSON 启动，无需写配置文件。
                 try? LibXrayRuntime.stop()
-                try LibXrayRuntime.run(configJSON: runtimeConfig)
+                try LibXrayRuntime.start(configJSON: runtimeConfigurationJSON)
 
                 // 3. 只有底层明确进入 running 状态，系统隧道才算启动成功。
-                guard try LibXrayRuntime.isRunning() else {
+                guard try LibXrayRuntime.isXrayRunning() else {
                     throw NSError(
                         domain: "PacketTunnel",
                         code: -1,
@@ -168,17 +168,17 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     /// NetworkExtension 已创建的 utun，避免额外创建虚拟网卡。
     ///
     /// - Parameters:
-    ///   - rawConfig: 主 App 构建的 Xray JSON 配置。
+    ///   - configurationJSON: 主 App 构建的 Xray JSON 配置。
     ///   - tunnelFileDescriptor: 当前扩展进程中的 utun 文件描述符。
     /// - Returns: 按键排序后的最终 JSON 字符串，便于稳定写盘和排查配置差异。
     /// - Throws: JSON 无效、缺少 TUN 入站、`env` 类型错误或重新序列化失败时抛出错误。
-    private func prepareRuntimeConfig(
-        _ rawConfig: String,
+    private func makeRuntimeConfiguration(
+        _ configurationJSON: String,
         tunnelFileDescriptor: Int32
     ) throws -> String {
         guard
-            let data = rawConfig.data(using: .utf8),
-            var root = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            let configurationData = configurationJSON.data(using: .utf8),
+            var configuration = try JSONSerialization.jsonObject(with: configurationData) as? [String: Any]
         else {
             throw NSError(
                 domain: "PacketTunnel",
@@ -187,7 +187,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             )
         }
 
-        let inbounds = root["inbounds"] as? [[String: Any]] ?? []
+        let inbounds = configuration["inbounds"] as? [[String: Any]] ?? []
         guard inbounds.contains(where: {
             ($0["protocol"] as? String)?.lowercased() == "tun"
         }) else {
@@ -199,31 +199,31 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
 
         var environment: [String: Any]
-        if let value = root["env"] {
-            guard let object = value as? [String: Any] else {
+        if let existingEnvironment = configuration["env"] {
+            guard let environmentDictionary = existingEnvironment as? [String: Any] else {
                 throw NSError(
                     domain: "PacketTunnel",
                     code: -1,
                     userInfo: [NSLocalizedDescriptionKey: "Xray 配置 env 必须是对象"]
                 )
             }
-            environment = object
+            environment = environmentDictionary
         } else {
             environment = [:]
         }
-        environment["xray.location.asset"] = AppConstants.assetDirectory.path
+        environment["xray.location.asset"] = AppConstants.assetDirectoryURL.path
         environment["xray.tun.fd"] = String(tunnelFileDescriptor)
-        root["env"] = environment
+        configuration["env"] = environment
 
-        let encoded = try JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
-        guard let output = String(data: encoded, encoding: .utf8) else {
+        let encodedConfiguration = try JSONSerialization.data(withJSONObject: configuration, options: [.sortedKeys])
+        guard let runtimeConfigurationJSON = String(data: encodedConfiguration, encoding: .utf8) else {
             throw NSError(
                 domain: "PacketTunnel",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "无法序列化 Xray TUN 配置"]
             )
         }
-        return output
+        return runtimeConfigurationJSON
     }
 
     // MARK: - Tunnel File Descriptor
@@ -240,7 +240,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         attempt: Int = 0,
         completion: @escaping @Sendable (Result<Int32, Error>) -> Void
     ) {
-        if let fileDescriptor = currentTunnelFileDescriptor() {
+        if let fileDescriptor = findCurrentTunnelFileDescriptor() {
             completion(.success(fileDescriptor))
             return
         }
@@ -265,7 +265,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     ///
     /// 方法扫描 `0...1024`，使用 utun control socket 的 `getsockopt` 接口读取接口名，
     /// 并返回第一个名称以 `utun` 开头的描述符。无法识别任何 utun 时返回 `nil`。
-    private func currentTunnelFileDescriptor() -> Int32? {
+    private func findCurrentTunnelFileDescriptor() -> Int32? {
         for fileDescriptor in Int32(0) ... Int32(1024) {
             var interfaceName = [CChar](repeating: 0, count: Int(IFNAMSIZ))
             var nameLength = socklen_t(interfaceName.count)
@@ -298,7 +298,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     /// - Returns: 可直接传给 `setTunnelNetworkSettings` 的完整网络设置。
     private func makeTunnelNetworkSettings() -> NEPacketTunnelNetworkSettings {
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-        settings.mtu = NSNumber(value: mtu)
+        settings.mtu = NSNumber(value: tunnelMTU)
 
         // 将 IPv4 和 IPv6 默认路由交给 Packet Tunnel。
         settings.ipv4Settings = {

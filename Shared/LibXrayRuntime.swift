@@ -42,7 +42,7 @@ enum LibXrayRuntimeError: LocalizedError {
 /// 内多个任务同时修改底层运行时状态。
 enum LibXrayRuntime {
     /// 保护 `LibXrayInvoke` 的进程内互斥锁。
-    private static let invokeLock = NSLock()
+    private static let invocationLock = NSLock()
 
     /// 调用指定的 LibXray 方法，并解析响应中的 `data` 对象。
     ///
@@ -62,8 +62,8 @@ enum LibXrayRuntime {
         method: String,
         payload: [String: Any]? = nil
     ) throws -> [String: Any]? {
-        invokeLock.lock()
-        defer { invokeLock.unlock() }
+        invocationLock.lock()
+        defer { invocationLock.unlock() }
 
         var request: [String: Any] = [
             "apiVersion": 1,
@@ -101,7 +101,7 @@ enum LibXrayRuntime {
     ///
     /// - Parameter configJSON: 完整的 Xray JSON 配置字符串，无需落盘。
     /// - Throws: Xray 无法加载配置或启动运行时状态时抛出错误。
-    static func run(configJSON: String) throws {
+    static func start(configJSON: String) throws {
         _ = try invoke(
             method: "runXrayFromJson",
             payload: ["configJSON": configJSON]
@@ -121,7 +121,7 @@ enum LibXrayRuntime {
     ///
     /// - Returns: `getXrayState` 返回的运行状态。
     /// - Throws: 状态查询调用失败或响应无效时抛出错误。
-    static func isRunning() throws -> Bool {
+    static func isXrayRunning() throws -> Bool {
         let data = try invoke(method: "getXrayState")
         return data?["running"] as? Bool ?? false
     }
