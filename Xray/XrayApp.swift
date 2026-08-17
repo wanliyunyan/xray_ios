@@ -15,7 +15,7 @@ struct XrayApp: App {
     /// 创建唯一窗口场景并安装应用级环境对象。
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            DashboardView()
                 .environmentObject(PacketTunnelManager.shared)
         }
     }

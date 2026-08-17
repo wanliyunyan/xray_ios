@@ -1,5 +1,5 @@
 //
-//  ConnectedDurationView.swift
+//  ConnectionDurationView.swift
 //  Xray
 //
 //  Created by pan on 2024/9/23.
@@ -11,7 +11,7 @@ import SwiftUI
 ///
 /// 视图只在状态为 `.connected` 且系统提供 `connectedDate` 时启动 `TimelineView`；其他状态
 /// 统一显示 `00:00`。`TimelineView` 只驱动时间文本刷新，不创建额外计时器状态。
-struct ConnectedDurationView: View {
+struct ConnectionDurationView: View {
     /// 提供 VPN 状态和系统记录的连接建立时间。
     @EnvironmentObject private var packetTunnelManager: PacketTunnelManager
 

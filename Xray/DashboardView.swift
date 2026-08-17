@@ -1,5 +1,5 @@
 //
-//  ContentView.swift
+//  DashboardView.swift
 //  Xray
 //
 //  Created by pan on 2024/9/14.
@@ -11,7 +11,7 @@ import SwiftUI
 
 // MARK: - Logger
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "DashboardView")
 
 /// 应用主界面，集中展示节点信息、诊断数据、配置导入和 VPN 控制。
 ///
@@ -23,9 +23,9 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 /// - 调用 `PacketTunnelManager` 启动或停止系统 VPN；
 /// - 展示当前配置的分享二维码和底层 Xray Core 版本。
 @MainActor
-struct ContentView: View {
+struct DashboardView: View {
     /// 提供空闲端口分配能力。
-    private let xrayManager = XrayManager()
+    private let xrayService = XrayService()
 
     // MARK: - State
 
@@ -51,10 +51,10 @@ struct ContentView: View {
     @State private var showClipboardEmptyAlert = false
 
     /// Ping 配置中本地 SOCKS 入站使用的端口。
-    @State private var socks5Port: NWEndpoint.Port = Constant.socks5Port
+    @State private var socks5Port: NWEndpoint.Port = AppConstants.socks5Port
 
     /// Xray Metrics HTTP 服务和流量查询共同使用的端口。
-    @State private var trafficPort: NWEndpoint.Port = Constant.trafficPort
+    @State private var trafficPort: NWEndpoint.Port = AppConstants.trafficPort
 
     /// 二维码扫描器最近返回的原始文本。
     @State private var scannedCode: String? = nil
@@ -72,13 +72,13 @@ struct ContentView: View {
                 Text("vps信息:")
                     .font(.headline)
 
-                InfoRow(label: "ID:", text: idText)
-                InfoRow(label: "IP地址:", text: Util.maskIPAddress(ipText))
-                InfoRow(label: "端口:", text: portText)
+                LabeledValueRow(label: "ID:", text: idText)
+                LabeledValueRow(label: "IP地址:", text: AppUtilities.maskIPAddress(ipText))
+                LabeledValueRow(label: "端口:", text: portText)
 
                 // 连接相关数据拆分为独立视图，各自只监听所需状态。
-                ConnectedDurationView()
-                TrafficStatsView()
+                ConnectionDurationView()
+                TrafficStatisticsView()
 
                 Text("本机端口:")
                     .font(.headline)
@@ -88,13 +88,13 @@ struct ContentView: View {
                     Text("流量: \(trafficPort.rawValue)")
                 }
 
-                PingView().environmentObject(PacketTunnelManager.shared)
-                VPNModePickerView()
+                LatencyTestView().environmentObject(PacketTunnelManager.shared)
+                VPNRoutingModePickerView()
             }
             .padding()
 
             // geoip/geosite 资源下载与清理入口。
-            DownloadView()
+            GeoAssetDownloadView()
 
             // 配置操作区：剪贴板导入、摄像头扫描和二维码分享。
             HStack {
@@ -138,14 +138,14 @@ struct ContentView: View {
             .padding(.horizontal)
 
             // 根据系统连接状态显示连接、断开或进度控件。
-            VPNControlView {
+            VPNConnectionControlView {
                 await connectVPN()
             }
 
             // 底部展示当前 LibXray 内置的 Xray Core 版本。
             HStack {
                 Spacer()
-                VersionView()
+                XrayVersionView()
                 Spacer()
             }
         }
@@ -154,15 +154,15 @@ struct ContentView: View {
             // 恢复节点摘要，并为 Ping 与 Metrics 分配一组本地空闲端口。
             // 端口同时写入 App Group，保证后续配置构建和查询使用相同值。
             loadDataFromUserDefaults()
-            let ports = xrayManager.fetchFreePorts()
-            UtilStore.savePort(value: ports[0], key: "socks5Port")
-            UtilStore.savePort(value: ports[1], key: "trafficPort")
+            let ports = xrayService.fetchFreePorts()
+            AppGroupStore.savePort(value: ports[0], key: "socks5Port")
+            AppGroupStore.savePort(value: ports[1], key: "trafficPort")
             socks5Port = ports[0]
             trafficPort = ports[1]
         }
         .sheet(isPresented: $isShowingShareModal) {
             // 分享视图从 App Group 读取当前链接并生成二维码。
-            ShareModalView(isShowing: $isShowingShareModal)
+            ConfigurationShareView(isShowing: $isShowingShareModal)
         }
         .alert(isPresented: $showClipboardEmptyAlert) {
             Alert(
@@ -201,8 +201,8 @@ struct ContentView: View {
     /// 偏好中没有 `configLink` 时保持空状态；存在时只解析用于展示的 user、host 和 port，
     /// 不在此处调用 LibXray 或验证完整节点配置。
     private func loadDataFromUserDefaults() {
-        if let content = UtilStore.loadString(key: "configLink") {
-            Util.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
+        if let content = AppGroupStore.loadString(key: "configLink") {
+            AppUtilities.parseContent(content, idText: &idText, ipText: &ipText, portText: &portText)
         }
     }
 
@@ -211,12 +211,12 @@ struct ContentView: View {
     /// 只有非空且与已保存内容不同的字符串才会写入 App Group 并重新解析摘要，避免重复更新
     /// SwiftUI 状态。剪贴板为空或不包含字符串时记录日志，并显示用户提示。
     private func handlePasteFromClipboard() {
-        if let clipboardContent = Util.pasteFromClipboard(), !clipboardContent.isEmpty {
-            let storedContent = UtilStore.loadString(key: "configLink")
+        if let clipboardContent = AppUtilities.pasteFromClipboard(), !clipboardContent.isEmpty {
+            let storedContent = AppGroupStore.loadString(key: "configLink")
             if clipboardContent != storedContent {
                 clipboardText = clipboardContent
-                UtilStore.saveString(value: clipboardContent, key: "configLink")
-                Util.parseContent(clipboardContent, idText: &idText, ipText: &ipText, portText: &portText)
+                AppGroupStore.saveString(value: clipboardContent, key: "configLink")
+                AppUtilities.parseContent(clipboardContent, idText: &idText, ipText: &ipText, portText: &portText)
             }
         } else {
             logger.info("剪贴板内容为空")
@@ -231,8 +231,8 @@ struct ContentView: View {
     private func handleScannedCode(_ code: String) {
         logger.info("扫描到的二维码内容: \(code)")
         clipboardText = code
-        UtilStore.saveString(value: clipboardText, key: "configLink")
-        Util.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
+        AppGroupStore.saveString(value: clipboardText, key: "configLink")
+        AppUtilities.parseContent(clipboardText, idText: &idText, ipText: &ipText, portText: &portText)
         isShowingScanner = false
     }
 }

@@ -1,5 +1,5 @@
 //
-//  ShareModalView.swift
+//  ConfigurationShareView.swift
 //  Xray
 //
 //  Created by pan on 2024/9/29.
@@ -11,13 +11,13 @@ import SwiftUI
 
 // MARK: - Logger
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ShareModalView")
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ConfigurationShareView")
 
 /// 展示当前分享链接，并生成可供其他设备扫描的二维码。
 ///
 /// 视图从 App Group 偏好读取 `configLink`，同时展示原始文本和 Core Image 生成的二维码。
 /// 关闭操作通过外部绑定控制 Sheet；配置缺失或图像生成失败时保留加载提示并记录日志。
-struct ShareModalView: View {
+struct ConfigurationShareView: View {
     /// 父视图控制 Sheet 展示状态的绑定，点击关闭按钮时写入 `false`。
     @Binding var isShowing: Bool
 
@@ -80,7 +80,7 @@ struct ShareModalView: View {
     /// 记录具体原因并保持 `qrCodeImage == nil`。
     private func generateQRCode() {
         // 1. 分享内容始终以 App Group 中当前保存的链接为准。
-        guard let link = UtilStore.loadString(key: "configLink"),
+        guard let link = AppGroupStore.loadString(key: "configLink"),
               !link.isEmpty
         else {
             logger.error("无法生成二维码，因为没有可用的配置内容")

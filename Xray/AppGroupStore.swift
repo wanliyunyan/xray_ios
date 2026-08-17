@@ -1,5 +1,5 @@
 //
-//  UtilStore.swift
+//  AppGroupStore.swift
 //  Xray
 //
 //  Created by pan on 2025/6/30.
@@ -10,12 +10,12 @@ import Network
 
 /// App 与 Packet Tunnel 扩展共享的 UserDefaults 类型化访问入口。
 ///
-/// 所有数据写入 `Constant.groupName` 对应的 App Group suite，使主 App 构建的配置、端口和
+/// 所有数据写入 `AppConstants.groupName` 对应的 App Group suite，使主 App 构建的配置、端口和
 /// 用户选择可以被扩展相关流程读取。该类型为常用标量、集合、JSON、Codable 和网络端口提供
 /// 统一方法，避免各调用点重复创建 suite 或手动转换类型。
-enum UtilStore {
+enum AppGroupStore {
     /// App Group UserDefaults suite 名称。
-    private static let suiteName = Constant.groupName
+    private static let suiteName = AppConstants.groupName
 
     /// 每次访问时取得共享 suite。
     ///

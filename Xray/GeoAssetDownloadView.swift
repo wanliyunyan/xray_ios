@@ -1,5 +1,5 @@
 //
-//  DownloadView.swift
+//  GeoAssetDownloadView.swift
 //  Xray
 //
 //  Created by pan on 2024/10/17.
@@ -10,14 +10,14 @@ import SwiftUI
 
 // MARK: - Logger
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "DownloadView")
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "GeoAssetDownloadView")
 
 /// 下载、替换和清理 Xray 的 geoip/geosite 资源文件。
 ///
-/// `Configuration` 的非全局路由和国内 DNS 规则依赖这些文件。视图会从固定发布地址顺序
+/// `XrayConfigurationBuilder` 的非全局路由和国内 DNS 规则依赖这些文件。视图会从固定发布地址顺序
 /// 下载 `geoip.dat` 与 `geosite.dat`，保存到 App Group 的共享资源目录，并展示当前文件名。
 /// 如果资源在 VPN 已连接时发生变化，会等待隧道重启，让 Xray 重新加载最新资源。
-struct DownloadView: View {
+struct GeoAssetDownloadView: View {
     /// 下载流程是否正在执行；为 `true` 时禁用下载和清空按钮，避免并发修改目录。
     @State private var isDownloading: Bool = false
 
@@ -86,11 +86,11 @@ struct DownloadView: View {
 
     /// 刷新共享资源目录中的文件名列表。
     ///
-    /// 读取 `Constant.assetDirectory` 的直接子项并替换 `downloadedFiles`。读取失败不会清空
+    /// 读取 `AppConstants.assetDirectory` 的直接子项并替换 `downloadedFiles`。读取失败不会清空
     /// 现有界面状态，也不会向外抛出，只记录文件系统错误供排查。
     private func loadDownloadedFiles() {
         let fileManager = FileManager.default
-        let assetDirectoryPath = Constant.assetDirectory.path
+        let assetDirectoryPath = AppConstants.assetDirectory.path
 
         do {
             let files = try fileManager.contentsOfDirectory(atPath: assetDirectoryPath)
@@ -180,12 +180,12 @@ struct DownloadView: View {
     @MainActor
     private func saveFileToDirectory(fileURL: URL, fileName: String) {
         let fileManager = FileManager.default
-        let destinationURL = URL(fileURLWithPath: Constant.assetDirectory.path).appendingPathComponent(fileName)
+        let destinationURL = URL(fileURLWithPath: AppConstants.assetDirectory.path).appendingPathComponent(fileName)
 
         do {
-            // 正常情况下 Constant 已创建目录；这里保留防御性检查，应对目录被外部删除。
-            if !fileManager.fileExists(atPath: Constant.assetDirectory.path) {
-                try fileManager.createDirectory(at: Constant.assetDirectory, withIntermediateDirectories: true)
+            // 正常情况下 AppConstants 已创建目录；这里保留防御性检查，应对目录被外部删除。
+            if !fileManager.fileExists(atPath: AppConstants.assetDirectory.path) {
+                try fileManager.createDirectory(at: AppConstants.assetDirectory, withIntermediateDirectories: true)
             }
 
             guard fileManager.fileExists(atPath: fileURL.path) else {
@@ -214,10 +214,10 @@ struct DownloadView: View {
     /// 文件操作和 VPN 重启错误只写入日志，不继续抛给 SwiftUI 按钮任务。
     private func clearAssetDirectory() async {
         let fileManager = FileManager.default
-        let assetDirectoryPath = Constant.assetDirectory.path
+        let assetDirectoryPath = AppConstants.assetDirectory.path
 
         do {
-            // 删除全部旧资源后立即重建，保持 Constant.assetDirectory 始终可写。
+            // 删除全部旧资源后立即重建，保持 AppConstants.assetDirectory 始终可写。
             if fileManager.fileExists(atPath: assetDirectoryPath) {
                 try fileManager.removeItem(atPath: assetDirectoryPath)
                 logger.info("已删除文件夹: \(assetDirectoryPath)")

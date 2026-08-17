@@ -1,5 +1,5 @@
 //
-//  PingView.swift
+//  LatencyTestView.swift
 //  Xray
 //
 //  Created by pan on 2024/9/30.
@@ -12,16 +12,16 @@ import SwiftUI
 
 // MARK: - Logger
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PingView")
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "LatencyTestView")
 
 /// 执行并显示当前分享配置的代理延迟测试。
 ///
 /// 测试由 LibXray 使用独立 SOCKS 入站配置完成，不依赖已启动的 Packet Tunnel。视图首次出现
 /// 时自动测试一次；VPN 未连接时显示手动刷新入口，连接期间隐藏刷新入口，避免与正在运行的
 /// Xray 实例竞争底层运行时。
-struct PingView: View {
+struct LatencyTestView: View {
     /// 负责构建 Ping 配置、调用 LibXray 并解析毫秒延迟。
-    private let xrayManager = XrayManager()
+    private let xrayService = XrayService()
 
     // MARK: - State
 
@@ -41,7 +41,7 @@ struct PingView: View {
     var body: some View {
         VStack {
             HStack {
-                Text("Ping(\(Constant.pingUrl)):")
+                Text("Ping(\(AppConstants.pingUrl)):")
                 if isLoading {
                     ProgressView()
                         .frame(width: 24, height: 24)
@@ -75,14 +75,14 @@ struct PingView: View {
 
     /// 异步执行延迟测试，并同步加载状态和最后一次成功结果。
     ///
-    /// 方法立即进入加载状态，然后创建主 Actor 继承任务调用 `XrayManager.performPing()`。
+    /// 方法立即进入加载状态，然后创建主 Actor 继承任务调用 `XrayService.performPing()`。
     /// 成功时同时更新延迟和已获取标记；失败时保留上一次成功值并记录错误。任务结束后无论
     /// 成败都会关闭加载指示器。
     private func requestPing() {
         isLoading = true
         Task {
             do {
-                let result = try await xrayManager.performPing()
+                let result = try await xrayService.performPing()
                 pingSpeed = result
                 isPingFetched = true
             } catch {

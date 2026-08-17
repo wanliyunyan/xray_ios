@@ -1,5 +1,5 @@
 //
-//  Constant.swift
+//  AppConstants.swift
 //  Xray
 //
 //  Created by pan on 2024/9/14.
@@ -9,7 +9,7 @@ import Foundation
 import Network
 
 /// App 与 Packet Tunnel 扩展共享的标识、默认值和存储目录。
-public enum Constant {
+public enum AppConstants {
     /// 从主 App 的 `Info.plist` 读取应用标识。
     ///
     /// 该值用于派生 App Group 和 Packet Tunnel 扩展标识。构建配置未提供 `APP_ID`
@@ -17,14 +17,14 @@ public enum Constant {
     public static let packageName = Bundle.main.infoDictionary?["APP_ID"] as? String ?? "unknown"
 }
 
-public extension Constant {
+public extension AppConstants {
     // MARK: - Identifiers and Defaults
 
     /// App 与 Packet Tunnel 扩展共同访问的 App Group 标识。
-    static let groupName = "group.\(Constant.packageName)"
+    static let groupName = "group.\(AppConstants.packageName)"
 
     /// `NETunnelProviderProtocol` 使用的 Packet Tunnel 扩展 Bundle Identifier。
-    static let tunnelName = "\(Constant.packageName).PacketTunnel"
+    static let tunnelName = "\(AppConstants.packageName).PacketTunnel"
 
     /// LibXray Ping 流程使用的默认本地 SOCKS5 端口。
     static let socks5Port: NWEndpoint.Port = 10808

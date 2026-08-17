@@ -64,7 +64,7 @@ final class PacketTunnelManager: ObservableObject {
         }
     }
 
-    // MARK: - Manager Configuration
+    // MARK: - Manager Setup
 
     /// 加载或创建系统 VPN 配置，并将连接状态变化转发给 SwiftUI。
     ///
@@ -86,7 +86,7 @@ final class PacketTunnelManager: ObservableObject {
 
     /// 复用当前扩展的系统配置；不存在时创建并保存一份新配置。
     ///
-    /// 查找时使用 `providerBundleIdentifier == Constant.tunnelName`，避免误用其他应用或旧扩展
+    /// 查找时使用 `providerBundleIdentifier == AppConstants.tunnelName`，避免误用其他应用或旧扩展
     /// 的配置。新配置使用 `localhost` 作为系统要求的展示地址，排除局域网流量，并启用后
     /// 立即保存、重新加载，确保系统返回可启动的持久化对象。
     ///
@@ -96,13 +96,13 @@ final class PacketTunnelManager: ObservableObject {
             let managers = try await NETunnelProviderManager.loadAllFromPreferences()
 
             if let existingManager = managers.first(where: {
-                ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == Constant.tunnelName
+                ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == AppConstants.tunnelName
             }) {
                 return existingManager
             } else {
                 let manager = NETunnelProviderManager()
                 let configuration = NETunnelProviderProtocol()
-                configuration.providerBundleIdentifier = Constant.tunnelName
+                configuration.providerBundleIdentifier = AppConstants.tunnelName
                 configuration.serverAddress = "localhost"
                 configuration.excludeLocalNetworks = true
 
@@ -200,7 +200,7 @@ final class PacketTunnelManager: ObservableObject {
     /// 3. 重新保存并加载当前配置，避免系统仍处于待更新状态；
     /// 4. 从 App Group 偏好读取最新分享链接；
     /// 5. 生成包含 TUN、Metrics、Routing 和 DNS 的运行 JSON；
-    /// 6. 通过 `Constant.tunnelConfigurationOptionKey` 将原始 JSON Data 传给扩展。
+    /// 6. 通过 `AppConstants.tunnelConfigurationOptionKey` 将原始 JSON Data 传给扩展。
     ///
     /// utun 文件描述符此时尚不存在，不能由主 App 写进配置；扩展应用网络设置后会自行注入。
     ///
@@ -223,18 +223,18 @@ final class PacketTunnelManager: ObservableObject {
         try await saveAndLoad(manager: manager)
 
         // 3. 使用最近一次粘贴或扫描并持久化的分享链接。
-        guard let configLink = UtilStore.loadString(key: "configLink") else {
-            throw NSError(domain: "ContentView", code: -1,
+        guard let configLink = AppGroupStore.loadString(key: "configLink") else {
+            throw NSError(domain: "DashboardView", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"])
         }
 
         // 4. 构建原始运行配置；utun FD 只能由扩展在启动后注入。
-        let configData = try Configuration().buildRunConfigurationData(configLink: configLink)
+        let configData = try XrayConfigurationBuilder().buildRunConfigurationData(configLink: configLink)
 
         // 5. JSON Data 作为一次性启动参数传递，不写入系统 VPN 协议配置。
         do {
             try manager.connection.startVPNTunnel(options: [
-                Constant.tunnelConfigurationOptionKey: configData as NSData,
+                AppConstants.tunnelConfigurationOptionKey: configData as NSData,
             ])
             logger.info("VPN 尝试启动")
         } catch let error as NSError {

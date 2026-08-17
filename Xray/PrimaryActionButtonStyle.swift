@@ -1,5 +1,5 @@
 //
-//  ActionButtonStyle.swift
+//  PrimaryActionButtonStyle.swift
 //  Xray
 //
 //  Created by pan on 2024/9/20.
@@ -11,7 +11,7 @@ import SwiftUI
 ///
 /// 样式让标签横向占满可用空间，使用调用方指定的背景色、白色文字和固定圆角，
 /// 并在按压期间降低透明度，为连接和断开按钮提供一致的视觉反馈。
-struct ActionButtonStyle: ButtonStyle {
+struct PrimaryActionButtonStyle: ButtonStyle {
     /// 按钮的背景颜色，由连接状态决定，例如连接使用绿色、断开使用红色。
     var color: Color
 

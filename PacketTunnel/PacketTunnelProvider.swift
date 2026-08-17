@@ -41,7 +41,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         completionHandler: @escaping @Sendable (Error?) -> Void
     ) {
         guard
-            let configData = options?[Constant.tunnelConfigurationOptionKey] as? Data,
+            let configData = options?[AppConstants.tunnelConfigurationOptionKey] as? Data,
             let rawConfig = String(data: configData, encoding: .utf8),
             !rawConfig.isEmpty
         else {
@@ -211,7 +211,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         } else {
             environment = [:]
         }
-        environment["xray.location.asset"] = Constant.assetDirectory.path
+        environment["xray.location.asset"] = AppConstants.assetDirectory.path
         environment["xray.tun.fd"] = String(tunnelFileDescriptor)
         root["env"] = environment
 

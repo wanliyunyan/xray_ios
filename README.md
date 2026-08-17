@@ -91,7 +91,7 @@ English documentation: [README.en.md](README.en.md)
 LibXray.convertShareLinksToXrayJson
    │
    ▼
-Configuration
+XrayConfigurationBuilder
    ├─ TUN 入站（tun-in）
    ├─ Metrics HTTP 服务（127.0.0.1:<动态端口>）
    ├─ 路由、DNS、统计和 geo 资源环境变量
@@ -126,22 +126,22 @@ PacketTunnelProvider
 ```text
 .
 ├── Xray/                         # SwiftUI 主 App、配置构建和 VPN 管理
-│   ├── ContentView.swift
-│   ├── Configuration.swift
+│   ├── DashboardView.swift
+│   ├── XrayConfigurationBuilder.swift
 │   ├── PacketTunnelManager.swift
-│   ├── XrayManager.swift
-│   ├── VPNControlView.swift
-│   ├── VPNModePickerView.swift
-│   ├── DownloadView.swift
-│   ├── PingView.swift
-│   ├── TrafficStatsView.swift
+│   ├── XrayService.swift
+│   ├── VPNConnectionControlView.swift
+│   ├── VPNRoutingModePickerView.swift
+│   ├── GeoAssetDownloadView.swift
+│   ├── LatencyTestView.swift
+│   ├── TrafficStatisticsView.swift
 │   ├── QRCodeScannerView.swift
-│   └── ShareModalView.swift
+│   └── ConfigurationShareView.swift
 ├── PacketTunnel/                 # Network Extension，负责 utun 和 Xray 生命周期
 │   └── PacketTunnelProvider.swift
 ├── Shared/                       # 主 App 与扩展共享的运行时和常量
 │   ├── LibXrayRuntime.swift
-│   └── Constant.swift
+│   └── AppConstants.swift
 ├── Config.xcconfig               # APP_ID 和构建配置
 └── Xray.xcodeproj
 ```

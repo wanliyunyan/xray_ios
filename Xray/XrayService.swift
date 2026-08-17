@@ -1,5 +1,5 @@
 //
-//  XrayManager.swift
+//  XrayService.swift
 //  Xray
 //
 //  Created by pan on 2025/9/19.
@@ -9,7 +9,7 @@ import Foundation
 import Network
 import os
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "XrayManager")
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "XrayService")
 
 /// 提供主 App 使用的 Xray 业务操作。
 ///
@@ -17,17 +17,17 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 /// 请求，包括：构建并执行代理延迟测试、读取 Xray Core 版本、查询 TUN 入站累计流量、
 /// 获取空闲端口，以及将用户分享链接转换为基础 Xray JSON。
 ///
-/// 类型标记为 `@MainActor`，确保它与 `Configuration`、`UtilStore` 和 SwiftUI 状态更新在同一
+/// 类型标记为 `@MainActor`，确保它与 `XrayConfigurationBuilder`、`AppGroupStore` 和 SwiftUI 状态更新在同一
 /// 隔离域内调用；底层 LibXray 访问仍由 `LibXrayRuntime` 自己串行化。
 @MainActor
-struct XrayManager {
+struct XrayService {
     // MARK: - Diagnostics
 
     /// 使用当前保存的分享链接和 SOCKS 端口执行代理延迟测试。
     ///
     /// 完整流程：
     /// 1. 从 App Group 偏好读取用户最后保存的分享链接；
-    /// 2. 通过 `Configuration` 生成带本地 SOCKS 入站的精简配置；
+    /// 2. 通过 `XrayConfigurationBuilder` 生成带本地 SOCKS 入站的精简配置；
     /// 3. 将 JSON 写入 App Group 配置文件，供 LibXray 读取；
     /// 4. 读取与 SOCKS 入站一致的本地端口；
     /// 5. 调用 LibXray `ping`，让测试请求通过 `socks5://127.0.0.1:<port>` 发出；
@@ -39,33 +39,33 @@ struct XrayManager {
     func performPing() async throws -> Int {
         // 1. Ping 始终使用当前持久化的分享链接。
         guard
-            let configLink = UtilStore.loadString(key: "configLink"),
+            let configLink = AppGroupStore.loadString(key: "configLink"),
             !configLink.isEmpty
         else {
             throw NSError(
-                domain: "PingView",
+                domain: "LatencyTestView",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"]
             )
         }
 
         // 2. 构建 SOCKS 入站配置，并转换为 LibXray 配置文件需要的字符串。
-        let configData = try Configuration().buildPingConfigurationData(configLink: configLink)
+        let configData = try XrayConfigurationBuilder().buildPingConfigurationData(configLink: configLink)
         guard let configJSON = String(data: configData, encoding: .utf8) else {
             throw NSError(
-                domain: "PingView",
+                domain: "LatencyTestView",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "无法将配置数据转换为字符串"]
             )
         }
 
         // 3. 将配置写入共享容器，LibXray 的 ping 方法通过路径加载它。
-        let configURL = try Util.createConfigFile(with: configJSON)
+        let configURL = try AppUtilities.createConfigFile(with: configJSON)
 
         // 4. 代理地址必须使用配置中 SOCKS 入站监听的同一个端口。
-        guard let socks5Port = UtilStore.loadPort(key: "socks5Port") else {
+        guard let socks5Port = AppGroupStore.loadPort(key: "socks5Port") else {
             throw NSError(
-                domain: "PingView",
+                domain: "LatencyTestView",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口"]
             )
@@ -76,14 +76,14 @@ struct XrayManager {
             method: "ping",
             payload: [
                 "configPath": configURL.path,
-                "timeout": Constant.timeout,
-                "url": Constant.pingUrl,
+                "timeout": AppConstants.timeout,
+                "url": AppConstants.pingUrl,
                 "proxy": "socks5://127.0.0.1:\(socks5Port.rawValue)",
             ]
         )
         guard let delay = data?["delay"] as? NSNumber else {
             throw NSError(
-                domain: "PingView",
+                domain: "LatencyTestView",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "LibXray 未返回有效延迟"]
             )
@@ -99,7 +99,7 @@ struct XrayManager {
         let data = try LibXrayRuntime.invoke(method: "xrayVersion")
         guard let version = data?["version"] as? String, !version.isEmpty else {
             throw NSError(
-                domain: "XrayManager",
+                domain: "XrayService",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "LibXray 未返回版本号"]
             )
@@ -149,8 +149,8 @@ struct XrayManager {
     /// 获取 SOCKS 入站和 Metrics 服务使用的两个空闲端口。
     ///
     /// 调用 LibXray `getFreePorts` 并要求响应恰好包含两个可转换为 `NWEndpoint.Port` 的值。
-    /// 任何调用、数量或端口转换问题都会回退到 `Constant.socks5Port` 和
-    /// `Constant.trafficPort`，确保应用仍有可用配置。
+    /// 任何调用、数量或端口转换问题都会回退到 `AppConstants.socks5Port` 和
+    /// `AppConstants.trafficPort`，确保应用仍有可用配置。
     ///
     /// - Returns: 顺序为 `[socks5Port, trafficPort]` 的两个端口。
     func fetchFreePorts() -> [NWEndpoint.Port] {
@@ -175,7 +175,7 @@ struct XrayManager {
     /// 通过 LibXray 将分享链接转换为基础 Xray 配置字典。
     ///
     /// 该方法只负责验证输入并调用 `convertShareLinksToXrayJson`；TUN/SOCKS 入站、固定出站、
-    /// 路由和 DNS 等应用侧配置由 `Configuration` 在返回后继续补齐。
+    /// 路由和 DNS 等应用侧配置由 `XrayConfigurationBuilder` 在返回后继续补齐。
     ///
     /// - Parameter configLink: 用户粘贴或扫描得到的原始分享链接文本。
     /// - Returns: LibXray 响应中的基础配置字典。
@@ -204,6 +204,6 @@ struct XrayManager {
 
     /// LibXray 无法分配端口时使用的稳定回退值。
     private var defaultPorts: [NWEndpoint.Port] {
-        [Constant.socks5Port, Constant.trafficPort]
+        [AppConstants.socks5Port, AppConstants.trafficPort]
     }
 }

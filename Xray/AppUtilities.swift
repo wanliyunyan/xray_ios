@@ -1,5 +1,5 @@
 //
-//  Util.swift
+//  AppUtilities.swift
 //  Xray
 //
 //  Created by pan on 2024/9/20.
@@ -9,9 +9,9 @@ import SwiftUI
 
 /// 提供分享链接导入、摘要解析、地址脱敏和共享配置文件写入等无状态工具。
 ///
-/// 所有方法均为静态方法，不持有界面或业务状态。用户偏好的实际存取集中在 `UtilStore`，
+/// 所有方法均为静态方法，不持有界面或业务状态。用户偏好的实际存取集中在 `AppGroupStore`，
 /// 此处只处理系统剪贴板、URLComponents 解析和文件系统操作。
-enum Util {
+enum AppUtilities {
     // MARK: - Clipboard
 
     /// 读取系统剪贴板中的非空字符串。
@@ -75,7 +75,7 @@ enum Util {
     static func createConfigFile(with content: String, fileName: String = "config.json") throws -> URL {
         // 1. 使用与 Packet Tunnel 扩展相同的 App Group 容器。
         guard let sharedContainerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: Constant.groupName
+            forSecurityApplicationGroupIdentifier: AppConstants.groupName
         ) else {
             throw NSError(
                 domain: "AppGroupError",

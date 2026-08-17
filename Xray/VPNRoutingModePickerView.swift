@@ -1,5 +1,5 @@
 //
-//  VPNModePickerView.swift
+//  VPNRoutingModePickerView.swift
 //  Xray
 //
 //  Created by pan on 2024/11/5.
@@ -14,7 +14,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 /// VPN 的流量路由模式。
 ///
-/// 原始值直接用于界面显示和 App Group 持久化，`Configuration.buildRoute()` 根据保存值决定
+/// 原始值直接用于界面显示和 App Group 持久化，`XrayConfigurationBuilder.buildRoute()` 根据保存值决定
 /// 是否注入 geo 分流规则。
 enum VPNMode: String {
     /// 不添加国内直连或广告阻断规则，TCP/UDP 流量最终使用代理出站。
@@ -27,8 +27,8 @@ enum VPNMode: String {
 /// 提供全局和非全局路由模式选择，并与 App Group 偏好保持同步。
 ///
 /// 视图出现时恢复上次选择；用户切换后立即持久化。如果 VPN 已连接，会等待隧道重启，
-/// 使 `Configuration` 重新构建路由规则并交给新的 Packet Tunnel 实例。
-struct VPNModePickerView: View {
+/// 使 `XrayConfigurationBuilder` 重新构建路由规则并交给新的 Packet Tunnel 实例。
+struct VPNRoutingModePickerView: View {
     /// 当前选择的路由模式；没有有效持久化值时默认非全局。
     @State private var selectedMode: VPNMode = .nonGlobal
 
@@ -76,14 +76,14 @@ struct VPNModePickerView: View {
     ///
     /// - Parameter mode: 用户刚选择的模式，按枚举原始中文值保存。
     private func saveModeToUserDefaults(_ mode: VPNMode) {
-        UtilStore.saveString(value: mode.rawValue, key: "VPNMode")
+        AppGroupStore.saveString(value: mode.rawValue, key: "VPNMode")
     }
 
     /// 从 App Group 偏好恢复已保存的路由模式。
     ///
     /// 字符串缺失或无法转换为 `VPNMode` 时回退为 `.nonGlobal`，保证配置构建始终有确定值。
     private func loadModeFromUserDefaults() {
-        if let modeString = UtilStore.loadString(key: "VPNMode"),
+        if let modeString = AppGroupStore.loadString(key: "VPNMode"),
            let mode = VPNMode(rawValue: modeString)
         {
             selectedMode = mode

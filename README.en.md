@@ -89,7 +89,7 @@ Share link
 LibXray.convertShareLinksToXrayJson
    │
    ▼
-Configuration
+XrayConfigurationBuilder
    ├─ TUN inbound (tun-in)
    ├─ Metrics HTTP service (127.0.0.1:<dynamic port>)
    ├─ routing, DNS, statistics, and geo asset environment
@@ -124,22 +124,22 @@ The app and extension share configuration, ports, and geo assets through the sam
 ```text
 .
 ├── Xray/                         # SwiftUI app, configuration, and VPN management
-│   ├── ContentView.swift
-│   ├── Configuration.swift
+│   ├── DashboardView.swift
+│   ├── XrayConfigurationBuilder.swift
 │   ├── PacketTunnelManager.swift
-│   ├── XrayManager.swift
-│   ├── VPNControlView.swift
-│   ├── VPNModePickerView.swift
-│   ├── DownloadView.swift
-│   ├── PingView.swift
-│   ├── TrafficStatsView.swift
+│   ├── XrayService.swift
+│   ├── VPNConnectionControlView.swift
+│   ├── VPNRoutingModePickerView.swift
+│   ├── GeoAssetDownloadView.swift
+│   ├── LatencyTestView.swift
+│   ├── TrafficStatisticsView.swift
 │   ├── QRCodeScannerView.swift
-│   └── ShareModalView.swift
+│   └── ConfigurationShareView.swift
 ├── PacketTunnel/                 # Network Extension and Xray lifecycle
 │   └── PacketTunnelProvider.swift
 ├── Shared/                       # Runtime and constants shared by both targets
 │   ├── LibXrayRuntime.swift
-│   └── Constant.swift
+│   └── AppConstants.swift
 ├── Config.xcconfig               # APP_ID and build configuration
 └── Xray.xcodeproj
 ```

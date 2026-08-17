@@ -1,5 +1,5 @@
 //
-//  Configuration.swift
+//  XrayConfigurationBuilder.swift
 //  Xray
 //
 //  Created by pan on 2024/9/20.
@@ -19,7 +19,7 @@ import Network
 ///
 /// 类型运行在主 Actor，因为它会读取 App Group 偏好，并由 SwiftUI 操作流程直接调用。
 @MainActor
-struct Configuration {
+struct XrayConfigurationBuilder {
     // MARK: - Public API
 
     /// 生成正式 VPN 连接使用的完整运行配置。
@@ -37,7 +37,7 @@ struct Configuration {
     /// - Throws: Metrics 端口缺失、分享链接转换失败或 JSON 无法序列化时抛出错误。
     func buildRunConfigurationData(configLink: String) throws -> Data {
         // 1. Metrics 端口必须和流量视图读取的端口保持一致。
-        guard let trafficPort = UtilStore.loadPort(key: "trafficPort") else {
+        guard let trafficPort = AppGroupStore.loadPort(key: "trafficPort") else {
             throw NSError(
                 domain: "ConfigurationError",
                 code: -1,
@@ -68,7 +68,7 @@ struct Configuration {
     /// 生成 LibXray 延迟测试使用的精简配置。
     ///
     /// 与正式运行配置不同，此配置只注入本地 SOCKS 入站和资源目录，不包含 TUN、Metrics、
-    /// Policy、Routing、Stats 或 DNS。`XrayManager.performPing()` 会把它写入共享文件，再让
+    /// Policy、Routing、Stats 或 DNS。`XrayService.performPing()` 会把它写入共享文件，再让
     /// LibXray 通过该 SOCKS 代理访问测试地址。
     ///
     /// - Parameter configLink: 用户保存的分享链接。
@@ -76,7 +76,7 @@ struct Configuration {
     /// - Throws: SOCKS5 端口缺失、分享链接转换失败或 JSON 无法序列化时抛出错误。
     func buildPingConfigurationData(configLink: String) throws -> Data {
         // 1. SOCKS 入站端口必须和 Ping 请求中的代理地址保持一致。
-        guard let socks5Port = UtilStore.loadPort(key: "socks5Port")
+        guard let socks5Port = AppGroupStore.loadPort(key: "socks5Port")
         else {
             throw NSError(
                 domain: "ConfigurationError",
@@ -147,7 +147,7 @@ struct Configuration {
     /// 解析分享链接并规范化应用依赖的三个出站标签。
     ///
     /// 处理步骤：
-    /// 1. 使用 `XrayManager` 调用 LibXray 转换分享链接；
+    /// 1. 使用 `XrayService` 调用 LibXray 转换分享链接；
     /// 2. 校验转换结果包含非空 `outbounds`；
     /// 3. 将第一个出站的 tag 统一改为 `proxy`；
     /// 4. 缺少时分别追加 `freedom/direct` 和 `blackhole/block`。
@@ -156,7 +156,7 @@ struct Configuration {
     /// - Returns: 保留 LibXray 其他字段、并具有稳定出站标签的配置字典。
     /// - Throws: 分享链接转换失败，或结果缺少有效出站时抛出错误。
     private func buildOutInbound(configLink: String) throws -> [String: Any] {
-        var dataDict = try XrayManager().convertConfigLinkToXrayJson(configLink: configLink)
+        var dataDict = try XrayService().convertConfigLinkToXrayJson(configLink: configLink)
 
         guard var outboundsArray = dataDict["outbounds"] as? [[String: Any]] else {
             throw NSError(
@@ -254,7 +254,7 @@ struct Configuration {
     /// - Returns: 保留原字段并写入 `xray.location.asset` 的环境字典。
     private func buildEnvironment(from existingValue: Any?) -> [String: Any] {
         var environment = existingValue as? [String: Any] ?? [:]
-        environment["xray.location.asset"] = Constant.assetDirectory.path
+        environment["xray.location.asset"] = AppConstants.assetDirectory.path
         return environment
     }
 
@@ -302,8 +302,8 @@ struct Configuration {
         ]
 
         let fileManager = FileManager.default
-        let assetDirectoryPath = Constant.assetDirectory.path
-        let vpnMode = UtilStore.loadString(key: "VPNMode") ?? VPNMode.nonGlobal.rawValue
+        let assetDirectoryPath = AppConstants.assetDirectory.path
+        let vpnMode = AppGroupStore.loadString(key: "VPNMode") ?? VPNMode.nonGlobal.rawValue
 
         // geo 规则依赖本地资源文件，仅在非全局模式下启用。
         if vpnMode == VPNMode.nonGlobal.rawValue,
@@ -406,7 +406,7 @@ struct Configuration {
     /// - Returns: 包含 `hosts` 与 `servers` 的 Xray DNS 字典。
     private func buildDNSConfiguration() -> [String: Any] {
         let fileManager = FileManager.default
-        let assetDirectoryPath = Constant.assetDirectory.path
+        let assetDirectoryPath = AppConstants.assetDirectory.path
         let files = (try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath)) ?? []
         let useGeoFiles = !files.isEmpty
 

@@ -1,5 +1,5 @@
 //
-//  VPNControlView.swift
+//  VPNConnectionControlView.swift
 //  Xray
 //
 //  Created by pan on 2024/9/20.
@@ -11,7 +11,7 @@ import SwiftUI
 ///
 /// 视图本身不构建配置：连接操作由父视图以异步闭包注入，停止操作直接交给共享的
 /// `PacketTunnelManager`。这种拆分让控件只负责状态映射和用户交互。
-struct VPNControlView: View {
+struct VPNConnectionControlView: View {
     /// 提供当前 `NEVPNStatus`，并执行停止操作。
     @EnvironmentObject var packetTunnelManager: PacketTunnelManager
 
@@ -45,7 +45,7 @@ struct VPNControlView: View {
             Button("断开") {
                 packetTunnelManager.stop()
             }
-            .buttonStyle(ActionButtonStyle(color: .red))
+            .buttonStyle(PrimaryActionButtonStyle(color: .red))
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .disconnected:
@@ -55,7 +55,7 @@ struct VPNControlView: View {
                     await connect()
                 }
             }
-            .buttonStyle(ActionButtonStyle(color: .green))
+            .buttonStyle(PrimaryActionButtonStyle(color: .green))
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .connecting, .reasserting:
