@@ -5,14 +5,12 @@
 //  Created by pan on 2024/9/30.
 //
 
-import Combine
-import Network
 import os
 import SwiftUI
 
-// MARK: - Logger
+// MARK: - 日志
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "LatencyTestView")
+private let logger = Logger(subsystem: AppConstants.loggingSubsystem, category: "LatencyTestView")
 
 /// 执行并显示当前分享配置的代理延迟测试。
 ///
@@ -23,10 +21,13 @@ struct LatencyTestView: View {
     /// 负责构建 Ping 配置、调用 LibXray 并解析毫秒延迟。
     private let xrayService = XrayService()
 
-    // MARK: - State
+    // MARK: - 状态
 
     /// 提供 VPN 状态，用于决定是否允许手动重新执行 Ping。
-    @EnvironmentObject var packetTunnelManager: PacketTunnelManager
+    @Environment(PacketTunnelManager.self) private var packetTunnelManager
+
+    /// 延迟测试依赖的 SOCKS 端口准备状态。
+    @Environment(AppSessionState.self) private var appSessionState
 
     /// 最近一次成功测试得到的延迟，单位为毫秒。
     @State private var latencyMilliseconds: Int = 0
@@ -47,48 +48,67 @@ struct LatencyTestView: View {
                         .frame(width: 24, height: 24)
                 } else if hasLatencyResult {
                     Text("\(latencyMilliseconds)")
-                        .foregroundColor(latencyColor(for: latencyMilliseconds))
+                        .foregroundStyle(latencyColor(for: latencyMilliseconds))
                         .font(.headline)
                 }
-                Text("ms").foregroundColor(.black)
-                if packetTunnelManager.status != .connected {
+                Text("ms")
+                    .foregroundStyle(.primary)
+                if !packetTunnelManager.lifecycleState.isConnected {
                     // Packet Tunnel 未运行时允许重新占用 LibXray 运行时执行测试。
-                    Image(systemName: "arrow.clockwise")
-                        .resizable()
-                        .frame(width: 24, height: 24)
-                        .foregroundColor(.blue)
-                        .onTapGesture {
-                            runLatencyTest()
+                    Button {
+                        Task {
+                            await runLatencyTest()
                         }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 24))
+                    }
+                    .disabled(!appSessionState.areLocalPortsReady || isTesting)
+                    .accessibilityLabel("重新测试延迟")
                 }
             }
         }
-        .onAppear {
-            // 首次出现自动测试；已有成功结果时避免因父视图刷新重复请求。
-            if !hasLatencyResult {
-                runLatencyTest()
+        .task(id: testContext) {
+            guard
+                testContext.canRunAutomatically,
+                !hasLatencyResult
+            else {
+                return
             }
+            await runLatencyTest()
         }
     }
 
-    // MARK: - Actions
+    // MARK: - 操作
+
+    private var testContext: LatencyTestContext {
+        LatencyTestContext(
+            areLocalPortsReady: appSessionState.areLocalPortsReady,
+            lifecycleState: packetTunnelManager.lifecycleState
+        )
+    }
 
     /// 异步执行延迟测试，并同步加载状态和最后一次成功结果。
     ///
-    /// 方法立即进入加载状态，然后创建主 Actor 继承任务调用 `XrayService.measureLatency()`。
-    /// 成功时同时更新延迟和已获取标记；失败时保留上一次成功值并记录错误。任务结束后无论
-    /// 成败都会关闭加载指示器。
-    private func runLatencyTest() {
+    /// 方法立即进入加载状态并调用 `XrayService.measureLatency()`。成功时同时更新延迟和
+    /// 已获取标记；失败时保留上一次成功值并记录错误。任务结束后无论成败都会关闭加载指示器。
+    private func runLatencyTest() async {
+        guard appSessionState.areLocalPortsReady, !isTesting else {
+            return
+        }
+
         isTesting = true
-        Task {
-            do {
-                let measuredLatency = try await xrayService.measureLatency()
-                latencyMilliseconds = measuredLatency
-                hasLatencyResult = true
-            } catch {
-                logger.error("Ping 请求失败: \(error.localizedDescription)")
-            }
-            isTesting = false
+        defer { isTesting = false }
+
+        do {
+            let measuredLatency = try await xrayService.measureLatency()
+            try Task.checkCancellation()
+            latencyMilliseconds = measuredLatency
+            hasLatencyResult = true
+        } catch is CancellationError {
+            return
+        } catch {
+            logger.error("Ping 请求失败: \(error.localizedDescription)")
         }
     }
 
@@ -112,5 +132,14 @@ struct LatencyTestView: View {
         default:
             return .red
         }
+    }
+}
+
+private struct LatencyTestContext: Equatable {
+    let areLocalPortsReady: Bool
+    let lifecycleState: VPNLifecycleState
+
+    var canRunAutomatically: Bool {
+        areLocalPortsReady && lifecycleState == .disconnected
     }
 }

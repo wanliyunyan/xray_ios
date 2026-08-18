@@ -13,10 +13,10 @@ import SwiftUI
 /// 地址撑破主界面布局。
 struct LabeledValueRow: View {
     /// 左侧固定标签，例如 `ID:`、`IP地址:` 或 `端口:`。
-    var label: String
+    let label: String
 
     /// 右侧由分享链接解析得到的实际内容。
-    var value: String
+    let value: String
 
     /// 构建单行标签和值布局。
     var body: some View {

@@ -89,9 +89,9 @@ enum LibXrayRuntime {
         guard response["success"] as? Bool == true else {
             let message = (response["error"] as? String)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            throw LibXrayRuntimeError.invocationFailed(
-                message?.isEmpty == false ? message! : "LibXray \(method) 执行失败"
-            )
+            let errorMessage = message.flatMap { $0.isEmpty ? nil : $0 }
+                ?? "LibXray \(method) 执行失败"
+            throw LibXrayRuntimeError.invocationFailed(errorMessage)
         }
 
         return response["data"] as? [String: Any]

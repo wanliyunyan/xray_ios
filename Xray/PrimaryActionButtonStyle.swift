@@ -13,7 +13,7 @@ import SwiftUI
 /// 并在按压期间降低透明度，为连接和断开按钮提供一致的视觉反馈。
 struct PrimaryActionButtonStyle: ButtonStyle {
     /// 按钮的背景颜色，由连接状态决定，例如连接使用绿色、断开使用红色。
-    var backgroundColor: Color
+    let backgroundColor: Color
 
     /// 根据 SwiftUI 提供的标签和按压状态生成按钮外观。
     ///
@@ -26,8 +26,8 @@ struct PrimaryActionButtonStyle: ButtonStyle {
             .padding()
             // 背景色表达操作语义，白色文字保证对比度。
             .background(backgroundColor)
-            .foregroundColor(.white)
-            .cornerRadius(8)
+            .foregroundStyle(.white)
+            .clipShape(.rect(cornerRadius: 8))
             // 按压时降低透明度，明确反馈当前触摸状态。
             .opacity(configuration.isPressed ? 0.7 : 1.0)
     }

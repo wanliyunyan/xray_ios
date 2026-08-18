@@ -13,15 +13,15 @@ import SwiftUI
 /// 统一显示 `00:00`。`TimelineView` 只驱动时间文本刷新，不创建额外计时器状态。
 struct ConnectionDurationView: View {
     /// 提供 VPN 状态和系统记录的连接建立时间。
-    @EnvironmentObject private var packetTunnelManager: PacketTunnelManager
+    @Environment(PacketTunnelManager.self) private var packetTunnelManager
 
     /// 根据连接状态选择静态占位时间或每秒更新的持续时间。
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("连接时长:")
                 .font(.headline)
 
-            if let status = packetTunnelManager.status, status == .connected {
+            if packetTunnelManager.lifecycleState.isConnected {
                 if let connectedDate = packetTunnelManager.connectedDate {
                     // 连接期间每秒重新计算一次显示文本。
                     TimelineView(.periodic(from: Date(), by: 1.0)) { context in
@@ -46,18 +46,22 @@ struct ConnectionDurationView: View {
     ///   - startDate: NetworkExtension 记录的连接建立时间。
     ///   - endDate: `TimelineView` 当前刷新时刻。
     /// - Returns: 一小时内为 `mm:ss`，达到一小时后为 `HH:mm:ss`。
-    /// - Note: 使用绝对时间差，避免系统时钟变化导致界面出现负数。
+    /// - Note: 系统时间变化导致开始时间晚于当前时间时按零处理。
     private func formattedDuration(from startDate: Date, to endDate: Date) -> String {
-        let duration = Int64(abs(startDate.distance(to: endDate)))
+        let duration = max(0, Int64(startDate.distance(to: endDate)))
 
         let hours = duration / 3600
         let minutes = (duration % 3600) / 60
         let seconds = duration % 60
 
         if hours <= 0 {
-            return String(format: "%02d:%02d", minutes, seconds)
+            return "\(twoDigit(minutes)):\(twoDigit(seconds))"
         } else {
-            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+            return "\(twoDigit(hours)):\(twoDigit(minutes)):\(twoDigit(seconds))"
         }
+    }
+
+    private func twoDigit(_ value: Int64) -> String {
+        value < 10 ? "0\(value)" : String(value)
     }
 }

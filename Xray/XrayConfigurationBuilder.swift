@@ -8,6 +8,29 @@
 import Foundation
 import Network
 
+enum XrayConfigurationError: LocalizedError, Equatable, Sendable {
+    case missingMetricsPort
+    case missingSocksPort
+    case invalidJSON
+    case missingOutbounds
+    case emptyOutbounds
+
+    var errorDescription: String? {
+        switch self {
+        case .missingMetricsPort:
+            "无法加载 Metrics 端口"
+        case .missingSocksPort:
+            "无法加载 SOCKS5 端口"
+        case .invalidJSON:
+            "解析 Xray JSON 失败"
+        case .missingOutbounds:
+            "解析 Xray JSON 失败，未找到 outbounds"
+        case .emptyOutbounds:
+            "解析 Xray JSON 失败，outbounds 为空"
+        }
+    }
+}
+
 /// 从分享链接构建应用使用的完整 Xray JSON 配置。
 ///
 /// LibXray 负责把 VLESS 等分享链接转换为包含代理出站的基础配置，本类型在此基础上：
@@ -18,10 +41,10 @@ import Network
 /// - 最终序列化为可交给 LibXray 或 Packet Tunnel 扩展的 JSON 数据。
 ///
 /// 构建主 App 和 Packet Tunnel 扩展使用的 Xray 运行配置。
-actor XrayConfigurationBuilder {
+struct XrayConfigurationBuilder: Sendable {
     private let coreClient = XrayCoreClient.shared
 
-    // MARK: - Public API
+    // MARK: - 公共接口
 
     /// 生成正式 VPN 连接使用的完整运行配置。
     ///
@@ -39,11 +62,7 @@ actor XrayConfigurationBuilder {
     func makeVPNConfigurationData(from shareLink: String) async throws -> Data {
         // 1. Metrics 端口必须和流量视图读取的端口保持一致。
         guard let metricsPort = AppGroupStore.loadPort(forKey: "trafficPort") else {
-            throw NSError(
-                domain: "ConfigurationError",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
-            )
+            throw XrayConfigurationError.missingMetricsPort
         }
 
         // 2. 从分享链接取得代理出站，并补齐应用依赖的固定出站。
@@ -51,12 +70,17 @@ actor XrayConfigurationBuilder {
 
         // 3. 注入正式运行所需的所有应用侧配置片段。
         configuration["inbounds"] = makeTunInbound()
-        configuration["env"] = makeEnvironment(from: configuration["env"])
+        let assetDirectoryURL = try AppConstants.assetDirectoryURL()
+        let geoAssetsAreAvailable = requiredGeoAssetsAreAvailable(in: assetDirectoryURL)
+        configuration["env"] = makeEnvironment(
+            from: configuration["env"],
+            assetDirectoryURL: assetDirectoryURL
+        )
         configuration["metrics"] = makeMetricsConfiguration(on: metricsPort)
         configuration["policy"] = makePolicy()
-        configuration["routing"] = makeRoutingConfiguration()
+        configuration["routing"] = makeRoutingConfiguration(geoAssetsAreAvailable: geoAssetsAreAvailable)
         configuration["stats"] = [:]
-        configuration["dns"] = makeDNSConfiguration()
+        configuration["dns"] = makeDNSConfiguration(geoAssetsAreAvailable: geoAssetsAreAvailable)
 
         // 4. 清理转换结果中的空值和不兼容字段。
         configuration = removeNullValues(from: configuration)
@@ -79,11 +103,7 @@ actor XrayConfigurationBuilder {
         // 1. SOCKS 入站端口必须和 Ping 请求中的代理地址保持一致。
         guard let socksPort = AppGroupStore.loadPort(forKey: "socks5Port")
         else {
-            throw NSError(
-                domain: "ConfigurationError",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "无法从 UserDefaults 加载端口或端口格式不正确"]
-            )
+            throw XrayConfigurationError.missingSocksPort
         }
 
         // 2. 复用与正式运行相同的代理出站规范化逻辑。
@@ -91,7 +111,10 @@ actor XrayConfigurationBuilder {
 
         // 3. Ping 只需要 SOCKS 入站和 Xray 资源目录。
         configuration["inbounds"] = makeSocksInbound(on: socksPort)
-        configuration["env"] = makeEnvironment(from: configuration["env"])
+        configuration["env"] = makeEnvironment(
+            from: configuration["env"],
+            assetDirectoryURL: try AppConstants.assetDirectoryURL()
+        )
 
         // 4. 清理后输出精简 JSON。
         configuration = removeNullValues(from: configuration)
@@ -100,7 +123,7 @@ actor XrayConfigurationBuilder {
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
     }
 
-    // MARK: - Normalization
+    // MARK: - 规范化
 
     /// 移除所有出站的 `sendThrough`，避免将分享链接名称误作本机出站接口。
     ///
@@ -143,7 +166,7 @@ actor XrayConfigurationBuilder {
         return updatedDictionary
     }
 
-    // MARK: - Configuration Components
+    // MARK: - 配置组件
 
     /// 解析分享链接并规范化应用依赖的三个出站标签。
     ///
@@ -159,27 +182,15 @@ actor XrayConfigurationBuilder {
     private func makeBaseConfiguration(from shareLink: String) async throws -> [String: Any] {
         let data = try await coreClient.convertShareLinkToXrayJSON(shareLink)
         guard var configuration = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw NSError(
-                domain: "InvalidXrayJSON",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败"]
-            )
+            throw XrayConfigurationError.invalidJSON
         }
 
         guard var outbounds = configuration["outbounds"] as? [[String: Any]] else {
-            throw NSError(
-                domain: "InvalidXrayJson",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败，未找到 outbounds"]
-            )
+            throw XrayConfigurationError.missingOutbounds
         }
 
         guard var firstOutbound = outbounds.first else {
-            throw NSError(
-                domain: "InvalidXrayJson",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "解析 Xray JSON 失败，outbounds 为空"]
-            )
+            throw XrayConfigurationError.emptyOutbounds
         }
         firstOutbound["tag"] = "proxy"
         outbounds[0] = firstOutbound
@@ -260,9 +271,12 @@ actor XrayConfigurationBuilder {
     ///
     /// - Parameter existingEnvironment: LibXray 基础配置中已有的 `env` 值；非字典时按空字典处理。
     /// - Returns: 保留原字段并写入 `xray.location.asset` 的环境字典。
-    private func makeEnvironment(from existingEnvironment: Any?) -> [String: Any] {
+    private func makeEnvironment(
+        from existingEnvironment: Any?,
+        assetDirectoryURL: URL
+    ) -> [String: Any] {
         var environment = existingEnvironment as? [String: Any] ?? [:]
-        environment["xray.location.asset"] = AppConstants.assetDirectoryURL.path
+        environment["xray.location.asset"] = assetDirectoryURL.path
         return environment
     }
 
@@ -295,13 +309,13 @@ actor XrayConfigurationBuilder {
     ///
     /// - 全局模式：不添加分流规则，所有 TCP/UDP 最终匹配 `proxy`；
     /// - 非全局模式且 geo 文件可用：广告域名走 `block`，中国/私有域名与 IP 走
-    ///   `direct`，常见国内公共 DNS 地址也直接连接；
+    ///   `direct`，常见中国大陆公共 DNS 地址也直接连接；
     /// - 非全局模式但 geo 文件缺失：跳过依赖 `geoip/geosite` 的规则，避免 Xray 因资源
     ///   不存在而启动失败；
     /// - 最后一条兜底规则始终把其余 TCP/UDP 流量交给 `proxy`。
     ///
     /// - Returns: 可写入 Xray `routing` 字段的字典。
-    private func makeRoutingConfiguration() -> [String: Any] {
+    private func makeRoutingConfiguration(geoAssetsAreAvailable: Bool) -> [String: Any] {
         var routing: [String: Any] = [
             "domainStrategy": "AsIs",
             "rules": [
@@ -309,14 +323,11 @@ actor XrayConfigurationBuilder {
             ],
         ]
 
-        let fileManager = FileManager.default
-        let assetDirectoryPath = AppConstants.assetDirectoryURL.path
         let routingMode = AppGroupStore.loadString(forKey: "VPNMode") ?? VPNRoutingMode.nonGlobal.rawValue
 
         // geo 规则依赖本地资源文件，仅在非全局模式下启用。
         if routingMode == VPNRoutingMode.nonGlobal.rawValue,
-           let files = try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath),
-           !files.isEmpty
+           geoAssetsAreAvailable
         {
             var rules = routing["rules"] as? [[String: Any]] ?? []
 
@@ -346,7 +357,7 @@ actor XrayConfigurationBuilder {
                 ],
             ])
 
-            // 常见国内公共 DNS 地址直连。
+            // 常见中国大陆公共 DNS 地址直连。
             rules.append([
                 "type": "field",
                 "outboundTag": "direct",
@@ -403,7 +414,7 @@ actor XrayConfigurationBuilder {
         return routing
     }
 
-    /// 构建兼顾国外解析与国内分流的 DNS 配置。
+    /// 构建兼顾国外解析与中国大陆分流的 DNS 配置。
     ///
     /// 规则顺序如下：
     /// 1. `googleapis.cn` 和 `gstatic.com` 使用 `1.1.1.1` 且不进入 fallback；
@@ -412,12 +423,7 @@ actor XrayConfigurationBuilder {
     /// 4. `dns.google` 固定映射到 `8.8.8.8`，避免解析 DoH 主机时产生循环依赖。
     ///
     /// - Returns: 包含 `hosts` 与 `servers` 的 Xray DNS 字典。
-    private func makeDNSConfiguration() -> [String: Any] {
-        let fileManager = FileManager.default
-        let assetDirectoryPath = AppConstants.assetDirectoryURL.path
-        let files = (try? fileManager.contentsOfDirectory(atPath: assetDirectoryPath)) ?? []
-        let useGeoFiles = !files.isEmpty
-
+    private func makeDNSConfiguration(geoAssetsAreAvailable: Bool) -> [String: Any] {
         var servers: [Any] = []
 
         // 为 Google 静态资源指定可直接访问的解析器。
@@ -430,7 +436,7 @@ actor XrayConfigurationBuilder {
             ],
         ])
 
-        if useGeoFiles {
+        if geoAssetsAreAvailable {
             servers.append([
                 "address": "223.5.5.5",
                 "skipFallback": true,
@@ -454,5 +460,20 @@ actor XrayConfigurationBuilder {
             "hosts": ["dns.google": "8.8.8.8"],
             "servers": servers,
         ]
+    }
+
+    /// 只有 geoip 和 geosite 均存在且非空时才生成依赖二者的规则。
+    private func requiredGeoAssetsAreAvailable(in assetDirectoryURL: URL) -> Bool {
+        ["geoip.dat", "geosite.dat"].allSatisfy { fileName in
+            let fileURL = assetDirectoryURL.appendingPathComponent(fileName)
+            guard
+                let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+                resourceValues.isRegularFile == true,
+                let fileSize = resourceValues.fileSize
+            else {
+                return false
+            }
+            return fileSize > 0
+        }
     }
 }

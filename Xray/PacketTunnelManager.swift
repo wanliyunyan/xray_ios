@@ -5,82 +5,126 @@
 //  Created by pan on 2024/9/14.
 //
 
-import Combine
-import NetworkExtension
+@preconcurrency import NetworkExtension
+import Observation
 import os
-import UIKit
 
-// MARK: - Logger
+// MARK: - 日志
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PacketTunnelManager")
+private let logger = Logger(subsystem: AppConstants.loggingSubsystem, category: "PacketTunnelManager")
+private let activeShareLinkKey = "activeConfigLink"
 
-/// 管理 Packet Tunnel 系统配置、连接状态和启停流程的应用级单例。
+/// 管理 Packet Tunnel 系统配置、连接状态和启停流程的应用级实例。
 ///
 /// 该类型通过 `NETunnelProviderManager` 与 NetworkExtension 交互，主要职责包括：
 /// - 从系统偏好加载当前扩展的 VPN 配置，不存在时创建并保存；
 /// - 监听 `NEVPNStatusDidChange` 并通知 SwiftUI 刷新连接状态；
 /// - 启动前构建最新 Xray TUN JSON，并通过启动参数传给 Packet Tunnel 扩展；
-/// - 检测其他正在运行的 Tunnel Provider，避免同时启用多个 VPN 配置；
 /// - 提供停止和等待完全断开后的重启能力。
 @MainActor
-final class PacketTunnelManager: ObservableObject {
-    // MARK: - Shared Instance
+@Observable
+final class PacketTunnelManager {
+    // MARK: - 状态
 
-    /// App 内唯一的 VPN 管理实例，所有视图共享同一份系统连接状态。
-    static let shared = PacketTunnelManager()
+    /// 合并并发初始化请求，避免同时加载或创建多个系统 VPN 配置。
+    @ObservationIgnored
+    private var managerSetupTask: Task<NETunnelProviderManager?, Never>?
 
-    // MARK: - State
+    /// 使用异步通知序列观察系统连接状态。
+    @ObservationIgnored
+    private var statusObservationTask: Task<Void, Never>?
 
-    /// 保存 VPN 状态通知订阅，使订阅生命周期与单例一致。
-    private var cancellables = Set<AnyCancellable>()
+    /// 防止系统接受启动请求后始终不回报任何活动状态。
+    @ObservationIgnored
+    private var startAcknowledgementTask: Task<Void, Never>?
 
     /// 当前扩展对应的系统 VPN 配置。
-    ///
-    /// 配置异步加载完成前为 `nil`。属性变化由 `@Published` 通知界面，连接对象内部的
-    /// `status` 变化则由 `NEVPNStatusDidChange` 订阅手动转发。
-    @Published private var tunnelProviderManager: NETunnelProviderManager?
+    @ObservationIgnored
+    private var tunnelProviderManager: NETunnelProviderManager?
 
-    /// 当前 VPN 连接状态；系统配置尚未加载时为 `nil`。
-    ///
-    /// 常见状态包括 `.disconnected`、`.connecting`、`.connected`、`.reasserting` 和
-    /// `.disconnecting`，界面据此选择操作按钮或加载提示。
-    var status: NEVPNStatus? {
-        tunnelProviderManager?.connection.status
-    }
+    /// 跨越异步预检和系统状态确认阶段，阻止重复启动。
+    @ObservationIgnored
+    private var startGate = VPNStartGate()
+
+    /// 由系统状态和应用正在执行的生命周期操作共同驱动的界面状态。
+    private(set) var lifecycleState: VPNLifecycleState = .loading
 
     /// 当前连接成功的时间；尚未连接或系统未提供时间时为 `nil`。
-    var connectedDate: Date? {
-        tunnelProviderManager?.connection.connectedDate
-    }
+    private(set) var connectedDate: Date?
 
-    // MARK: - Initialization
+    /// 当前 Packet Tunnel 启动时实际使用的分享链接快照。
+    private(set) var activeShareLink: String?
 
-    /// 创建单例后异步加载系统配置并安装状态监听。
-    ///
-    /// 初始化保持私有，防止多个实例分别持有不同的 `NETunnelProviderManager`。
-    private init() {
-        Task {
-            await setupTunnelManager()
+    // MARK: - 初始化
+
+    /// 创建应用级实例后异步加载系统配置并安装状态监听。
+    init() {
+        Task { [weak self] in
+            await self?.ensureTunnelManagerIsReady()
         }
     }
 
-    // MARK: - Manager Setup
+    deinit {
+        managerSetupTask?.cancel()
+        statusObservationTask?.cancel()
+        startAcknowledgementTask?.cancel()
+    }
+
+    // MARK: - 管理器配置
 
     /// 加载或创建系统 VPN 配置，并将连接状态变化转发给 SwiftUI。
     ///
-    /// `NETunnelProviderSession.status` 不是 `@Published` 属性，因此需要监听系统通知并显式
-    /// 发送 `objectWillChange`。通知限定到当前 connection，避免其他 VPN 的状态变化触发刷新。
-    private func setupTunnelManager() async {
-        tunnelProviderManager = await loadTunnelProviderManager()
+    /// `NETunnelProviderSession.status` 不是可观察属性，因此监听系统通知并转换为
+    /// `lifecycleState`。通知限定到当前 connection，避免其他 VPN 的状态变化触发刷新。
+    @discardableResult
+    private func ensureTunnelManagerIsReady() async -> NETunnelProviderManager? {
+        if let tunnelProviderManager {
+            return tunnelProviderManager
+        }
 
-        if let connection = tunnelProviderManager?.connection {
-            NotificationCenter.default
-                .publisher(for: .NEVPNStatusDidChange, object: connection)
-                .receive(on: RunLoop.main)
-                .sink { [weak self] _ in
-                    self?.objectWillChange.send()
+        let setupTask: Task<NETunnelProviderManager?, Never>
+        if let managerSetupTask {
+            setupTask = managerSetupTask
+        } else {
+            lifecycleState = .loading
+            let newTask = Task { [weak self] in
+                await self?.loadTunnelProviderManager()
+            }
+            managerSetupTask = newTask
+            setupTask = newTask
+        }
+
+        let loadedManager = await setupTask.value
+        managerSetupTask = nil
+
+        guard let loadedManager else {
+            lifecycleState = .failed("无法加载 VPN 配置")
+            return nil
+        }
+
+        guard tunnelProviderManager == nil else {
+            return tunnelProviderManager
+        }
+
+        tunnelProviderManager = loadedManager
+        refreshConnectionState()
+        observeStatusChanges(for: loadedManager)
+        return loadedManager
+    }
+
+    private func observeStatusChanges(for manager: NETunnelProviderManager) {
+        statusObservationTask?.cancel()
+        let connection = manager.connection
+        statusObservationTask = Task { @MainActor [weak self] in
+            for await _ in NotificationCenter.default.notifications(
+                named: .NEVPNStatusDidChange,
+                object: connection
+            ) {
+                guard !Task.isCancelled else {
+                    return
                 }
-                .store(in: &cancellables)
+                self?.refreshConnectionState()
+            }
         }
     }
 
@@ -133,112 +177,71 @@ final class PacketTunnelManager: ObservableObject {
             try await manager.loadFromPreferences()
             logger.info("VPN 配置已保存并加载")
         } catch {
-            throw NSError(
-                domain: "PacketTunnelManager",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "保存或加载配置失败: \(error.localizedDescription)"]
-            )
+            throw PacketTunnelManagerError.preferenceUpdateFailed(error.localizedDescription)
         }
     }
 
-    // MARK: - VPN Conflict Handling
+    // MARK: - 隧道控制
 
-    /// 检查是否已有 Tunnel Provider 正在连接或已连接。
-    ///
-    /// 方法重新读取系统中的全部 `NETunnelProviderManager`，只把 `.connecting` 和
-    /// `.connected` 视为冲突；读取失败时记录日志并按“无冲突”处理，让当前启动流程继续。
-    ///
-    /// - Returns: 存在活动 Tunnel Provider 时返回 `true`。
-    private func hasOtherActiveVPN() async -> Bool {
-        do {
-            let managers = try await NETunnelProviderManager.loadAllFromPreferences()
-            for manager in managers {
-                let status = manager.connection.status
-                if status == .connected || status == .connecting {
-                    logger.info("检测到其他 VPN 正在运行: \(manager.localizedDescription ?? "未知")")
-                    return true
-                }
-            }
-        } catch {
-            logger.error("检查其他 VPN 状态失败: \(error.localizedDescription)")
+    /// 确认系统 VPN 配置可用，并刷新真实状态供界面选择端口准备策略。
+    func prepareForConnection() async throws {
+        guard await ensureTunnelManagerIsReady() != nil else {
+            throw PacketTunnelManagerError.managerUnavailable
         }
-        return false
+        refreshConnectionState()
     }
-
-    /// 提示用户前往系统设置切换当前使用的 VPN 配置。
-    ///
-    /// NetworkExtension 不允许应用静默替换另一个正在使用的 VPN。方法从当前活动窗口查找
-    /// 根控制器并显示系统 `UIAlertController`；找不到可呈现窗口时仅记录错误。
-    private func presentVPNConflictAlert() {
-        DispatchQueue.main.async {
-            let alert = UIAlertController(
-                title: "切换 VPN 配置",
-                message: "系统检测到其他 VPN 配置正在使用，请前往设置切换到当前配置。",
-                preferredStyle: .alert
-            )
-            alert.addAction(UIAlertAction(title: "确定", style: .default, handler: nil))
-
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let rootViewController = windowScene
-                  .windows.first(where: { $0.isKeyWindow })?
-                  .rootViewController
-            else {
-                logger.error("未找到活动的 UIWindowScene 或 rootViewController")
-                return
-            }
-            rootViewController.present(alert, animated: true, completion: nil)
-        }
-    }
-
-    // MARK: - Tunnel Control
 
     /// 构建当前分享链接的运行配置，并启动 Packet Tunnel。
     ///
     /// 启动流程：
     /// 1. 确认系统 VPN 配置已经完成异步初始化；
-    /// 2. 检查其他 Tunnel Provider，存在冲突时提示用户并结束本次启动；
+    /// 2. 对当前分享链接建立不可变快照，后续导入只影响下一次连接；
     /// 3. 重新保存并加载当前配置，避免系统仍处于待更新状态；
-    /// 4. 从 App Group 偏好读取最新分享链接；
-    /// 5. 生成包含 TUN、Metrics、Routing 和 DNS 的运行 JSON；
-    /// 6. 通过 `AppConstants.tunnelConfigurationOptionKey` 将原始 JSON Data 传给扩展。
+    /// 4. 生成包含 TUN、Metrics、Routing 和 DNS 的运行 JSON；
+    /// 5. 通过 `AppConstants.tunnelConfigurationOptionKey` 将原始 JSON Data 传给扩展。
     ///
     /// utun 文件描述符此时尚不存在，不能由主 App 写进配置；扩展应用网络设置后会自行注入。
     ///
     /// - Throws: Manager 未初始化、配置缺失或构建失败、系统偏好保存失败，或
     ///   `startVPNTunnel` 拒绝启动时抛出错误。
     func start() async throws {
-        guard let tunnelProviderManager else {
-            throw NSError(domain: "PacketTunnelManager", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "Manager 未初始化"])
+        guard let tunnelProviderManager = await ensureTunnelManagerIsReady() else {
+            throw PacketTunnelManagerError.managerUnavailable
         }
 
-        // 1. 已有活动 VPN 时交由用户在系统中确认切换。
-        if await hasOtherActiveVPN() {
-            logger.info("检测到其他 VPN 正在运行")
-            presentVPNConflictAlert()
-            return
-        }
+        refreshConnectionState()
+        try startGate.begin(from: lifecycleState)
 
-        // 2. 启动前重新加载，避免系统配置仍处于待更新状态。
-        try await saveAndReload(tunnelProviderManager)
-
-        // 3. 使用最近一次粘贴或扫描并持久化的分享链接。
-        guard let shareLink = AppGroupStore.loadString(forKey: "configLink") else {
-            throw NSError(domain: "PacketTunnelManager", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "没有可用的配置"])
-        }
-
-        // 4. 构建原始运行配置；utun FD 只能由扩展在启动后注入。
-        let configurationData = try await XrayConfigurationBuilder().makeVPNConfigurationData(from: shareLink)
-
-        // 5. JSON Data 作为一次性启动参数传递，不写入系统 VPN 协议配置。
+        lifecycleState = .connecting
         do {
+            // 1. 在第一次挂起前固定本次连接使用的配置，避免连接过程中导入产生竞态。
+            guard
+                let shareLink = AppGroupStore.loadString(forKey: "configLink"),
+                !shareLink.isEmpty
+            else {
+                throw PacketTunnelManagerError.missingConfiguration
+            }
+
+            // 2. 启动前重新加载，避免系统配置仍处于待更新状态。
+            try await saveAndReload(tunnelProviderManager)
+
+            // 3. 构建原始运行配置；utun FD 只能由扩展在启动后注入。
+            let configurationData = try await XrayConfigurationBuilder()
+                .makeVPNConfigurationData(from: shareLink)
+
+            // 4. JSON Data 作为一次性启动参数传递，不写入系统 VPN 协议配置。
             try tunnelProviderManager.connection.startVPNTunnel(options: [
                 AppConstants.tunnelConfigurationOptionKey: configurationData as NSData,
             ])
+            setActiveShareLink(shareLink)
+            scheduleStartAcknowledgementTimeout()
             logger.info("VPN 尝试启动")
-        } catch let error as NSError {
-            logger.error("连接 VPN 时出错: \(error.localizedDescription), 错误代码: \(error.code)")
+        } catch {
+            startGate.cancel()
+            startAcknowledgementTask?.cancel()
+            startAcknowledgementTask = nil
+            lifecycleState = .failed(error.localizedDescription)
+            logger.error("连接 VPN 时出错: \(error.localizedDescription)")
             throw error
         }
     }
@@ -247,25 +250,114 @@ final class PacketTunnelManager: ObservableObject {
     ///
     /// 该 API 是异步状态转换的起点，调用返回时状态可能仍为 `.disconnecting`。
     func stop() {
+        guard lifecycleState.shouldWaitForStop else {
+            return
+        }
+        startGate.cancel()
+        startAcknowledgementTask?.cancel()
+        startAcknowledgementTask = nil
+        lifecycleState = .disconnecting
         tunnelProviderManager?.connection.stopVPNTunnel()
     }
 
     /// 等待当前连接完全停止后重新启动，使最新配置生效。
     ///
-    /// `stopVPNTunnel()` 不提供 async 完成回调，因此每 0.5 秒检查一次系统状态。只有状态离开
-    /// `.connected` 和 `.disconnecting` 后才重新执行完整启动流程，避免旧扩展尚未退出时启动
-    /// 新实例。
+    /// `stopVPNTunnel()` 不提供 async 完成回调，因此每 0.25 秒检查一次系统状态。只有活动状态
+    /// 完全结束后才重新执行完整启动流程，避免旧扩展尚未退出时启动新实例；超过指定时限则
+    /// 返回明确的超时错误。
     ///
     /// - Throws: 等待任务被取消，或后续 `start()` 失败时抛出错误。
-    func restart() async throws {
+    func restart(timeout: Duration = .seconds(10)) async throws {
         stop()
 
-        while tunnelProviderManager?.connection.status == .disconnecting
-            || tunnelProviderManager?.connection.status == .connected
-        {
-            try await Task.sleep(nanoseconds: 500_000_000)
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while lifecycleState.shouldWaitForStop {
+            guard clock.now < deadline else {
+                lifecycleState = .failed(PacketTunnelManagerError.restartTimedOut.localizedDescription)
+                throw PacketTunnelManagerError.restartTimedOut
+            }
+            try await clock.sleep(for: .milliseconds(250))
+            refreshConnectionState()
         }
 
         try await start()
+    }
+
+    /// 将 NetworkExtension 状态同步为稳定、可测试的应用生命周期状态。
+    private func refreshConnectionState() {
+        let systemState = VPNLifecycleState(systemStatus: tunnelProviderManager?.connection.status)
+        synchronizeActiveShareLink(for: systemState)
+        let nextState = startGate.reconcile(with: systemState)
+        if !startGate.isPending {
+            startAcknowledgementTask?.cancel()
+            startAcknowledgementTask = nil
+        }
+        if lifecycleState != nextState {
+            lifecycleState = nextState
+        }
+
+        let nextConnectedDate = tunnelProviderManager?.connection.connectedDate
+        if connectedDate != nextConnectedDate {
+            connectedDate = nextConnectedDate
+        }
+    }
+
+    /// 在 App 重启后恢复活动配置，并在隧道完全停止后清除旧快照。
+    private func synchronizeActiveShareLink(for systemState: VPNLifecycleState) {
+        switch systemState {
+        case .connecting, .connected, .reasserting, .disconnecting:
+            guard activeShareLink == nil,
+                  let persistedShareLink = AppGroupStore.loadString(forKey: activeShareLinkKey),
+                  !persistedShareLink.isEmpty
+            else {
+                return
+            }
+            activeShareLink = persistedShareLink
+
+        case .invalid, .disconnected:
+            guard activeShareLink != nil
+                || AppGroupStore.loadString(forKey: activeShareLinkKey) != nil
+            else {
+                return
+            }
+            activeShareLink = nil
+            AppGroupStore.removeValue(forKey: activeShareLinkKey)
+
+        case .loading, .failed:
+            return
+        }
+    }
+
+    private func setActiveShareLink(_ shareLink: String) {
+        if activeShareLink != shareLink {
+            activeShareLink = shareLink
+        }
+        if AppGroupStore.loadString(forKey: activeShareLinkKey) != shareLink {
+            AppGroupStore.saveString(shareLink, forKey: activeShareLinkKey)
+        }
+    }
+
+    private func scheduleStartAcknowledgementTimeout() {
+        guard startGate.isPending else {
+            return
+        }
+        startAcknowledgementTask?.cancel()
+        startAcknowledgementTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(10))
+            } catch {
+                return
+            }
+
+            guard let self, self.startGate.isPending else {
+                return
+            }
+            self.startGate.cancel()
+            self.startAcknowledgementTask = nil
+            self.tunnelProviderManager?.connection.stopVPNTunnel()
+            self.lifecycleState = .failed(PacketTunnelManagerError.startTimedOut.localizedDescription)
+            logger.error("等待系统确认 VPN 启动超时")
+        }
     }
 }

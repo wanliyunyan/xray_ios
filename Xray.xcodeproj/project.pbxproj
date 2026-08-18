@@ -28,7 +28,6 @@
 		3BA6A1DC2C9D759D00FF9E1A /* PrimaryActionButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DB2C9D759D00FF9E1A /* PrimaryActionButtonStyle.swift */; };
 		3BA6A1DE2C9D75C000FF9E1A /* VPNConnectionControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DD2C9D75C000FF9E1A /* VPNConnectionControlView.swift */; };
 		3BA6A1E02C9D75DF00FF9E1A /* XrayVersionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1DF2C9D75DF00FF9E1A /* XrayVersionView.swift */; };
-		3BA6A1E22C9D779A00FF9E1A /* ClipboardService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA6A1E12C9D779A00FF9E1A /* ClipboardService.swift */; };
 		3BAD4E2C2CAA747A006868C3 /* LatencyTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BAD4E2B2CAA747A006868C3 /* LatencyTestView.swift */; };
 		3BC43D562CA2A76D00733C84 /* TrafficStatisticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BC43D552CA2A76D00733C84 /* TrafficStatisticsView.swift */; };
 		3BCF8AEB2CA8E5C400723541 /* ConfigurationShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BCF8AEA2CA8E5C400723541 /* ConfigurationShareView.swift */; };
@@ -43,6 +42,15 @@
 		F41000023000000000000001 /* ShareLinkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41000123000000000000001 /* ShareLinkParser.swift */; };
 		F41000033000000000000001 /* SharedConfigurationFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41000133000000000000001 /* SharedConfigurationFileStore.swift */; };
 		F41000043000000000000001 /* IPAddressFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41000143000000000000001 /* IPAddressFormatter.swift */; };
+		F42000013000000000000001 /* AppSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42000113000000000000001 /* AppSessionState.swift */; };
+		F42000023000000000000001 /* TrafficStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42000123000000000000001 /* TrafficStatistics.swift */; };
+		F42000033000000000000001 /* VPNLifecycleState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42000133000000000000001 /* VPNLifecycleState.swift */; };
+		F42000043000000000000001 /* GeoAssetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42000143000000000000001 /* GeoAssetService.swift */; };
+		F43000013000000000000001 /* AppSessionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000113000000000000001 /* AppSessionStateTests.swift */; };
+		F43000023000000000000001 /* TrafficStatisticsParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000123000000000000001 /* TrafficStatisticsParserTests.swift */; };
+		F43000033000000000000001 /* VPNLifecycleStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000133000000000000001 /* VPNLifecycleStateTests.swift */; };
+		F43000043000000000000001 /* GeoAssetServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000143000000000000001 /* GeoAssetServiceTests.swift */; };
+		F43000053000000000000001 /* ShareLinkParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000163000000000000001 /* ShareLinkParserTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +60,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 3B2DA9842C95344600E8FCB9;
 			remoteInfo = PacketTunnel;
+		};
+		F43000513000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3B2DA94C2C95337E00E8FCB9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3B2DA9532C95337E00E8FCB9;
+			remoteInfo = Xray;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -93,7 +108,6 @@
 		3BA6A1DB2C9D759D00FF9E1A /* PrimaryActionButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryActionButtonStyle.swift; sourceTree = "<group>"; };
 		3BA6A1DD2C9D75C000FF9E1A /* VPNConnectionControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNConnectionControlView.swift; sourceTree = "<group>"; };
 		3BA6A1DF2C9D75DF00FF9E1A /* XrayVersionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XrayVersionView.swift; sourceTree = "<group>"; };
-		3BA6A1E12C9D779A00FF9E1A /* ClipboardService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardService.swift; sourceTree = "<group>"; };
 		3BAD4E2B2CAA747A006868C3 /* LatencyTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatencyTestView.swift; sourceTree = "<group>"; };
 		3BC43D552CA2A76D00733C84 /* TrafficStatisticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatisticsView.swift; sourceTree = "<group>"; };
 		3BCF8AEA2CA8E5C400723541 /* ConfigurationShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationShareView.swift; sourceTree = "<group>"; };
@@ -105,6 +119,16 @@
 		F41000123000000000000001 /* ShareLinkParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkParser.swift; sourceTree = "<group>"; };
 		F41000133000000000000001 /* SharedConfigurationFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedConfigurationFileStore.swift; sourceTree = "<group>"; };
 		F41000143000000000000001 /* IPAddressFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPAddressFormatter.swift; sourceTree = "<group>"; };
+		F42000113000000000000001 /* AppSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSessionState.swift; sourceTree = "<group>"; };
+		F42000123000000000000001 /* TrafficStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatistics.swift; sourceTree = "<group>"; };
+		F42000133000000000000001 /* VPNLifecycleState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNLifecycleState.swift; sourceTree = "<group>"; };
+		F42000143000000000000001 /* GeoAssetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoAssetService.swift; sourceTree = "<group>"; };
+		F43000113000000000000001 /* AppSessionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSessionStateTests.swift; sourceTree = "<group>"; };
+		F43000123000000000000001 /* TrafficStatisticsParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatisticsParserTests.swift; sourceTree = "<group>"; };
+		F43000133000000000000001 /* VPNLifecycleStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNLifecycleStateTests.swift; sourceTree = "<group>"; };
+		F43000143000000000000001 /* GeoAssetServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoAssetServiceTests.swift; sourceTree = "<group>"; };
+		F43000153000000000000001 /* XrayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XrayTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F43000163000000000000001 /* ShareLinkParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkParserTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +151,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F43000323000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -136,6 +167,7 @@
 				3B2DA99A2C9538FF00E8FCB9 /* Shared */,
 				3B2DA9962C9536F900E8FCB9 /* Config.xcconfig */,
 				3B2DA9562C95337E00E8FCB9 /* Xray */,
+				F43000213000000000000001 /* XrayTests */,
 				3B2DA9892C95344600E8FCB9 /* PacketTunnel */,
 				3B2DA9862C95344600E8FCB9 /* Frameworks */,
 				3B2DA9552C95337E00E8FCB9 /* Products */,
@@ -147,6 +179,7 @@
 			children = (
 				3B2DA9542C95337E00E8FCB9 /* Xray.app */,
 				3B2DA9852C95344600E8FCB9 /* PacketTunnel.appex */,
+				F43000153000000000000001 /* XrayTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -166,10 +199,13 @@
 				3BA6A1DB2C9D759D00FF9E1A /* PrimaryActionButtonStyle.swift */,
 				3BA6A1DD2C9D75C000FF9E1A /* VPNConnectionControlView.swift */,
 				3BA6A1DF2C9D75DF00FF9E1A /* XrayVersionView.swift */,
-				3BA6A1E12C9D779A00FF9E1A /* ClipboardService.swift */,
 				F41000123000000000000001 /* ShareLinkParser.swift */,
 				F41000133000000000000001 /* SharedConfigurationFileStore.swift */,
 				F41000143000000000000001 /* IPAddressFormatter.swift */,
+				F42000113000000000000001 /* AppSessionState.swift */,
+				F42000123000000000000001 /* TrafficStatistics.swift */,
+				F42000133000000000000001 /* VPNLifecycleState.swift */,
+				F42000143000000000000001 /* GeoAssetService.swift */,
 				3B8050DD2C9D7C0800043697 /* XrayConfigurationBuilder.swift */,
 				3B99F5152CA11A8A00CDC946 /* ConnectionDurationView.swift */,
 				3BC43D552CA2A76D00733C84 /* TrafficStatisticsView.swift */,
@@ -209,6 +245,18 @@
 				F40000043000000000000001 /* LibXrayRuntime.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		F43000213000000000000001 /* XrayTests */ = {
+			isa = PBXGroup;
+			children = (
+				F43000113000000000000001 /* AppSessionStateTests.swift */,
+				F43000123000000000000001 /* TrafficStatisticsParserTests.swift */,
+				F43000133000000000000001 /* VPNLifecycleStateTests.swift */,
+				F43000143000000000000001 /* GeoAssetServiceTests.swift */,
+				F43000163000000000000001 /* ShareLinkParserTests.swift */,
+			);
+			path = XrayTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -256,6 +304,26 @@
 			productReference = 3B2DA9852C95344600E8FCB9 /* PacketTunnel.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		F43000413000000000000001 /* XrayTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F43000633000000000000001 /* Build configuration list for PBXNativeTarget "XrayTests" */;
+			buildPhases = (
+				F43000313000000000000001 /* Sources */,
+				F43000323000000000000001 /* Frameworks */,
+				F43000333000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F43000523000000000000001 /* PBXTargetDependency */,
+			);
+			name = XrayTests;
+			packageProductDependencies = (
+			);
+			productName = XrayTests;
+			productReference = F43000153000000000000001 /* XrayTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -272,13 +340,18 @@
 					3B2DA9842C95344600E8FCB9 = {
 						CreatedOnToolsVersion = 15.4;
 					};
+					F43000413000000000000001 = {
+						CreatedOnToolsVersion = 15.4;
+						TestTargetID = 3B2DA9532C95337E00E8FCB9;
+					};
 				};
 			};
 			buildConfigurationList = 3B2DA94F2C95337E00E8FCB9 /* Build configuration list for PBXProject "Xray" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				"zh-Hans",
 				en,
 				Base,
 			);
@@ -292,6 +365,7 @@
 			targets = (
 				3B2DA9532C95337E00E8FCB9 /* Xray */,
 				3B2DA9842C95344600E8FCB9 /* PacketTunnel */,
+				F43000413000000000000001 /* XrayTests */,
 			);
 		};
 /* End PBXProject section */
@@ -314,6 +388,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F43000333000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -328,7 +409,10 @@
 				F41000023000000000000001 /* ShareLinkParser.swift in Sources */,
 				F41000033000000000000001 /* SharedConfigurationFileStore.swift in Sources */,
 				F41000043000000000000001 /* IPAddressFormatter.swift in Sources */,
-				3BA6A1E22C9D779A00FF9E1A /* ClipboardService.swift in Sources */,
+				F42000013000000000000001 /* AppSessionState.swift in Sources */,
+				F42000023000000000000001 /* TrafficStatistics.swift in Sources */,
+				F42000033000000000000001 /* VPNLifecycleState.swift in Sources */,
+				F42000043000000000000001 /* GeoAssetService.swift in Sources */,
 				3B2DA9AD2C95573400E8FCB9 /* DashboardView.swift in Sources */,
 				3B2DA9582C95337E00E8FCB9 /* XrayApp.swift in Sources */,
 				3B99F5162CA11A8A00CDC946 /* ConnectionDurationView.swift in Sources */,
@@ -358,6 +442,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F43000313000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F43000013000000000000001 /* AppSessionStateTests.swift in Sources */,
+				F43000023000000000000001 /* TrafficStatisticsParserTests.swift in Sources */,
+				F43000033000000000000001 /* VPNLifecycleStateTests.swift in Sources */,
+				F43000043000000000000001 /* GeoAssetServiceTests.swift in Sources */,
+				F43000053000000000000001 /* ShareLinkParserTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -365,6 +461,11 @@
 			isa = PBXTargetDependency;
 			target = 3B2DA9842C95344600E8FCB9 /* PacketTunnel */;
 			targetProxy = 3B2DA98E2C95344600E8FCB9 /* PBXContainerItemProxy */;
+		};
+		F43000523000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3B2DA9532C95337E00E8FCB9 /* Xray */;
+			targetProxy = F43000513000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -422,7 +523,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -481,7 +582,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -511,6 +612,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -547,6 +649,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -575,6 +678,7 @@
 				INFOPLIST_FILE = PacketTunnel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PacketTunnel;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -605,6 +709,7 @@
 				INFOPLIST_FILE = PacketTunnel/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PacketTunnel;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -621,6 +726,64 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		F43000613000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AQAUYR3N43;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_ID).Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Xray.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Xray";
+			};
+			name = Debug;
+		};
+		F43000623000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AQAUYR3N43;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_ID).Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Xray.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Xray";
 			};
 			name = Release;
 		};
@@ -650,6 +813,15 @@
 			buildConfigurations = (
 				3B2DA9922C95344600E8FCB9 /* Debug */,
 				3B2DA9932C95344600E8FCB9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F43000633000000000000001 /* Build configuration list for PBXNativeTarget "XrayTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F43000613000000000000001 /* Debug */,
+				F43000623000000000000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

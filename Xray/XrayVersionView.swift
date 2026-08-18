@@ -19,22 +19,22 @@ struct XrayVersionView: View {
     @State private var versionText: String = "Loading..."
 
     var body: some View {
-        VStack {
+        ViewThatFits(in: .horizontal) {
             HStack {
+                Text("xray版本号:")
+                    .fixedSize(horizontal: true, vertical: false)
+                Text(versionText)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+
+            VStack(spacing: 4) {
                 Text("xray版本号:")
                 Text(versionText)
             }
         }
-        .onAppear {
-            loadCoreVersion()
-        }
-    }
-
-    /// 调用 `XrayService.fetchCoreVersion()` 并更新展示状态。
-    ///
-    /// 方法不继续抛出错误，因为版本号是辅助信息，不应阻断主界面；错误会转换为可见文本。
-    private func loadCoreVersion() {
-        Task {
+        .multilineTextAlignment(.center)
+        .padding(.horizontal)
+        .task {
             do {
                 versionText = try await xrayService.fetchCoreVersion()
             } catch {
