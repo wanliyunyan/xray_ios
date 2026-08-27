@@ -32,33 +32,37 @@ struct ConfigurationShareView: View {
     /// 构建带标题和关闭按钮的分享界面。
     var body: some View {
         NavigationStack {
-            VStack {
-                // 原始链接允许多行显示，便于用户同时核对或手动复制。
-                Text(shareLink)
-                    .font(.body)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView {
+                VStack(spacing: 24) {
+                    // 原始链接允许多行显示，便于用户同时核对或手动复制。
+                    Text(shareLink)
+                        .font(.body)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                // 成功后禁用插值保持边缘清晰；失败时提供可恢复的明确提示。
-                if let image = qrCodeImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .interpolation(.none)
-                        .frame(width: 200, height: 200)
-                        .padding()
-                } else if didFailToGenerate {
-                    ContentUnavailableView(
-                        "无法生成二维码",
-                        systemImage: "qrcode",
-                        description: Text("配置内容无效，请重新导入后再试。")
-                    )
-                } else {
-                    ProgressView("正在生成二维码...")
-                        .font(.caption)
+                    // 成功后禁用插值保持边缘清晰；失败时提供可恢复的明确提示。
+                    if let image = qrCodeImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                            .frame(maxWidth: 280)
+                            .accessibilityLabel("当前配置的二维码")
+                    } else if didFailToGenerate {
+                        ContentUnavailableView(
+                            "无法生成二维码",
+                            systemImage: "qrcode",
+                            description: Text("配置内容无效，请重新导入后再试。")
+                        )
+                    } else {
+                        ProgressView("正在生成二维码...")
+                            .font(.caption)
+                    }
                 }
-
-                Spacer()
+                .padding()
+                .frame(maxWidth: .infinity)
             }
+            .scrollBounceBehavior(.basedOnSize)
             .navigationTitle("分享配置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

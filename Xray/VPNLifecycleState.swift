@@ -108,6 +108,27 @@ struct VPNStartGate: Sendable {
     }
 }
 
+/// 合并重启开始前的请求，并保留重启执行期间到达的后续请求。
+struct VPNRestartGate: Sendable {
+    private(set) var requestedGeneration: UInt64 = 0
+    private(set) var completedGeneration: UInt64 = 0
+
+    var latestPendingGeneration: UInt64? {
+        completedGeneration < requestedGeneration ? requestedGeneration : nil
+    }
+
+    @discardableResult
+    mutating func request() -> UInt64 {
+        requestedGeneration += 1
+        return requestedGeneration
+    }
+
+    mutating func complete(through generation: UInt64) {
+        precondition(generation <= requestedGeneration)
+        completedGeneration = max(completedGeneration, generation)
+    }
+}
+
 enum PacketTunnelManagerError: LocalizedError, Equatable, Sendable {
     case managerUnavailable
     case invalidState(VPNLifecycleState)

@@ -38,6 +38,10 @@ final class PacketTunnelManager {
     @ObservationIgnored
     private var startAcknowledgementTask: Task<Void, Never>?
 
+    /// 串行处理重启请求，并在当前重启期间合并或排队后续请求。
+    @ObservationIgnored
+    private var restartTask: Task<Void, Error>?
+
     /// 当前扩展对应的系统 VPN 配置。
     @ObservationIgnored
     private var tunnelProviderManager: NETunnelProviderManager?
@@ -45,6 +49,10 @@ final class PacketTunnelManager {
     /// 跨越异步预检和系统状态确认阶段，阻止重复启动。
     @ObservationIgnored
     private var startGate = VPNStartGate()
+
+    /// 记录已经请求和已经完成的重启批次。
+    @ObservationIgnored
+    private var restartGate = VPNRestartGate()
 
     /// 由系统状态和应用正在执行的生命周期操作共同驱动的界面状态。
     private(set) var lifecycleState: VPNLifecycleState = .loading
@@ -68,6 +76,7 @@ final class PacketTunnelManager {
         managerSetupTask?.cancel()
         statusObservationTask?.cancel()
         startAcknowledgementTask?.cancel()
+        restartTask?.cancel()
     }
 
     // MARK: - 管理器配置
@@ -260,14 +269,47 @@ final class PacketTunnelManager {
         tunnelProviderManager?.connection.stopVPNTunnel()
     }
 
-    /// 等待当前连接完全停止后重新启动，使最新配置生效。
+    /// 串行等待当前连接完全停止后重新启动，使最新配置生效。
     ///
     /// `stopVPNTunnel()` 不提供 async 完成回调，因此每 0.25 秒检查一次系统状态。只有活动状态
     /// 完全结束后才重新执行完整启动流程，避免旧扩展尚未退出时启动新实例；超过指定时限则
     /// 返回明确的超时错误。
     ///
-    /// - Throws: 等待任务被取消，或后续 `start()` 失败时抛出错误。
+    /// 重启开始前到达的请求合并为一次操作；重启执行期间到达的新请求会在当前操作完成后
+    /// 再执行一轮，确保较晚保存的配置不会被正在进行的重启遗漏。
+    ///
+    /// - Throws: 等待任务被取消，或任一轮 `start()` 失败时抛出错误。
     func restart(timeout: Duration = .seconds(10)) async throws {
+        restartGate.request()
+
+        let task: Task<Void, Error>
+        if let restartTask {
+            task = restartTask
+        } else {
+            let newTask = Task { @MainActor [weak self] in
+                guard let self else {
+                    throw CancellationError()
+                }
+                try await runRestartWorker(timeout: timeout)
+            }
+            restartTask = newTask
+            task = newTask
+        }
+
+        try await task.value
+    }
+
+    private func runRestartWorker(timeout: Duration) async throws {
+        defer { restartTask = nil }
+
+        while let targetGeneration = restartGate.latestPendingGeneration {
+            try Task.checkCancellation()
+            try await performSingleRestart(timeout: timeout)
+            restartGate.complete(through: targetGeneration)
+        }
+    }
+
+    private func performSingleRestart(timeout: Duration) async throws {
         stop()
 
         let clock = ContinuousClock()

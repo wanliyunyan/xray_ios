@@ -9,14 +9,17 @@ import SwiftUI
 
 /// 根据系统 VPN 状态显示连接、断开、进度或错误控件。
 ///
-/// 视图本身不构建配置：连接操作由父视图以异步闭包注入，停止操作直接交给共享的
+/// 视图本身不构建配置：连接操作由父视图注入，停止操作直接交给共享的
 /// `PacketTunnelManager`。这种拆分让控件只负责状态映射和用户交互。
 struct VPNConnectionControlView: View {
     /// 提供当前 VPN 生命周期状态，并执行停止操作。
     @Environment(PacketTunnelManager.self) private var packetTunnelManager
 
-    /// 用户点击“连接”时执行的异步操作，通常调用 `PacketTunnelManager.start()`。
-    let onConnect: @MainActor @Sendable () async -> Void
+    /// 父视图是否正在执行连接预检或启动流程。
+    let isStarting: Bool
+
+    /// 用户点击“连接”时由父视图同步接管请求并持有异步任务。
+    let onConnect: @MainActor @Sendable () -> Void
 
     /// 将状态相关控件放在具有统一内边距的容器中。
     var body: some View {
@@ -47,14 +50,14 @@ struct VPNConnectionControlView: View {
             .frame(maxWidth: .infinity, alignment: .center)
 
         case .disconnected, .failed:
-            // 连接闭包是 async，使用 Task 从同步按钮事件进入异步流程。
-            Button("连接") {
-                Task {
-                    await onConnect()
-                }
+            if isStarting {
+                ProgressView("准备连接...")
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                Button("连接", action: onConnect)
+                    .buttonStyle(PrimaryActionButtonStyle(backgroundColor: .green))
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
-            .buttonStyle(PrimaryActionButtonStyle(backgroundColor: .green))
-            .frame(maxWidth: .infinity, alignment: .center)
 
         case .connecting, .reasserting:
             // reasserting 表示系统正在重新建立或应用隧道状态。

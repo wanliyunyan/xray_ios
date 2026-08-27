@@ -55,6 +55,9 @@ struct DashboardView: View {
     /// 控制二维码扫描器 Sheet 的显示状态。
     @State private var isScannerPresented = false
 
+    /// 持有连接预检和启动流程，防止预检期间重复创建连接请求。
+    @State private var connectionTask: Task<Void, Never>?
+
     // MARK: - 视图主体
 
     /// 组合节点信息、诊断区、配置操作区和 VPN 控制区。
@@ -104,9 +107,10 @@ struct DashboardView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 // 连接操作与版本信息固定在页面底部，不随上方内容滚动。
-                VPNConnectionControlView {
-                    await startVPN()
-                }
+                VPNConnectionControlView(
+                    isStarting: connectionTask != nil,
+                    onConnect: requestVPNStart
+                )
 
                 XrayVersionView()
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -207,6 +211,17 @@ struct DashboardView: View {
     ///
     /// 具体配置构建、冲突检查和系统启动由 `PacketTunnelManager.start()` 完成。这里捕获错误，
     /// 防止按钮触发的异步任务把异常传播出 SwiftUI 事件边界。
+    private func requestVPNStart() {
+        guard connectionTask == nil else {
+            return
+        }
+
+        connectionTask = Task { @MainActor in
+            defer { connectionTask = nil }
+            await startVPN()
+        }
+    }
+
     private func startVPN() async {
         do {
             try await packetTunnelManager.prepareForConnection()

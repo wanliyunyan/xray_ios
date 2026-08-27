@@ -72,4 +72,20 @@ final class VPNLifecycleStateTests: XCTestCase {
         XCTAssertFalse(gate.isPending)
         XCTAssertEqual(gate.reconcile(with: .disconnected), .disconnected)
     }
+
+    func testRestartGateKeepsRequestsArrivingDuringRestartPending() {
+        var gate = VPNRestartGate()
+
+        let firstGeneration = gate.request()
+        XCTAssertEqual(gate.latestPendingGeneration, firstGeneration)
+
+        let secondGeneration = gate.request()
+        gate.complete(through: firstGeneration)
+
+        XCTAssertEqual(gate.latestPendingGeneration, secondGeneration)
+
+        gate.complete(through: secondGeneration)
+
+        XCTAssertNil(gate.latestPendingGeneration)
+    }
 }
