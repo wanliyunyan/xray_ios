@@ -17,7 +17,7 @@ private let logger = Logger(subsystem: AppConstants.loggingSubsystem, category: 
 /// 该视图是用户操作入口，负责协调以下功能：
 /// - 从 App Group 偏好恢复上次使用的分享链接并展示节点摘要；
 /// - 通过剪贴板或二维码导入新的分享链接；
-/// - 为 Ping SOCKS 入站和 Metrics 服务分配端口并持久化；
+/// - 为 Metrics 服务分配端口并持久化；
 /// - 组合连接时长、累计流量、Ping、路由模式和中国分流资源入口；
 /// - 调用 `PacketTunnelManager` 启动或停止系统 VPN；
 /// - 展示当前配置的分享二维码和底层 Xray Core 版本。
@@ -28,7 +28,7 @@ struct DashboardView: View {
     /// 全局 VPN 管理器，驱动连接控制并向子视图提供系统状态。
     @Environment(PacketTunnelManager.self) private var packetTunnelManager
 
-    /// 提供当前进程唯一的 SOCKS 与 Metrics 端口。
+    /// 提供当前进程使用的 Metrics 端口。
     @Environment(AppSessionState.self) private var appSessionState
 
     /// 从分享链接解析出的节点摘要。
@@ -87,7 +87,6 @@ struct DashboardView: View {
                         Text("本机端口:")
                             .font(.headline)
                         LocalPortSummary(
-                            socksPort: appSessionState.socksPort.rawValue,
                             metricsPort: appSessionState.metricsPort.rawValue
                         )
                     }
@@ -344,25 +343,10 @@ private struct ConfigurationShareItem: Identifiable {
 }
 
 private struct LocalPortSummary: View {
-    let socksPort: UInt16
     let metricsPort: UInt16
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 16) {
-                Text("延迟测试: \(socksPort)")
-                    .fixedSize(horizontal: true, vertical: false)
-                Spacer(minLength: 16)
-                Text("流量统计: \(metricsPort)")
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("延迟测试: \(socksPort)")
-                Text("流量统计: \(metricsPort)")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        Text("流量统计: \(metricsPort)")
     }
 }
 

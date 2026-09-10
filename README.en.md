@@ -15,7 +15,7 @@ This repository is intended for developers and is not a production-ready VPN cli
   - **Smart Routing** (`智能分流`): with geo assets installed, ad domains are blocked, China/private domains and IPs use direct access, and the remaining traffic uses the proxy. Geo-dependent rules are skipped when assets are absent.
 - Download, replace, and remove `geoip.dat` and `geosite.dat`.
 - Display upload/download totals from Xray Metrics.
-- Measure proxy latency through `https://1.1.1.1`.
+- Measure proxy latency through `https://cp.cloudflare.com/`.
 - Render the current share link as a QR code.
 - Display the embedded Xray Core version.
 
@@ -91,7 +91,7 @@ If `iPhone 16 Pro` is not installed, replace the destination with an available s
 
 5. Tap Connect. The app builds an Xray JSON configuration containing TUN, DNS, routing, statistics, and Metrics settings, then passes it to the Packet Tunnel extension. The extension injects the `utun` file descriptor created by Network Extension and starts Xray.
 
-6. Once connected, the app shows connection duration and traffic totals. Ping uses LibXray with a separate SOCKS configuration in the main app process, while the VPN's Xray instance runs in the Packet Tunnel extension process. The manual refresh control is hidden while the VPN is connected, so latency tests are best run while disconnected.
+6. Once connected, the app shows connection duration and traffic totals. Ping uses LibXray `pingBatch` with in-memory outbound JSON in the main app process, while the VPN's Xray instance runs in the Packet Tunnel extension process. The manual refresh control is hidden while the VPN is connected, so latency tests are best run while disconnected.
 
 7. Choose **Share Current Configuration** (`分享当前配置`) from the top-right More menu to display the current link as a QR code. When geo files are updated or removed, a connected tunnel is restarted so Xray reloads the resources.
 
@@ -122,18 +122,18 @@ PacketTunnelProvider
    └─ LibXrayRuntime.start → isXrayRunning
    ```
 
-The app and extension use the same App Group. Share links and local service ports are stored in the App Group's `UserDefaults`; the latency-test configuration is written to `config.json` at the App Group root; and the Packet Tunnel runtime configuration is passed once through `startVPNTunnel(options:)` without being persisted. Geo assets are stored under `Library/Application Support/Xray/assets`.
+The app and extension use the same App Group. Share links and the Metrics port are stored in the App Group's `UserDefaults`; both latency-test and Packet Tunnel runtime configurations are passed as in-memory JSON and are not persisted. Geo assets are stored under `Library/Application Support/Xray/assets`.
 
 ## Limitations and troubleshooting
 
 - This is an example project. It does not provide subscriptions, a configuration editor, background updates, an in-app log viewer, or multi-profile management.
 - Only VLESS share links are explicitly covered by the repository's testing history. Support for VMess, Trojan, Shadowsocks, and other formats depends on LibXray's converter and is not guaranteed here.
 - Network Extension requires a matching App ID, provisioning profile, capabilities, and user authorization. Incorrect signing configuration prevents the tunnel from starting.
-- Geo downloads and Ping require network access. Geo files come from GitHub; Ping always targets `https://1.1.1.1` with a 30-second timeout.
+- Geo downloads and Ping require network access. Geo files come from GitHub; Ping always targets `https://cp.cloudflare.com/` with a 30-second timeout.
 - The tunnel uses IPv4 `10.131.0.2/30`, IPv6 `fd00:131::2/126`, and MTU 1500. It installs default IPv4/IPv6 routes and sets `excludeLocalNetworks = true` in the system VPN configuration.
 - The current code has not been fully validated on IPv6-only networks. For IPv6 issues, inspect `PacketTunnelProvider.makeTunnelNetworkSettings()` and the Xray TUN configuration.
 - Changing the routing mode or updating/removing geo assets restarts an active VPN tunnel.
-- Share links commonly contain server credentials and are persisted in the App Group's `UserDefaults`. Latency tests also create `config.json` at the App Group root. Do not import production credentials on an untrusted test device.
+- Share links commonly contain server credentials and are persisted in the App Group's `UserDefaults`. Do not import production credentials on an untrusted test device.
 - No open-source license is declared in this repository. Check with the project author and review LibXray's license before distributing or embedding the code.
 
 ## Project layout
@@ -150,7 +150,6 @@ The app and extension use the same App Group. Share links and local service port
 │   ├── XrayService.swift
 │   ├── AppGroupStore.swift
 │   ├── ShareLinkParser.swift
-│   ├── SharedConfigurationFileStore.swift
 │   ├── IPAddressFormatter.swift
 │   ├── VPNConnectionControlView.swift
 │   ├── VPNRoutingModePickerView.swift

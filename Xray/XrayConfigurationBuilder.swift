@@ -10,7 +10,6 @@ import Network
 
 enum XrayConfigurationError: LocalizedError, Equatable, Sendable {
     case missingMetricsPort
-    case missingSocksPort
     case invalidJSON
     case missingOutbounds
     case emptyOutbounds
@@ -19,8 +18,6 @@ enum XrayConfigurationError: LocalizedError, Equatable, Sendable {
         switch self {
         case .missingMetricsPort:
             "无法加载 Metrics 端口"
-        case .missingSocksPort:
-            "无法加载 SOCKS5 端口"
         case .invalidJSON:
             "解析 Xray JSON 失败"
         case .missingOutbounds:
@@ -36,8 +33,8 @@ enum XrayConfigurationError: LocalizedError, Equatable, Sendable {
 /// LibXray 负责把 VLESS 等分享链接转换为包含代理出站的基础配置，本类型在此基础上：
 /// - 将首个代理出站统一标记为 `proxy`，并补齐 `direct` 与 `block` 出站；
 /// - 为正式 VPN 运行注入 TUN 入站、Metrics、流量统计、路由和 DNS；
-/// - 为延迟测试生成只包含 SOCKS 入站的精简配置；
-/// - 合并 Xray 资源目录环境变量，清理空值和不兼容的 `sendThrough` 字段；
+/// - 为延迟测试生成只包含出站的精简配置；
+/// - 合并 Xray 资源目录环境变量，并递归清理空值；
 /// - 最终序列化为可交给 LibXray 或 Packet Tunnel 扩展的 JSON 数据。
 ///
 /// 构建主 App 和 Packet Tunnel 扩展使用的 Xray 运行配置。
@@ -53,8 +50,7 @@ struct XrayConfigurationBuilder: Sendable {
     /// 2. 将分享链接转换为基础 Xray 配置并规范化出站；
     /// 3. 注入 TUN 入站、资源环境、Metrics、Policy、Routing、Stats 和 DNS；
     /// 4. 递归移除 LibXray 转换结果中的空值；
-    /// 5. 移除所有出站的 `sendThrough`，避免错误绑定本机接口；
-    /// 6. 使用易于排查的 pretty-printed 格式序列化为 JSON。
+    /// 5. 使用易于排查的 pretty-printed 格式序列化为 JSON。
     ///
     /// - Parameter shareLink: 用户保存的分享链接。
     /// - Returns: 可交给 Packet Tunnel 扩展的 JSON 数据。
@@ -82,9 +78,8 @@ struct XrayConfigurationBuilder: Sendable {
         configuration["stats"] = [:]
         configuration["dns"] = makeDNSConfiguration(geoAssetsAreAvailable: geoAssetsAreAvailable)
 
-        // 4. 清理转换结果中的空值和不兼容字段。
+        // 4. 清理转换结果中的空值。
         configuration = removeNullValues(from: configuration)
-        configuration = removeSendThrough(from: configuration)
 
         // 5. 输出可读 JSON，便于检查最终落盘配置。
         return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
@@ -92,56 +87,29 @@ struct XrayConfigurationBuilder: Sendable {
 
     /// 生成 LibXray 延迟测试使用的精简配置。
     ///
-    /// 与正式运行配置不同，此配置只注入本地 SOCKS 入站和资源目录，不包含 TUN、Metrics、
-    /// Policy、Routing、Stats 或 DNS。`XrayService.measureLatency()` 会把它写入共享文件，再让
-    /// LibXray 通过该 SOCKS 代理访问测试地址。
+    /// `pingBatch` 只读取根级 `outbounds`，因此此配置不包含入站、Metrics、Policy、Routing、
+    /// Stats、DNS 或其他运行配置，并以内存 JSON 直接交给 LibXray。
     ///
     /// - Parameter shareLink: 用户保存的分享链接。
-    /// - Returns: 可写入 Ping 配置文件的 JSON 数据。
-    /// - Throws: SOCKS5 端口缺失、分享链接转换失败或 JSON 无法序列化时抛出错误。
+    /// - Returns: 可直接传入 `pingBatch` 的 JSON 数据。
+    /// - Throws: 分享链接转换失败或 JSON 无法序列化时抛出错误。
     func makeLatencyTestConfigurationData(from shareLink: String) async throws -> Data {
-        // 1. SOCKS 入站端口必须和 Ping 请求中的代理地址保持一致。
-        guard let socksPort = AppGroupStore.loadPort(forKey: "socks5Port")
-        else {
-            throw XrayConfigurationError.missingSocksPort
-        }
-
-        // 2. 复用与正式运行相同的代理出站规范化逻辑。
+        // 1. 复用与正式运行相同的代理出站规范化逻辑。
         var configuration = try await makeBaseConfiguration(from: shareLink)
 
-        // 3. Ping 只需要 SOCKS 入站和 Xray 资源目录。
-        configuration["inbounds"] = makeSocksInbound(on: socksPort)
-        configuration["env"] = makeEnvironment(
-            from: configuration["env"],
-            assetDirectoryURL: try AppConstants.assetDirectoryURL()
-        )
-
-        // 4. 清理后输出精简 JSON。
+        // 2. 清理后仅保留 pingBatch 会读取的出站数组。
         configuration = removeNullValues(from: configuration)
-        configuration = removeSendThrough(from: configuration)
+        let latencyConfiguration: [String: Any] = [
+            "outbounds": configuration["outbounds"] ?? [],
+        ]
 
-        return try JSONSerialization.data(withJSONObject: configuration, options: .prettyPrinted)
+        return try JSONSerialization.data(
+            withJSONObject: latencyConfiguration,
+            options: .prettyPrinted
+        )
     }
 
     // MARK: - 规范化
-
-    /// 移除所有出站的 `sendThrough`，避免将分享链接名称误作本机出站接口。
-    ///
-    /// - Parameter configuration: 待规范化的完整配置字典。
-    /// - Returns: 包含清理后 `outbounds` 的新字典；没有出站数组时原样返回。
-    private func removeSendThrough(from configuration: [String: Any]) -> [String: Any] {
-        var updatedConfig = configuration
-
-        if let outbounds = configuration["outbounds"] as? [[String: Any]] {
-            updatedConfig["outbounds"] = outbounds.map { outbound in
-                var normalized = outbound
-                normalized.removeValue(forKey: "sendThrough")
-                return normalized
-            }
-        }
-
-        return updatedConfig
-    }
 
     /// 递归移除字典和字典数组中的空值。
     ///
@@ -213,33 +181,6 @@ struct XrayConfigurationBuilder: Sendable {
 
         configuration["outbounds"] = outbounds
         return configuration
-    }
-
-    /// 构建仅供 Ping 测试使用的 SOCKS 入站。
-    ///
-    /// 入站监听全部本地地址，启用 TCP/UDP 嗅探和 UDP 转发，tag 固定为 `socks`。
-    ///
-    /// - Parameter port: SOCKS 服务监听端口。
-    /// - Returns: 可直接写入 Xray `inbounds` 的单元素数组。
-    private func makeSocksInbound(
-        on port: NWEndpoint.Port
-    ) -> [[String: Any]] {
-        let socksInbound: [String: Any] = [
-            "listen": "0.0.0.0",
-            "port": Int(port.rawValue),
-            "protocol": "socks",
-            "sniffing": [
-                "enabled": true,
-                "destOverride": ["http", "tls", "quic"],
-                "routeOnly": false,
-            ],
-            "settings": [
-                "udp": true,
-            ],
-            "tag": "socks",
-        ]
-
-        return [socksInbound]
     }
 
     /// 构建直接消费 NetworkExtension utun 的 TUN 入站。

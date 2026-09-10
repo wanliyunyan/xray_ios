@@ -47,15 +47,12 @@ public extension AppConstants {
     /// 统一日志子系统；测试环境缺少 Bundle Identifier 时回退到应用标识。
     static let loggingSubsystem = Bundle.main.bundleIdentifier ?? applicationIdentifier
 
-    /// LibXray Ping 流程使用的默认本地 SOCKS5 端口。
-    static let defaultSocksPort: NWEndpoint.Port = 10808
-
     /// Xray Metrics HTTP 服务使用的默认监听端口。
     static let defaultMetricsPort: NWEndpoint.Port = 49227
 
     /// 延迟测试访问的目标地址。
     static let pingURL: URL = {
-        guard let url = URL(string: "https://1.1.1.1") else {
+        guard let url = URL(string: "https://cp.cloudflare.com/") else {
             preconditionFailure("无效的 Ping URL")
         }
         return url

@@ -26,7 +26,7 @@ final class AppSessionStateTests: XCTestCase {
 
     @MainActor
     func testPrepareLocalPortsAllocatesOnlyOnce() async {
-        let expectedPorts = LocalServicePorts(socksPort: 31_080, metricsPort: 31_081)
+        let expectedPorts = LocalServicePorts(metricsPort: 31_081)
         let allocator = LocalPortAllocatorStub(ports: expectedPorts)
         let state = AppSessionState(
             portAllocator: allocator,
@@ -45,7 +45,6 @@ final class AppSessionStateTests: XCTestCase {
 
         XCTAssertTrue(state.areLocalPortsReady)
         XCTAssertEqual(state.localPorts, expectedPorts)
-        XCTAssertEqual(state.socksPort.rawValue, expectedPorts.socksPort)
         XCTAssertEqual(state.metricsPort.rawValue, expectedPorts.metricsPort)
 
         let allocationCount = await allocator.allocationCount
@@ -54,7 +53,7 @@ final class AppSessionStateTests: XCTestCase {
 
     @MainActor
     func testPrepareLocalPortsReusesPersistedPortsWithoutAllocation() async {
-        let persistedPorts = LocalServicePorts(socksPort: 31_090, metricsPort: 31_091)
+        let persistedPorts = LocalServicePorts(metricsPort: 31_091)
         let allocator = LocalPortAllocatorStub(ports: .defaultValue)
         let state = AppSessionState(
             portAllocator: allocator,
@@ -86,31 +85,26 @@ final class AppSessionStateTests: XCTestCase {
 
     @MainActor
     func testPersistedZeroPortIsRejected() async {
-        let invalidPorts = [
-            LocalServicePorts(socksPort: 0, metricsPort: 31_101),
-            LocalServicePorts(socksPort: 31_100, metricsPort: 0),
-        ]
-
-        for ports in invalidPorts {
-            let allocator = LocalPortAllocatorStub(ports: .defaultValue)
-            let state = AppSessionState(
-                portAllocator: allocator,
-                portStore: LocalPortStoreStub(storedPorts: ports)
+        let allocator = LocalPortAllocatorStub(ports: .defaultValue)
+        let state = AppSessionState(
+            portAllocator: allocator,
+            portStore: LocalPortStoreStub(
+                storedPorts: LocalServicePorts(metricsPort: 0)
             )
+        )
 
-            await state.prepareLocalPorts(using: .reusePersisted)
+        await state.prepareLocalPorts(using: .reusePersisted)
 
-            XCTAssertFalse(state.areLocalPortsReady, "应拒绝端口组合：\(ports)")
-            let allocationCount = await allocator.allocationCount
-            XCTAssertEqual(allocationCount, 0)
-        }
+        XCTAssertFalse(state.areLocalPortsReady)
+        let allocationCount = await allocator.allocationCount
+        XCTAssertEqual(allocationCount, 0)
     }
 
     @MainActor
     func testAllocatedZeroPortIsRejected() async {
         let state = AppSessionState(
             portAllocator: LocalPortAllocatorStub(
-                ports: LocalServicePorts(socksPort: 0, metricsPort: 31_111)
+                ports: LocalServicePorts(metricsPort: 0)
             ),
             portStore: LocalPortStoreStub(storedPorts: nil)
         )
@@ -119,21 +113,6 @@ final class AppSessionStateTests: XCTestCase {
 
         XCTAssertFalse(state.areLocalPortsReady)
         XCTAssertEqual(state.localPorts, .defaultValue)
-    }
-
-    @MainActor
-    func testDuplicateAllocatedPortsAreRejected() async {
-        let state = AppSessionState(
-            portAllocator: LocalPortAllocatorStub(
-                ports: LocalServicePorts(socksPort: 31_120, metricsPort: 31_120)
-            ),
-            portStore: LocalPortStoreStub(storedPorts: nil)
-        )
-
-        await state.prepareLocalPorts(using: .allocateNew)
-
-        XCTAssertFalse(state.areLocalPortsReady)
-        XCTAssertEqual(state.localPortPreparationError, "本地服务端口无效")
     }
 
     @MainActor

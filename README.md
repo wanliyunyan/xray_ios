@@ -17,7 +17,7 @@ English documentation: [README.en.md](README.en.md)
   - **智能分流**：安装 geo 文件后，广告域名阻断，中国和私有域名/IP 直连，其余流量走代理；没有 geo 文件时跳过依赖 geo 的规则。
 - 下载、替换和清理 `geoip.dat`、`geosite.dat`。
 - 显示通过 Xray Metrics 读取的上下行流量。
-- 使用 `https://1.1.1.1` 测试代理延迟。
+- 使用 `https://cp.cloudflare.com/` 测试代理延迟。
 - 生成当前分享链接的二维码用于分享。
 - 显示内置 Xray Core 版本。
 
@@ -93,7 +93,7 @@ xcodebuild test \
 
 5. 点击连接。应用会生成包含 TUN、DNS、路由、统计和 Metrics 的 Xray JSON，把配置传递给 Packet Tunnel 扩展，由扩展注入系统创建的 `utun` 文件描述符后启动 Xray。
 
-6. 连接后可以查看连接时长和上下行流量。Ping 由主 App 进程中的 LibXray 使用独立 SOCKS 配置完成，VPN 的 Xray 则运行在 Packet Tunnel 扩展进程中。VPN 连接时界面会隐藏手动刷新入口，建议在未连接时执行延迟测试。
+6. 连接后可以查看连接时长和上下行流量。Ping 由主 App 进程中的 LibXray `pingBatch` 使用内存中的出站 JSON 完成，VPN 的 Xray 则运行在 Packet Tunnel 扩展进程中。VPN 连接时界面会隐藏手动刷新入口，建议在未连接时执行延迟测试。
 
 7. 从右上角更多菜单选择 **分享当前配置**，可以把当前链接以二维码形式展示。更新或清空 geo 文件后，如果 VPN 已连接，应用会自动重启隧道以加载新资源。
 
@@ -124,18 +124,18 @@ PacketTunnelProvider
    └─ LibXrayRuntime.start → isXrayRunning
    ```
 
-主 App 和扩展使用同一个 App Group。分享链接和本地服务端口保存在 App Group 的 `UserDefaults` 中；延迟测试配置写入 App Group 根目录的 `config.json`；Packet Tunnel 的运行配置通过 `startVPNTunnel(options:)` 一次性传递，不会落盘。geo 资源位于 `Library/Application Support/Xray/assets`。
+主 App 和扩展使用同一个 App Group。分享链接和 Metrics 端口保存在 App Group 的 `UserDefaults` 中；延迟测试配置和 Packet Tunnel 的运行配置都以内存 JSON 传递，不会落盘。geo 资源位于 `Library/Application Support/Xray/assets`。
 
 ## 注意事项与已知限制
 
 - 这是示例工程，未提供节点订阅、配置编辑器、后台更新、日志界面或多配置管理。
 - 当前只明确测试过 VLESS 分享链接；VMess、Trojan、Shadowsocks 等格式是否可用取决于 LibXray 的转换实现，仓库没有提供对应测试保证。
 - Network Extension 需要正确的 App ID、Provisioning Profile、Capabilities 和用户授权；签名配置错误时应用无法建立隧道。
-- geo 文件和 Ping 都需要网络访问。geo 下载地址指向 GitHub；Ping 的目标地址固定为 `https://1.1.1.1`，超时时间为 30 秒。
+- geo 文件和 Ping 都需要网络访问。geo 下载地址指向 GitHub；Ping 的目标地址固定为 `https://cp.cloudflare.com/`，超时时间为 30 秒。
 - VPN 使用 IPv4 `10.131.0.2/30`、IPv6 `fd00:131::2/126` 和 MTU 1500，并把默认路由交给隧道；系统 VPN 配置同时设置了 `excludeLocalNetworks = true`。
 - 当前代码没有在 IPv6-only 网络上进行完整验证；如果遇到 IPv6 环境问题，请重点检查 `PacketTunnelProvider.makeTunnelNetworkSettings()` 和 Xray TUN 配置。
 - 切换路由模式、更新 geo 文件或清空 geo 文件时，已连接的 VPN 会重启。
-- 分享链接通常包含节点凭据，并会持久化到 App Group 的 `UserDefaults`；延迟测试还会在 App Group 根目录生成 `config.json`。请勿在不受信任的测试设备上导入生产凭据。
+- 分享链接通常包含节点凭据，并会持久化到 App Group 的 `UserDefaults`。请勿在不受信任的测试设备上导入生产凭据。
 - 仓库当前没有声明开源许可证。发布或二次分发前，请先确认项目作者和 LibXray 的许可证要求。
 
 ## 目录结构
@@ -152,7 +152,6 @@ PacketTunnelProvider
 │   ├── XrayService.swift
 │   ├── AppGroupStore.swift
 │   ├── ShareLinkParser.swift
-│   ├── SharedConfigurationFileStore.swift
 │   ├── IPAddressFormatter.swift
 │   ├── VPNConnectionControlView.swift
 │   ├── VPNRoutingModePickerView.swift

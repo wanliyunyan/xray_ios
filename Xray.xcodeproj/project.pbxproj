@@ -40,7 +40,6 @@
 		F40000033000000000000001 /* LibXray in Frameworks */ = {isa = PBXBuildFile; productRef = F3512AED3020878B00917C2D /* LibXray */; };
 		F41000013000000000000001 /* XrayCoreClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41000113000000000000001 /* XrayCoreClient.swift */; };
 		F41000023000000000000001 /* ShareLinkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41000123000000000000001 /* ShareLinkParser.swift */; };
-		F41000033000000000000001 /* SharedConfigurationFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41000133000000000000001 /* SharedConfigurationFileStore.swift */; };
 		F41000043000000000000001 /* IPAddressFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41000143000000000000001 /* IPAddressFormatter.swift */; };
 		F42000013000000000000001 /* AppSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42000113000000000000001 /* AppSessionState.swift */; };
 		F42000023000000000000001 /* TrafficStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42000123000000000000001 /* TrafficStatistics.swift */; };
@@ -51,6 +50,7 @@
 		F43000033000000000000001 /* VPNLifecycleStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000133000000000000001 /* VPNLifecycleStateTests.swift */; };
 		F43000043000000000000001 /* GeoAssetServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000143000000000000001 /* GeoAssetServiceTests.swift */; };
 		F43000053000000000000001 /* ShareLinkParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43000163000000000000001 /* ShareLinkParserTests.swift */; };
+		F44000013000000000000001 /* LibXrayRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44000113000000000000001 /* LibXrayRuntimeTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -117,7 +117,6 @@
 		F40000043000000000000001 /* LibXrayRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibXrayRuntime.swift; sourceTree = "<group>"; };
 		F41000113000000000000001 /* XrayCoreClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XrayCoreClient.swift; sourceTree = "<group>"; };
 		F41000123000000000000001 /* ShareLinkParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkParser.swift; sourceTree = "<group>"; };
-		F41000133000000000000001 /* SharedConfigurationFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedConfigurationFileStore.swift; sourceTree = "<group>"; };
 		F41000143000000000000001 /* IPAddressFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPAddressFormatter.swift; sourceTree = "<group>"; };
 		F42000113000000000000001 /* AppSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSessionState.swift; sourceTree = "<group>"; };
 		F42000123000000000000001 /* TrafficStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficStatistics.swift; sourceTree = "<group>"; };
@@ -129,6 +128,7 @@
 		F43000143000000000000001 /* GeoAssetServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoAssetServiceTests.swift; sourceTree = "<group>"; };
 		F43000153000000000000001 /* XrayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XrayTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F43000163000000000000001 /* ShareLinkParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkParserTests.swift; sourceTree = "<group>"; };
+		F44000113000000000000001 /* LibXrayRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibXrayRuntimeTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -200,7 +200,6 @@
 				3BA6A1DD2C9D75C000FF9E1A /* VPNConnectionControlView.swift */,
 				3BA6A1DF2C9D75DF00FF9E1A /* XrayVersionView.swift */,
 				F41000123000000000000001 /* ShareLinkParser.swift */,
-				F41000133000000000000001 /* SharedConfigurationFileStore.swift */,
 				F41000143000000000000001 /* IPAddressFormatter.swift */,
 				F42000113000000000000001 /* AppSessionState.swift */,
 				F42000123000000000000001 /* TrafficStatistics.swift */,
@@ -255,6 +254,7 @@
 				F43000133000000000000001 /* VPNLifecycleStateTests.swift */,
 				F43000143000000000000001 /* GeoAssetServiceTests.swift */,
 				F43000163000000000000001 /* ShareLinkParserTests.swift */,
+				F44000113000000000000001 /* LibXrayRuntimeTests.swift */,
 			);
 			path = XrayTests;
 			sourceTree = "<group>";
@@ -407,7 +407,6 @@
 				F3F329F32E7D4ECA00907A7E /* XrayService.swift in Sources */,
 				F41000013000000000000001 /* XrayCoreClient.swift in Sources */,
 				F41000023000000000000001 /* ShareLinkParser.swift in Sources */,
-				F41000033000000000000001 /* SharedConfigurationFileStore.swift in Sources */,
 				F41000043000000000000001 /* IPAddressFormatter.swift in Sources */,
 				F42000013000000000000001 /* AppSessionState.swift in Sources */,
 				F42000023000000000000001 /* TrafficStatistics.swift in Sources */,
@@ -451,6 +450,7 @@
 				F43000033000000000000001 /* VPNLifecycleStateTests.swift in Sources */,
 				F43000043000000000000001 /* GeoAssetServiceTests.swift in Sources */,
 				F43000053000000000000001 /* ShareLinkParserTests.swift in Sources */,
+				F44000013000000000000001 /* LibXrayRuntimeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

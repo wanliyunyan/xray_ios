@@ -11,8 +11,6 @@ import Network
 enum XrayServiceError: LocalizedError, Equatable, Sendable {
     case missingConfiguration
     case invalidConfigurationEncoding
-    case missingSocksPort
-    case invalidProxyURL
 
     var errorDescription: String? {
         switch self {
@@ -20,10 +18,6 @@ enum XrayServiceError: LocalizedError, Equatable, Sendable {
             "没有可用的配置"
         case .invalidConfigurationEncoding:
             "无法将配置数据转换为字符串"
-        case .missingSocksPort:
-            "无法加载 SOCKS5 端口"
-        case .invalidProxyURL:
-            "无法生成 SOCKS5 代理地址"
         }
     }
 }
@@ -54,20 +48,10 @@ struct XrayService: LocalPortAllocating, Sendable {
             throw XrayServiceError.invalidConfigurationEncoding
         }
 
-        let configurationFileURL = try SharedConfigurationFileStore.write(configurationJSON)
-        guard let socksPort = AppGroupStore.loadPort(forKey: "socks5Port") else {
-            throw XrayServiceError.missingSocksPort
-        }
-
-        guard let proxyURL = URL(string: "socks5://127.0.0.1:\(socksPort.rawValue)") else {
-            throw XrayServiceError.invalidProxyURL
-        }
-
         return try await coreClient.measureLatency(
-            configurationFileURL: configurationFileURL,
+            configurationJSON: configurationJSON,
             timeout: AppConstants.pingTimeout,
-            targetURL: AppConstants.pingURL,
-            proxyURL: proxyURL
+            targetURL: AppConstants.pingURL
         )
     }
 
@@ -97,7 +81,7 @@ struct XrayService: LocalPortAllocating, Sendable {
         return try TrafficStatisticsParser.parse(responseData)
     }
 
-    /// 分配 SOCKS 和 Metrics 服务所需的具名本地端口。
+    /// 分配 Metrics HTTP 服务所需的本地端口。
     func allocateLocalPorts() async throws -> LocalServicePorts {
         try await coreClient.allocateLocalPorts()
     }

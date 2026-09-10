@@ -25,39 +25,30 @@ protocol LocalPortStoring: Sendable {
 
 struct AppGroupLocalPortStore: LocalPortStoring {
     func loadLocalPorts() -> LocalServicePorts? {
-        guard
-            let socksPort = AppGroupStore.loadPort(forKey: "socks5Port"),
-            let metricsPort = AppGroupStore.loadPort(forKey: "trafficPort")
-        else {
+        guard let metricsPort = AppGroupStore.loadPort(forKey: "trafficPort") else {
             return nil
         }
 
-        return LocalServicePorts(
-            socksPort: socksPort.rawValue,
-            metricsPort: metricsPort.rawValue
-        )
+        return LocalServicePorts(metricsPort: metricsPort.rawValue)
     }
 
     func saveLocalPorts(_ ports: LocalServicePorts) {
         guard
-            ports.socksPort != 0,
             ports.metricsPort != 0,
-            let socksPort = NWEndpoint.Port(rawValue: ports.socksPort),
             let metricsPort = NWEndpoint.Port(rawValue: ports.metricsPort)
         else {
             return
         }
 
-        AppGroupStore.savePort(socksPort, forKey: "socks5Port")
         AppGroupStore.savePort(metricsPort, forKey: "trafficPort")
     }
 }
 
 /// 应用运行期间共享的临时状态。
 ///
-/// VPN 未运行时，本地 SOCKS 与 Metrics 端口在每次 App 进程启动时分配一次；Packet Tunnel
-/// 仍在运行时则恢复它已经使用的持久化端口。端口准备完成前，依赖端口的 Ping 和流量查询
-/// 不会启动，避免配置监听端口与请求目标端口不一致。
+/// VPN 未运行时，Metrics 端口在每次 App 进程启动时分配一次；Packet Tunnel 仍在运行时则
+/// 恢复它已经使用的持久化端口。端口准备完成前不会启动流量查询或 VPN，避免配置监听端口
+/// 与请求目标端口不一致。
 @MainActor
 @Observable
 final class AppSessionState {
@@ -74,10 +65,6 @@ final class AppSessionState {
     private(set) var areLocalPortsReady = false
     private(set) var isPreparingLocalPorts = false
     private(set) var localPortPreparationError: String?
-
-    var socksPort: NWEndpoint.Port {
-        NWEndpoint.Port(rawValue: localPorts.socksPort) ?? AppConstants.defaultSocksPort
-    }
 
     var metricsPort: NWEndpoint.Port {
         NWEndpoint.Port(rawValue: localPorts.metricsPort) ?? AppConstants.defaultMetricsPort
@@ -153,10 +140,7 @@ final class AppSessionState {
     @discardableResult
     private func applyPreparedPorts(_ ports: LocalServicePorts) -> Bool {
         guard
-            ports.socksPort != 0,
             ports.metricsPort != 0,
-            ports.socksPort != ports.metricsPort,
-            NWEndpoint.Port(rawValue: ports.socksPort) != nil,
             NWEndpoint.Port(rawValue: ports.metricsPort) != nil
         else {
             return false

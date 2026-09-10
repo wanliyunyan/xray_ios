@@ -41,6 +41,9 @@ enum LibXrayRuntimeError: LocalizedError {
 /// LibXray 运行状态由进程共享，因此所有调用使用同一把锁串行执行，避免 App 或扩展
 /// 内多个任务同时修改底层运行时状态。
 enum LibXrayRuntime {
+    /// LibXray 26.9.9 统一调用协议要求的 API 版本。
+    private static let apiVersion = 3
+
     /// 保护 `LibXrayInvoke` 的进程内互斥锁。
     private static let invocationLock = NSLock()
 
@@ -66,7 +69,7 @@ enum LibXrayRuntime {
         defer { invocationLock.unlock() }
 
         var request: [String: Any] = [
-            "apiVersion": 1,
+            "apiVersion": apiVersion,
             "method": method,
         ]
         if let payload {
@@ -97,14 +100,14 @@ enum LibXrayRuntime {
         return response["data"] as? [String: Any]
     }
 
-    /// 通过 LibXray 的 `runXrayFromJson` 直接传入配置 JSON 启动 Xray Core。
+    /// 通过 LibXray 的 `runXray` 直接传入配置 JSON 启动 Xray Core。
     ///
     /// - Parameter configJSON: 完整的 Xray JSON 配置字符串，无需落盘。
     /// - Throws: Xray 无法加载配置或启动运行时状态时抛出错误。
     static func start(configJSON: String) throws {
         _ = try invoke(
-            method: "runXrayFromJson",
-            payload: ["configJSON": configJSON]
+            method: "runXray",
+            payload: ["xrayJson": configJSON]
         )
     }
 

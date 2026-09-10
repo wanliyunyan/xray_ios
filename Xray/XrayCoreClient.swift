@@ -13,9 +13,9 @@ enum XrayCoreClientError: LocalizedError, Equatable, Sendable {
     case missingConvertedConfiguration
     case missingVersion
     case invalidLatency
+    case latencyMeasurementFailed(String)
     case missingAllocatedPorts
     case invalidAllocatedPorts
-    case duplicateAllocatedPorts
     case allocatedPortUnavailable(UInt16)
 
     var errorDescription: String? {
@@ -28,25 +28,23 @@ enum XrayCoreClientError: LocalizedError, Equatable, Sendable {
             "LibXray 未返回版本号"
         case .invalidLatency:
             "LibXray 未返回有效延迟"
+        case .latencyMeasurementFailed(let message):
+            message
         case .missingAllocatedPorts:
             "LibXray 未返回本地服务端口"
         case .invalidAllocatedPorts:
             "LibXray 返回了无效的本地服务端口"
-        case .duplicateAllocatedPorts:
-            "LibXray 返回了重复的本地服务端口"
         case .allocatedPortUnavailable(let port):
             "本地端口 \(port) 已被占用"
         }
     }
 }
 
-/// SOCKS 和 Metrics 服务使用的具名本地端口。
+/// Metrics 服务使用的本地端口。
 struct LocalServicePorts: Equatable, Sendable {
-    let socksPort: UInt16
     let metricsPort: UInt16
 
     static let defaultValue = LocalServicePorts(
-        socksPort: AppConstants.defaultSocksPort.rawValue,
         metricsPort: AppConstants.defaultMetricsPort.rawValue
     )
 }
@@ -80,54 +78,71 @@ actor XrayCoreClient {
         return version
     }
 
-    /// 分配 App 所需的两个本地端口。
+    /// 分配 Metrics HTTP 服务所需的本地端口。
     func allocateLocalPorts() throws -> LocalServicePorts {
         let responseData = try LibXrayRuntime.invoke(
             method: "getFreePorts",
-            payload: ["count": 2]
+            payload: ["count": 1]
         )
-        guard let portNumbers = responseData?["ports"] as? [Int], portNumbers.count == 2 else {
+        guard let portNumbers = responseData?["ports"] as? [Int], portNumbers.count == 1 else {
             throw XrayCoreClientError.missingAllocatedPorts
         }
 
         let ports = portNumbers.compactMap(UInt16.init(exactly:))
-        guard ports.count == 2, ports.allSatisfy({ $0 != 0 }) else {
+        guard ports.count == 1, ports[0] != 0 else {
             throw XrayCoreClientError.invalidAllocatedPorts
         }
-        guard ports[0] != ports[1] else {
-            throw XrayCoreClientError.duplicateAllocatedPorts
-        }
 
-        guard LocalPortAvailabilityChecker.canBindTCP(ports[0]),
-              LocalPortAvailabilityChecker.canBindUDP(ports[0])
-        else {
+        guard LocalPortAvailabilityChecker.canBindTCP(ports[0]) else {
             throw XrayCoreClientError.allocatedPortUnavailable(ports[0])
         }
-        guard LocalPortAvailabilityChecker.canBindTCP(ports[1]) else {
-            throw XrayCoreClientError.allocatedPortUnavailable(ports[1])
-        }
 
-        return LocalServicePorts(socksPort: ports[0], metricsPort: ports[1])
+        return LocalServicePorts(metricsPort: ports[0])
     }
 
-    /// 通过指定的本地 SOCKS 代理执行 LibXray 延迟请求。
+    /// 使用 LibXray `pingBatch` 对单个出站配置执行延迟测试。
     func measureLatency(
-        configurationFileURL: URL,
+        configurationJSON: String,
         timeout: Int,
-        targetURL: URL,
-        proxyURL: URL
+        targetURL: URL
     ) throws -> Int {
         let responseData = try LibXrayRuntime.invoke(
-            method: "ping",
+            method: "pingBatch",
             payload: [
-                "configPath": configurationFileURL.path,
+                "configs": [
+                    [
+                        "xrayJson": configurationJSON,
+                        "outboundTag": "proxy",
+                    ],
+                ],
                 "timeout": timeout,
                 "url": targetURL.absoluteString,
-                "proxy": proxyURL.absoluteString,
             ]
         )
 
-        guard let delayMilliseconds = responseData?["delay"] as? Int else {
+        return try Self.parseLatency(from: responseData)
+    }
+
+    /// 解析单节点 `pingBatch` 响应，并将单项失败转换为可展示的业务错误。
+    static func parseLatency(from responseData: [String: Any]?) throws -> Int {
+        guard
+            let results = responseData?["results"] as? [[String: Any]],
+            results.count == 1,
+            let result = results.first,
+            let succeeded = result["success"] as? Bool
+        else {
+            throw XrayCoreClientError.invalidLatency
+        }
+
+        guard succeeded else {
+            let message = (result["error"] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw XrayCoreClientError.latencyMeasurementFailed(
+                message.flatMap { $0.isEmpty ? nil : $0 } ?? "延迟测试失败"
+            )
+        }
+
+        guard let delayMilliseconds = result["delay"] as? Int, delayMilliseconds >= 0 else {
             throw XrayCoreClientError.invalidLatency
         }
         return delayMilliseconds
@@ -137,10 +152,6 @@ actor XrayCoreClient {
 private enum LocalPortAvailabilityChecker {
     static func canBindTCP(_ port: UInt16) -> Bool {
         canBind(port, socketType: SOCK_STREAM, protocol: IPPROTO_TCP)
-    }
-
-    static func canBindUDP(_ port: UInt16) -> Bool {
-        canBind(port, socketType: SOCK_DGRAM, protocol: IPPROTO_UDP)
     }
 
     private static func canBind(
