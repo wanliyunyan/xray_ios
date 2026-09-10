@@ -10,7 +10,6 @@ import Foundation
 
 enum XrayCoreClientError: LocalizedError, Equatable, Sendable {
     case emptyShareLink
-    case missingConvertedConfiguration
     case missingVersion
     case invalidLatency
     case latencyMeasurementFailed(String)
@@ -22,8 +21,6 @@ enum XrayCoreClientError: LocalizedError, Equatable, Sendable {
         switch self {
         case .emptyShareLink:
             "无效的配置字符串"
-        case .missingConvertedConfiguration:
-            "解析 Xray JSON 失败"
         case .missingVersion:
             "LibXray 未返回版本号"
         case .invalidLatency:
@@ -59,20 +56,13 @@ actor XrayCoreClient {
             throw XrayCoreClientError.emptyShareLink
         }
 
-        guard let configuration = try LibXrayRuntime.invoke(
-            method: "convertShareLinksToXrayJson",
-            payload: ["text": shareLink]
-        ) else {
-            throw XrayCoreClientError.missingConvertedConfiguration
-        }
-
-        return try JSONSerialization.data(withJSONObject: configuration)
+        return try LibXrayRuntime.convertShareLinksToXrayJSON(shareLink)
     }
 
     /// 返回已安装的 Xray Core 版本。
     func fetchCoreVersion() throws -> String {
-        let data = try LibXrayRuntime.invoke(method: "xrayVersion")
-        guard let version = data?["version"] as? String, !version.isEmpty else {
+        let version = try LibXrayRuntime.coreVersion()
+        guard !version.isEmpty else {
             throw XrayCoreClientError.missingVersion
         }
         return version
@@ -80,11 +70,8 @@ actor XrayCoreClient {
 
     /// 分配 Metrics HTTP 服务所需的本地端口。
     func allocateLocalPorts() throws -> LocalServicePorts {
-        let responseData = try LibXrayRuntime.invoke(
-            method: "getFreePorts",
-            payload: ["count": 1]
-        )
-        guard let portNumbers = responseData?["ports"] as? [Int], portNumbers.count == 1 else {
+        let portNumbers = try LibXrayRuntime.freePorts(count: 1)
+        guard portNumbers.count == 1 else {
             throw XrayCoreClientError.missingAllocatedPorts
         }
 
@@ -106,46 +93,38 @@ actor XrayCoreClient {
         timeout: Int,
         targetURL: URL
     ) throws -> Int {
-        let responseData = try LibXrayRuntime.invoke(
-            method: "pingBatch",
-            payload: [
-                "configs": [
-                    [
-                        "xrayJson": configurationJSON,
-                        "outboundTag": "proxy",
-                    ],
-                ],
-                "timeout": timeout,
-                "url": targetURL.absoluteString,
-            ]
+        let results = try LibXrayRuntime.pingBatch(
+            configurations: [
+                LibXrayPingConfiguration(
+                    xrayJSON: configurationJSON,
+                    outboundTag: "proxy"
+                ),
+            ],
+            timeout: timeout,
+            targetURL: targetURL
         )
 
-        return try Self.parseLatency(from: responseData)
+        return try Self.parseLatency(from: results)
     }
 
     /// 解析单节点 `pingBatch` 响应，并将单项失败转换为可展示的业务错误。
-    static func parseLatency(from responseData: [String: Any]?) throws -> Int {
-        guard
-            let results = responseData?["results"] as? [[String: Any]],
-            results.count == 1,
-            let result = results.first,
-            let succeeded = result["success"] as? Bool
-        else {
+    static func parseLatency(from results: [LibXrayPingResult]) throws -> Int {
+        guard results.count == 1, let result = results.first else {
             throw XrayCoreClientError.invalidLatency
         }
 
-        guard succeeded else {
-            let message = (result["error"] as? String)?
+        guard result.success else {
+            let message = result.error?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             throw XrayCoreClientError.latencyMeasurementFailed(
                 message.flatMap { $0.isEmpty ? nil : $0 } ?? "延迟测试失败"
             )
         }
 
-        guard let delayMilliseconds = result["delay"] as? Int, delayMilliseconds >= 0 else {
+        guard result.delay >= 0 else {
             throw XrayCoreClientError.invalidLatency
         }
-        return delayMilliseconds
+        return result.delay
     }
 }
 

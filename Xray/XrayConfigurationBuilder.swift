@@ -113,8 +113,7 @@ struct XrayConfigurationBuilder: Sendable {
 
     /// 递归移除字典和字典数组中的空值。
     ///
-    /// LibXray 转换结果可能同时包含真正的 `NSNull`，以及打印形式为 `"<null>"` 的值。
-    /// 方法会遍历嵌套字典与字典数组并删除对应键，其他标量和数组保持不变。
+    /// 方法会遍历嵌套字典与字典数组并删除真正的 JSON null，其他值保持不变。
     ///
     /// - Parameter dictionary: 原始配置字典。
     /// - Returns: 清理后的新字典，不修改传入对象。
@@ -122,7 +121,7 @@ struct XrayConfigurationBuilder: Sendable {
         var updatedDictionary = dictionary
 
         for (key, value) in dictionary {
-            if value is NSNull || "\(value)" == "<null>" {
+            if value is NSNull {
                 updatedDictionary.removeValue(forKey: key)
             } else if let nestedDictionary = value as? [String: Any] {
                 updatedDictionary[key] = removeNullValues(from: nestedDictionary)
@@ -256,7 +255,7 @@ struct XrayConfigurationBuilder: Sendable {
     /// - 最后一条兜底规则始终把其余 TCP/UDP 流量交给 `proxy`。
     ///
     /// - Returns: 可写入 Xray `routing` 字段的字典。
-    private func makeRoutingConfiguration(geoAssetsAreAvailable: Bool) -> [String: Any] {
+    func makeRoutingConfiguration(geoAssetsAreAvailable: Bool) -> [String: Any] {
         var routing: [String: Any] = [
             "domainStrategy": "AsIs",
             "rules": [
@@ -273,7 +272,6 @@ struct XrayConfigurationBuilder: Sendable {
             var rules = routing["rules"] as? [[String: Any]] ?? []
 
             rules.append([
-                "type": "field",
                 "outboundTag": "block",
                 "domain": [
                     "geosite:category-ads-all",
@@ -281,7 +279,6 @@ struct XrayConfigurationBuilder: Sendable {
             ])
 
             rules.append([
-                "type": "field",
                 "outboundTag": "direct",
                 "domain": [
                     "geosite:private",
@@ -290,7 +287,6 @@ struct XrayConfigurationBuilder: Sendable {
             ])
 
             rules.append([
-                "type": "field",
                 "outboundTag": "direct",
                 "ip": [
                     "geoip:private",
@@ -300,7 +296,6 @@ struct XrayConfigurationBuilder: Sendable {
 
             // 常见中国大陆公共 DNS 地址直连。
             rules.append([
-                "type": "field",
                 "outboundTag": "direct",
                 "ip": [
                     "223.5.5.5",
@@ -346,8 +341,7 @@ struct XrayConfigurationBuilder: Sendable {
 
         var rules = routing["rules"] as? [[String: Any]] ?? []
         rules.append([
-            "type": "field",
-            "network": ["tcp", "udp"],
+            "network": "tcp,udp",
             "outboundTag": "proxy",
         ])
         routing["rules"] = rules
@@ -364,7 +358,7 @@ struct XrayConfigurationBuilder: Sendable {
     /// 4. `dns.google` 固定映射到 `8.8.8.8`，避免解析 DoH 主机时产生循环依赖。
     ///
     /// - Returns: 包含 `hosts` 与 `servers` 的 Xray DNS 字典。
-    private func makeDNSConfiguration(geoAssetsAreAvailable: Bool) -> [String: Any] {
+    func makeDNSConfiguration(geoAssetsAreAvailable: Bool) -> [String: Any] {
         var servers: [Any] = []
 
         // 为 Google 静态资源指定可直接访问的解析器。
@@ -384,7 +378,7 @@ struct XrayConfigurationBuilder: Sendable {
                 "domains": [
                     "geosite:cn",
                 ],
-                "expectIPs": [
+                "expectedIPs": [
                     "geoip:cn",
                 ],
             ])

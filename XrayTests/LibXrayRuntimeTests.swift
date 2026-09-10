@@ -8,8 +8,7 @@ import XCTest
 
 final class LibXrayRuntimeTests: XCTestCase {
     func testInvokeUsesSupportedAPIVersion() throws {
-        let data = try LibXrayRuntime.invoke(method: "xrayVersion")
-        let version = try XCTUnwrap(data?["version"] as? String)
+        let version = try LibXrayRuntime.coreVersion()
 
         XCTAssertFalse(version.isEmpty)
     }
@@ -35,9 +34,7 @@ final class LibXrayRuntimeTests: XCTestCase {
     func testParseLatencyReadsSingleBatchResult() throws {
         let latency = try XrayCoreClient.parseLatency(
             from: [
-                "results": [
-                    ["success": true, "delay": 123],
-                ],
+                LibXrayPingResult(success: true, delay: 123, error: nil),
             ]
         )
 
@@ -96,5 +93,68 @@ final class LibXrayRuntimeTests: XCTestCase {
 
         XCTAssertEqual(proxy["tag"] as? String, "proxy")
         XCTAssertEqual(proxy["sendThrough"] as? String, "0.0.0.0")
+    }
+
+    func testLatencyConfigurationPreservesLiteralNullString() async throws {
+        let sourceJSON = """
+        {
+          "outbounds": [
+            {
+              "protocol": "trojan",
+              "settings": {
+                "address": "127.0.0.1",
+                "port": 443,
+                "password": "<null>"
+              }
+            }
+          ]
+        }
+        """
+
+        let configurationData = try await XrayConfigurationBuilder()
+            .makeLatencyTestConfigurationData(from: sourceJSON)
+        let configuration = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: configurationData) as? [String: Any]
+        )
+        let outbounds = try XCTUnwrap(configuration["outbounds"] as? [[String: Any]])
+        let proxy = try XCTUnwrap(outbounds.first)
+        let settings = try XCTUnwrap(proxy["settings"] as? [String: Any])
+
+        XCTAssertEqual(settings["password"] as? String, "<null>")
+    }
+
+    func testRoutingConfigurationUsesCurrentRuleSyntax() throws {
+        let preferenceKey = "VPNMode"
+        let previousMode = AppGroupStore.loadString(forKey: preferenceKey)
+        AppGroupStore.saveString(VPNRoutingMode.nonGlobal.rawValue, forKey: preferenceKey)
+        defer {
+            if let previousMode {
+                AppGroupStore.saveString(previousMode, forKey: preferenceKey)
+            } else {
+                AppGroupStore.removeValue(forKey: preferenceKey)
+            }
+        }
+
+        let routing = XrayConfigurationBuilder()
+            .makeRoutingConfiguration(geoAssetsAreAvailable: true)
+        let rules = try XCTUnwrap(routing["rules"] as? [[String: Any]])
+        let catchAllRule = try XCTUnwrap(rules.last)
+
+        XCTAssertTrue(rules.allSatisfy { $0["type"] == nil })
+        XCTAssertEqual(catchAllRule["network"] as? String, "tcp,udp")
+        XCTAssertEqual(catchAllRule["outboundTag"] as? String, "proxy")
+    }
+
+    func testDNSConfigurationUsesExpectedIPs() throws {
+        let dns = XrayConfigurationBuilder()
+            .makeDNSConfiguration(geoAssetsAreAvailable: true)
+        let servers = try XCTUnwrap(dns["servers"] as? [Any])
+        let chinaServer = try XCTUnwrap(
+            servers.compactMap { $0 as? [String: Any] }
+                .first { $0["address"] as? String == "223.5.5.5" }
+        )
+
+        XCTAssertEqual(chinaServer["expectedIPs"] as? [String], ["geoip:cn"])
+        XCTAssertNil(chinaServer["expectIPs"])
     }
 }
