@@ -16,9 +16,9 @@ English documentation: [README.en.md](README.en.md)
   - **全局代理**：TCP/UDP 流量最终交给代理出站。
   - **智能分流**：安装 geo 文件后，广告域名阻断，中国和私有域名/IP 直连，其余流量走代理；没有 geo 文件时跳过依赖 geo 的规则。
 - 下载、替换和清理 `geoip.dat`、`geosite.dat`。
-- 显示通过 Xray Metrics 读取的上下行流量。
-- 使用 `https://cp.cloudflare.com/` 测试代理延迟。
-- 生成当前分享链接的二维码用于分享。
+- 通过 Xray Metrics 显示 TUN 入站的累计上传和下载量。
+- 在有配置且 VPN 完全断开时，使用 `https://cp.cloudflare.com/` 测试代理延迟。
+- 为最新保存的分享链接生成二维码。
 - 显示内置 Xray Core 版本。
 
 ## 环境要求
@@ -31,7 +31,6 @@ English documentation: [README.en.md](README.en.md)
 工程通过 Swift Package Manager 引入 LibXray：
 
 - Repository: `https://github.com/wanliyunyan/LibXray.git`
-- Minimum version: `26.7.28`
 
 ## 构建与签名
 
@@ -62,17 +61,23 @@ English documentation: [README.en.md](README.en.md)
 
 ## 运行测试
 
-仓库包含不依赖真实 Packet Tunnel 的单元测试，可在 iOS 模拟器中运行：
+仓库包含不依赖真实 Packet Tunnel 的单元测试，可在 iOS 模拟器中运行。先查看本机可用的测试设备：
+
+```bash
+xcodebuild -project Xray.xcodeproj -scheme Xray -showdestinations
+```
+
+从输出中选择 `platform:iOS Simulator` 的设备，将下面的 `<SIMULATOR_ID>` 替换为该设备的 `id`：
 
 ```bash
 xcodebuild test \
   -project Xray.xcodeproj \
   -scheme Xray \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,id=<SIMULATOR_ID>' \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-如果本机没有名为 `iPhone 16 Pro` 的模拟器，请将 destination 改为已安装的设备名称。单元测试覆盖端口会话状态、VPN 生命周期状态、流量解析、分享链接解析和 geo 文件事务；Packet Tunnel 启停、`utun` 文件描述符及摄像头仍需在真机验证。
+测试覆盖 LibXray 统一接口与配置生成、空配置保护、端口会话状态、VPN 生命周期、流量解析与轮询策略、分享链接解析和 geo 文件事务。部分测试会调用真实的 LibXray 运行时；Packet Tunnel 启停、`utun` 文件描述符及摄像头仍需在真机验证。
 
 ## 使用流程
 
@@ -84,6 +89,8 @@ xcodebuild test \
 
 2. 打开右上角的更多菜单，使用系统提供的 **粘贴** 操作，或选择 **扫描二维码**。链接会保存到 App Group 的 `UserDefaults`，下次打开应用可以直接使用上次配置。
 
+   如果 VPN 正在连接、已连接、恢复连接或断开中，新导入的节点会标记为待生效，下一次连接时使用；当前连接继续使用启动时的节点。
+
 3. 根据需要选择 **全局代理** 或 **智能分流** 模式。
 
 4. 在首次使用智能分流模式前，从右上角更多菜单进入 **中国大陆分流资源** 下载文件。应用会从以下地址下载文件，并保存到 App Group 共享目录：
@@ -93,36 +100,33 @@ xcodebuild test \
 
 5. 点击连接。应用会生成包含 TUN、DNS、路由、统计和 Metrics 的 Xray JSON，把配置传递给 Packet Tunnel 扩展，由扩展注入系统创建的 `utun` 文件描述符后启动 Xray。
 
-6. 连接后可以查看连接时长和上下行流量。Ping 由主 App 进程中的 LibXray `pingBatch` 使用内存中的出站 JSON 完成，VPN 的 Xray 则运行在 Packet Tunnel 扩展进程中。VPN 连接时界面会隐藏手动刷新入口，建议在未连接时执行延迟测试。
+6. 连接后可以查看连接时长，以及 TUN 入站的累计上传和下载量。延迟测试仅在有配置且 VPN 完全断开时发起：当前节点尚无成功结果时自动测试，也可以点击刷新按钮重新测试。连接期间显示已有的延迟结果，隐藏刷新入口。
 
-7. 从右上角更多菜单选择 **分享当前配置**，可以把当前链接以二维码形式展示。更新或清空 geo 文件后，如果 VPN 已连接，应用会自动重启隧道以加载新资源。
+7. 从右上角更多菜单选择 **分享当前配置**，以二维码展示最新保存的链接。如果连接期间导入过新节点，分享的是待生效的新节点，可能与当前连接使用的节点不同。更新或清空 geo 文件后，如果 VPN 已连接，应用会自动重启隧道以加载新资源。
 
 ## 工作原理
 
 ```text
-分享链接
+PacketTunnelManager.start()
+   ├─ 固定本次连接的分享链接
+   ├─ XrayConfigurationBuilder.makeVPNConfigurationData(from:)
+   │   ├─ XrayCoreClient.convertShareLinkToXrayJSON(_:)
+   │   │   └─ LibXrayRuntime.convertShareLinksToXrayJSON(_:)
+   │   ├─ TUN 入站（tun-in）
+   │   ├─ Metrics HTTP 服务（127.0.0.1:<动态端口>）
+   │   ├─ 路由、DNS、统计和 geo 资源环境变量
+   │   └─ proxy / direct / block 出站
+   └─ connection.startVPNTunnel(options:)
    │
    ▼
-XrayCoreClient
-   └─ LibXray.convertShareLinksToXrayJson
-   │
-   ▼
-XrayConfigurationBuilder
-   ├─ TUN 入站（tun-in）
-   ├─ Metrics HTTP 服务（127.0.0.1:<动态端口>）
-   ├─ 路由、DNS、统计和 geo 资源环境变量
-   └─ proxy / direct / block 出站
-   │
-   ▼
-PacketTunnelManager.startVPNTunnel(options:)
-   │
-   ▼
-PacketTunnelProvider
+PacketTunnelProvider.startTunnel(options:completionHandler:)
    ├─ 配置 IPv4/IPv6 默认路由和 DNS
    ├─ 查找 Network Extension 创建的 utun FD
    ├─ 注入 env.xray.tun.fd
-   └─ LibXrayRuntime.start → isXrayRunning
-   ```
+   └─ LibXrayRuntime.start(configJSON:) → LibXrayRuntime.isXrayRunning()
+```
+
+`LibXrayRuntime` 将配置转换、启动、停止和状态查询等操作封装为 `apiVersion: 3` 的 JSON 请求，通过统一入口 `LibXrayInvoke` 调用。延迟测试由主 App 进程中的 LibXray `pingBatch` 使用出站 JSON 完成，VPN 的 Xray 实例运行在 Packet Tunnel 扩展进程中。
 
 主 App 和扩展使用同一个 App Group。分享链接和 Metrics 端口保存在 App Group 的 `UserDefaults` 中；延迟测试配置和 Packet Tunnel 的运行配置都以内存 JSON 传递，不会落盘。geo 资源位于 `Library/Application Support/Xray/assets`。
 
@@ -132,6 +136,7 @@ PacketTunnelProvider
 - 当前只明确测试过 VLESS 分享链接；VMess、Trojan、Shadowsocks 等格式是否可用取决于 LibXray 的转换实现，仓库没有提供对应测试保证。
 - Network Extension 需要正确的 App ID、Provisioning Profile、Capabilities 和用户授权；签名配置错误时应用无法建立隧道。
 - geo 文件和 Ping 都需要网络访问。geo 下载地址指向 GitHub；Ping 的目标地址固定为 `https://cp.cloudflare.com/`，超时时间为 30 秒。
+- Metrics 查询偶发超时时，界面保留上次成功值并自动重试。连续 3 次失败后记录一次应用错误，查询成功后重置失败计数；系统 `URLSession` 仍可能输出单次超时日志。
 - VPN 使用 IPv4 `10.131.0.2/30`、IPv6 `fd00:131::2/126` 和 MTU 1500，并把默认路由交给隧道；系统 VPN 配置同时设置了 `excludeLocalNetworks = true`。
 - 当前代码没有在 IPv6-only 网络上进行完整验证；如果遇到 IPv6 环境问题，请重点检查 `PacketTunnelProvider.makeTunnelNetworkSettings()` 和 Xray TUN 配置。
 - 切换路由模式、更新 geo 文件或清空 geo 文件时，已连接的 VPN 会重启。
@@ -140,44 +145,23 @@ PacketTunnelProvider
 
 ## 目录结构
 
+主要目录与核心文件：
+
 ```text
 .
 ├── Xray/                         # SwiftUI 主 App、配置构建和 VPN 管理
-│   ├── DashboardView.swift
-│   ├── AppSessionState.swift
-│   ├── VPNLifecycleState.swift
+│   ├── DashboardView.swift        # 配置导入、节点展示和连接入口
 │   ├── XrayConfigurationBuilder.swift
-│   ├── XrayCoreClient.swift
-│   ├── PacketTunnelManager.swift
-│   ├── XrayService.swift
-│   ├── AppGroupStore.swift
-│   ├── ShareLinkParser.swift
-│   ├── IPAddressFormatter.swift
-│   ├── VPNConnectionControlView.swift
-│   ├── VPNRoutingModePickerView.swift
-│   ├── GeoAssetDownloadView.swift
-│   ├── GeoAssetService.swift
-│   ├── LatencyTestView.swift
-│   ├── TrafficStatistics.swift
-│   ├── TrafficStatisticsView.swift
-│   ├── QRCodeScannerView.swift
-│   ├── ConfigurationShareView.swift
-│   ├── ConnectionDurationView.swift
-│   ├── LabeledValueRow.swift
-│   ├── PrimaryActionButtonStyle.swift
-│   ├── XrayVersionView.swift
-│   └── XrayApp.swift
+│   ├── XrayCoreClient.swift       # 异步访问 LibXray
+│   ├── PacketTunnelManager.swift  # 系统 VPN 配置与连接生命周期
+│   └── XrayService.swift          # 延迟测试和 Metrics 查询
 ├── PacketTunnel/                 # Network Extension，负责 utun 和 Xray 生命周期
 │   └── PacketTunnelProvider.swift
 ├── Shared/                       # 主 App 与扩展共享的运行时和常量
 │   ├── LibXrayRuntime.swift
 │   └── AppConstants.swift
 ├── XrayTests/                    # 可在 iOS 模拟器运行的单元测试
-│   ├── AppSessionStateTests.swift
-│   ├── VPNLifecycleStateTests.swift
-│   ├── TrafficStatisticsParserTests.swift
-│   ├── ShareLinkParserTests.swift
-│   └── GeoAssetServiceTests.swift
+│   └── LibXrayRuntimeTests.swift  # LibXray 接口、配置生成和空配置保护
 ├── Config.xcconfig               # APP_ID 和构建配置
 └── Xray.xcodeproj/               # Xcode 工程和共享 Scheme
     ├── project.pbxproj

@@ -14,9 +14,9 @@ This repository is intended for developers and is not a production-ready VPN cli
   - **Global Proxy** (`全局代理`): TCP/UDP traffic ultimately uses the proxy outbound.
   - **Smart Routing** (`智能分流`): with geo assets installed, ad domains are blocked, China/private domains and IPs use direct access, and the remaining traffic uses the proxy. Geo-dependent rules are skipped when assets are absent.
 - Download, replace, and remove `geoip.dat` and `geosite.dat`.
-- Display upload/download totals from Xray Metrics.
-- Measure proxy latency through `https://cp.cloudflare.com/`.
-- Render the current share link as a QR code.
+- Display cumulative upload and download totals for the TUN inbound through Xray Metrics.
+- Measure proxy latency through `https://cp.cloudflare.com/` when a configuration is available and the VPN is fully disconnected.
+- Render the most recently saved share link as a QR code.
 - Display the embedded Xray Core version.
 
 ## Requirements
@@ -29,7 +29,6 @@ This repository is intended for developers and is not a production-ready VPN cli
 The project uses Swift Package Manager for LibXray:
 
 - Repository: `https://github.com/wanliyunyan/LibXray.git`
-- Minimum version: `26.7.28`
 
 ## Build and signing
 
@@ -60,17 +59,23 @@ The project uses Swift Package Manager for LibXray:
 
 ## Running tests
 
-The repository includes unit tests that do not require a real Packet Tunnel and can run in an iOS Simulator:
+The repository includes unit tests that do not require a real Packet Tunnel and can run in an iOS Simulator. First, list the available test destinations:
+
+```bash
+xcodebuild -project Xray.xcodeproj -scheme Xray -showdestinations
+```
+
+Choose a device with `platform:iOS Simulator` and replace `<SIMULATOR_ID>` below with its `id`:
 
 ```bash
 xcodebuild test \
   -project Xray.xcodeproj \
   -scheme Xray \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,id=<SIMULATOR_ID>' \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-If `iPhone 16 Pro` is not installed, replace the destination with an available simulator name. The unit tests cover local port session state, VPN lifecycle state, traffic parsing, share-link parsing, and geo file transactions. Packet Tunnel startup, the `utun` file descriptor, and camera behavior still require a physical device.
+Tests cover the unified LibXray API and configuration generation, empty configuration handling, local port session state, VPN lifecycle state, traffic parsing and polling policy, share-link parsing, and geo file transactions. Some tests invoke the actual LibXray runtime. Packet Tunnel startup, the `utun` file descriptor, and camera behavior still require a physical device.
 
 ## Usage
 
@@ -82,6 +87,8 @@ If `iPhone 16 Pro` is not installed, replace the destination with an available s
 
 2. Open the top-right More menu and use the system **Paste** action or select **Scan QR Code** (`扫描二维码`). The link is stored in the App Group `UserDefaults`, so the last configuration is available the next time the app opens.
 
+   If the VPN is connecting, connected, reasserting, or disconnecting, an imported node is marked as pending and takes effect on the next connection. The current connection keeps using the node selected at startup.
+
 3. Choose **Global Proxy** (`全局代理`) or **Smart Routing** (`智能分流`).
 
 4. Before using Smart Routing for the first time, open **China Routing Assets** (`中国大陆分流资源`) from the top-right More menu. The app downloads and stores the following files in the shared App Group directory:
@@ -91,36 +98,33 @@ If `iPhone 16 Pro` is not installed, replace the destination with an available s
 
 5. Tap Connect. The app builds an Xray JSON configuration containing TUN, DNS, routing, statistics, and Metrics settings, then passes it to the Packet Tunnel extension. The extension injects the `utun` file descriptor created by Network Extension and starts Xray.
 
-6. Once connected, the app shows connection duration and traffic totals. Ping uses LibXray `pingBatch` with in-memory outbound JSON in the main app process, while the VPN's Xray instance runs in the Packet Tunnel extension process. The manual refresh control is hidden while the VPN is connected, so latency tests are best run while disconnected.
+6. Once connected, the app shows connection duration and cumulative upload/download totals for the TUN inbound. Latency tests start only when a configuration is available and the VPN is fully disconnected. A test runs automatically if the current node has no successful result yet; the refresh button also allows a manual test. While connected, the app displays any existing latency result and hides the refresh control.
 
-7. Choose **Share Current Configuration** (`分享当前配置`) from the top-right More menu to display the current link as a QR code. When geo files are updated or removed, a connected tunnel is restarted so Xray reloads the resources.
+7. Choose **Share Current Configuration** (`分享当前配置`) from the top-right More menu to display the most recently saved link as a QR code. If a new node was imported during a connection, the QR code contains that pending node, which may differ from the node currently in use. When geo files are updated or removed, a connected tunnel is restarted so Xray reloads the resources.
 
 ## How it works
 
 ```text
-Share link
+PacketTunnelManager.start()
+   ├─ Capture the share link for this connection
+   ├─ XrayConfigurationBuilder.makeVPNConfigurationData(from:)
+   │   ├─ XrayCoreClient.convertShareLinkToXrayJSON(_:)
+   │   │   └─ LibXrayRuntime.convertShareLinksToXrayJSON(_:)
+   │   ├─ TUN inbound (tun-in)
+   │   ├─ Metrics HTTP service (127.0.0.1:<dynamic port>)
+   │   ├─ routing, DNS, statistics, and geo asset environment
+   │   └─ proxy / direct / block outbounds
+   └─ connection.startVPNTunnel(options:)
    │
    ▼
-XrayCoreClient
-   └─ LibXray.convertShareLinksToXrayJson
-   │
-   ▼
-XrayConfigurationBuilder
-   ├─ TUN inbound (tun-in)
-   ├─ Metrics HTTP service (127.0.0.1:<dynamic port>)
-   ├─ routing, DNS, statistics, and geo asset environment
-   └─ proxy / direct / block outbounds
-   │
-   ▼
-PacketTunnelManager.startVPNTunnel(options:)
-   │
-   ▼
-PacketTunnelProvider
+PacketTunnelProvider.startTunnel(options:completionHandler:)
    ├─ Configure IPv4/IPv6 default routes and DNS
    ├─ Find the utun FD created by Network Extension
    ├─ Inject env.xray.tun.fd
-   └─ LibXrayRuntime.start → isXrayRunning
-   ```
+   └─ LibXrayRuntime.start(configJSON:) → LibXrayRuntime.isXrayRunning()
+```
+
+`LibXrayRuntime` wraps configuration conversion, startup, shutdown, and state queries in JSON requests with `apiVersion: 3`, sent through the unified `LibXrayInvoke` entry point. Latency tests use LibXray `pingBatch` with outbound JSON in the main app process, while the VPN's Xray instance runs in the Packet Tunnel extension process.
 
 The app and extension use the same App Group. Share links and the Metrics port are stored in the App Group's `UserDefaults`; both latency-test and Packet Tunnel runtime configurations are passed as in-memory JSON and are not persisted. Geo assets are stored under `Library/Application Support/Xray/assets`.
 
@@ -130,6 +134,7 @@ The app and extension use the same App Group. Share links and the Metrics port a
 - Only VLESS share links are explicitly covered by the repository's testing history. Support for VMess, Trojan, Shadowsocks, and other formats depends on LibXray's converter and is not guaranteed here.
 - Network Extension requires a matching App ID, provisioning profile, capabilities, and user authorization. Incorrect signing configuration prevents the tunnel from starting.
 - Geo downloads and Ping require network access. Geo files come from GitHub; Ping always targets `https://cp.cloudflare.com/` with a 30-second timeout.
+- If a Metrics query times out, the app keeps the last successful values and retries automatically. It logs one application error after three consecutive failures and resets the failure count after a successful query. The system's `URLSession` may still log individual timeouts.
 - The tunnel uses IPv4 `10.131.0.2/30`, IPv6 `fd00:131::2/126`, and MTU 1500. It installs default IPv4/IPv6 routes and sets `excludeLocalNetworks = true` in the system VPN configuration.
 - The current code has not been fully validated on IPv6-only networks. For IPv6 issues, inspect `PacketTunnelProvider.makeTunnelNetworkSettings()` and the Xray TUN configuration.
 - Changing the routing mode or updating/removing geo assets restarts an active VPN tunnel.
@@ -138,44 +143,23 @@ The app and extension use the same App Group. Share links and the Metrics port a
 
 ## Project layout
 
+Main directories and selected core files:
+
 ```text
 .
 ├── Xray/                         # SwiftUI app, configuration, and VPN management
-│   ├── DashboardView.swift
-│   ├── AppSessionState.swift
-│   ├── VPNLifecycleState.swift
+│   ├── DashboardView.swift        # Import, node display, and connection controls
 │   ├── XrayConfigurationBuilder.swift
-│   ├── XrayCoreClient.swift
-│   ├── PacketTunnelManager.swift
-│   ├── XrayService.swift
-│   ├── AppGroupStore.swift
-│   ├── ShareLinkParser.swift
-│   ├── IPAddressFormatter.swift
-│   ├── VPNConnectionControlView.swift
-│   ├── VPNRoutingModePickerView.swift
-│   ├── GeoAssetDownloadView.swift
-│   ├── GeoAssetService.swift
-│   ├── LatencyTestView.swift
-│   ├── TrafficStatistics.swift
-│   ├── TrafficStatisticsView.swift
-│   ├── QRCodeScannerView.swift
-│   ├── ConfigurationShareView.swift
-│   ├── ConnectionDurationView.swift
-│   ├── LabeledValueRow.swift
-│   ├── PrimaryActionButtonStyle.swift
-│   ├── XrayVersionView.swift
-│   └── XrayApp.swift
+│   ├── XrayCoreClient.swift       # Asynchronous LibXray access
+│   ├── PacketTunnelManager.swift  # System VPN configuration and lifecycle
+│   └── XrayService.swift          # Latency tests and Metrics queries
 ├── PacketTunnel/                 # Network Extension and Xray lifecycle
 │   └── PacketTunnelProvider.swift
 ├── Shared/                       # Runtime and constants shared by both targets
 │   ├── LibXrayRuntime.swift
 │   └── AppConstants.swift
 ├── XrayTests/                    # Unit tests that run in an iOS Simulator
-│   ├── AppSessionStateTests.swift
-│   ├── VPNLifecycleStateTests.swift
-│   ├── TrafficStatisticsParserTests.swift
-│   ├── ShareLinkParserTests.swift
-│   └── GeoAssetServiceTests.swift
+│   └── LibXrayRuntimeTests.swift  # LibXray API, configuration, and empty input tests
 ├── Config.xcconfig               # APP_ID and build configuration
 └── Xray.xcodeproj/               # Xcode project and shared scheme
     ├── project.pbxproj
