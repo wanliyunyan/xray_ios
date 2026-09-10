@@ -1,102 +1,31 @@
-# Xcode
-#
+# macOS and IDE metadata
+.DS_Store
+.idea/
+
+# Xcode user-specific state
+xcuserdata/
+*.xcuserstate
+
+# Xcode build and distribution artifacts
 build/
 DerivedData/
-*.xcworkspace
-*.xccheckout
-*.moved-aside
-*.xcuserstate
-xcuserdata/
-*.xcodeproj/*.pbxuser
-*.xcodeproj/*.mode1v3
-*.xcodeproj/*.mode2v3
-*.xcodeproj/*.perspectivev3
-
-# Swift Package Manager
-#
-.build/
-.swiftpm/
-Package.resolved
-
-# CocoaPods
-#
-Pods/
-Podfile.lock
-
-# Carthage
-#
-Carthage/Build/
-Carthage/Checkouts/
-
-# Accio dependency manager
-#
-Dependencies/
-AccioPackages/
-
-# SwiftLint
-#
-.swiftlint.yml
-.swiftlint
-
-# Fastlane
-#
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots/
-fastlane/test_output/
-fastlane/README.md
-
-# Archives
-#
-*.xcarchive
-
-# Personal settings
-#
-*.xcuserdatad/
-
-# App data
-#
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-# Temporary files
-#
-*.tmp
-*.swp
-*.lock
-
-# Other
-#
-*.orig
-*.log
-.DS_Store
-.env
-*.xcuserstate
-
-# Simulator devices
-#
 .DerivedData/
-
-# Bundle artifacts
-#
-*.xcassets/
-
-# Playground files
-#
-timeline.xctimeline
-playground.xcworkspace
-
-# SwiftUI Previews
-#
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
 *.swiftsourceinfo
 
-# SwiftPM Packages
-#
-Packages/
+# Swift Package Manager local artifacts
+.build/
+.swiftpm/
 
-# Logs
-#
+# Xcode generates this wrapper for the project. Keep the shared SwiftPM
+# Package.resolved file trackable so application builds use the same versions.
+*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+
+# Local temporary files
 *.log
-
-.idea
+*.orig
+*.swp
+*.tmp

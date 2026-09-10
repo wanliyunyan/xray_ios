@@ -1,0 +1,15 @@
+{
+  "originHash" : "f203d08d9016f6d32e380a86abc35463dad4d2cea672e0d101a87e8aa7bf5a96",
+  "pins" : [
+    {
+      "identity" : "libxray",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/wanliyunyan/LibXray.git",
+      "state" : {
+        "revision" : "f74a744fe0e31d36ba237a7b4d89b2e294dc032d",
+        "version" : "26.9.9"
+      }
+    }
+  ],
+  "version" : 3
+}

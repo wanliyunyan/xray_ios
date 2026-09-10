@@ -834,7 +834,7 @@
 			repositoryURL = "https://github.com/wanliyunyan/LibXray.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 26.7.28;
+				minimumVersion = 26.9.9;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
