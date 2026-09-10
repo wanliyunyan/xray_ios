@@ -28,4 +28,51 @@ final class TrafficStatisticsParserTests: XCTestCase {
 
         XCTAssertThrowsError(try TrafficStatisticsParser.parse(responseData))
     }
+
+    func testPollingContextRequiresConnectedTunnelAndPreparedPort() {
+        XCTAssertNil(
+            TrafficPollingContext(
+                isConnected: false,
+                areLocalPortsReady: true,
+                metricsPort: 31_080
+            ).resolvedMetricsPort
+        )
+        XCTAssertNil(
+            TrafficPollingContext(
+                isConnected: true,
+                areLocalPortsReady: false,
+                metricsPort: 31_080
+            ).resolvedMetricsPort
+        )
+        XCTAssertNil(
+            TrafficPollingContext(
+                isConnected: true,
+                areLocalPortsReady: true,
+                metricsPort: 0
+            ).resolvedMetricsPort
+        )
+        XCTAssertEqual(
+            TrafficPollingContext(
+                isConnected: true,
+                areLocalPortsReady: true,
+                metricsPort: 31_080
+            ).resolvedMetricsPort?.rawValue,
+            31_080
+        )
+    }
+
+    func testPollingFailureTrackerReportsOnlyAtThresholdAndResetsAfterSuccess() {
+        var tracker = TrafficPollingFailureTracker(reportingThreshold: 3)
+
+        XCTAssertFalse(tracker.recordFailure())
+        XCTAssertFalse(tracker.recordFailure())
+        XCTAssertTrue(tracker.recordFailure())
+        XCTAssertFalse(tracker.recordFailure())
+        XCTAssertEqual(tracker.consecutiveFailureCount, 4)
+
+        tracker.recordSuccess()
+
+        XCTAssertEqual(tracker.consecutiveFailureCount, 0)
+        XCTAssertFalse(tracker.recordFailure())
+    }
 }

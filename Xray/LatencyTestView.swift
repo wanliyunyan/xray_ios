@@ -15,10 +15,13 @@ private let logger = Logger(subsystem: AppConstants.loggingSubsystem, category: 
 /// 执行并显示当前分享配置的代理延迟测试。
 ///
 /// 测试由 LibXray `pingBatch` 使用出站 JSON 创建临时实例完成，不依赖已启动的 Packet
-/// Tunnel。视图首次出现时自动测试一次；VPN 未连接时显示手动刷新入口。
+/// Tunnel。当前配置存在且 VPN 完全断开时自动测试一次，并显示手动刷新入口。
 struct LatencyTestView: View {
     /// 负责构建 Ping 配置、调用 LibXray 并解析毫秒延迟。
     private let xrayService = XrayService()
+
+    /// 当前界面正在展示的分享链接快照。
+    let shareLink: String
 
     // MARK: - 状态
 
@@ -49,11 +52,11 @@ struct LatencyTestView: View {
                 }
                 Text("ms")
                     .foregroundStyle(.primary)
-                if !packetTunnelManager.lifecycleState.isConnected {
-                    // Packet Tunnel 未运行时允许重新占用 LibXray 运行时执行测试。
+                if testContext.canRunManually {
+                    // 仅在配置可用且 Packet Tunnel 完全断开时允许重新测试。
                     Button {
                         Task {
-                            await runLatencyTest()
+                            await runLatencyTest(for: shareLink)
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -71,7 +74,7 @@ struct LatencyTestView: View {
             else {
                 return
             }
-            await runLatencyTest()
+            await runLatencyTest(for: shareLink)
         }
     }
 
@@ -79,16 +82,17 @@ struct LatencyTestView: View {
 
     private var testContext: LatencyTestContext {
         LatencyTestContext(
+            shareLink: shareLink,
             lifecycleState: packetTunnelManager.lifecycleState
         )
     }
 
     /// 异步执行延迟测试，并同步加载状态和最后一次成功结果。
     ///
-    /// 方法立即进入加载状态并调用 `XrayService.measureLatency()`。成功时同时更新延迟和
+    /// 方法立即进入加载状态并调用 `XrayService.measureLatency(for:)`。成功时同时更新延迟和
     /// 已获取标记；失败时保留上一次成功值并记录错误。任务结束后无论成败都会关闭加载指示器。
-    private func runLatencyTest() async {
-        guard !isTesting else {
+    private func runLatencyTest(for shareLink: String) async {
+        guard !isTesting, !shareLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
 
@@ -96,7 +100,7 @@ struct LatencyTestView: View {
         defer { isTesting = false }
 
         do {
-            let measuredLatency = try await xrayService.measureLatency()
+            let measuredLatency = try await xrayService.measureLatency(for: shareLink)
             try Task.checkCancellation()
             latencyMilliseconds = measuredLatency
             hasLatencyResult = true
@@ -130,10 +134,19 @@ struct LatencyTestView: View {
     }
 }
 
-private struct LatencyTestContext: Equatable {
+struct LatencyTestContext: Equatable {
+    let shareLink: String
     let lifecycleState: VPNLifecycleState
 
+    var hasConfiguration: Bool {
+        !shareLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var canRunAutomatically: Bool {
-        lifecycleState == .disconnected
+        hasConfiguration && lifecycleState == .disconnected
+    }
+
+    var canRunManually: Bool {
+        canRunAutomatically
     }
 }

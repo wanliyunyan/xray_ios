@@ -91,7 +91,7 @@ struct DashboardView: View {
                         )
                     }
 
-                    LatencyTestView()
+                    LatencyTestView(shareLink: displayedShareLink)
                         .id(displayedShareLink)
                     VPNRoutingModePickerView()
                 }

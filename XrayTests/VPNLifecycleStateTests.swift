@@ -50,6 +50,25 @@ final class VPNLifecycleStateTests: XCTestCase {
         XCTAssertEqual(VPNLifecycleState.failed("failure").localPortPreparationStrategy, .reusePersisted)
     }
 
+    func testLatencyTestRequiresConfigurationAndDisconnectedTunnel() {
+        XCTAssertFalse(
+            LatencyTestContext(shareLink: "", lifecycleState: .disconnected)
+                .canRunAutomatically
+        )
+        XCTAssertFalse(
+            LatencyTestContext(shareLink: "   ", lifecycleState: .disconnected)
+                .canRunManually
+        )
+        XCTAssertFalse(
+            LatencyTestContext(shareLink: "vless://node", lifecycleState: .connected)
+                .canRunAutomatically
+        )
+        XCTAssertTrue(
+            LatencyTestContext(shareLink: "vless://node", lifecycleState: .disconnected)
+                .canRunAutomatically
+        )
+    }
+
     func testStartGateKeepsConnectingStateUntilSystemAcknowledgesStart() throws {
         var gate = VPNStartGate()
 

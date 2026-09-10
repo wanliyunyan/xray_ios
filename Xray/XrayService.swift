@@ -33,17 +33,15 @@ struct XrayService: LocalPortAllocating, Sendable {
 
     // MARK: - 诊断
 
-    /// 使用当前分享链接构建并执行延迟测试。
-    func measureLatency() async throws -> Int {
-        guard
-            let shareLink = AppGroupStore.loadString(forKey: "configLink"),
-            !shareLink.isEmpty
-        else {
+    /// 使用调用方固定的分享链接快照构建并执行延迟测试。
+    func measureLatency(for shareLink: String) async throws -> Int {
+        let normalizedShareLink = shareLink.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedShareLink.isEmpty else {
             throw XrayServiceError.missingConfiguration
         }
 
         let configurationData = try await configurationBuilder
-            .makeLatencyTestConfigurationData(from: shareLink)
+            .makeLatencyTestConfigurationData(from: normalizedShareLink)
         guard let configurationJSON = String(data: configurationData, encoding: .utf8) else {
             throw XrayServiceError.invalidConfigurationEncoding
         }

@@ -5,6 +5,7 @@
 //  Created by pan on 2024/9/24.
 //
 
+import Network
 import os
 import SwiftUI
 
@@ -15,8 +16,9 @@ private let logger = Logger(subsystem: AppConstants.loggingSubsystem, category: 
 /// 每秒读取并显示当前 Xray TUN 入站的累计上下行流量。
 ///
 /// 视图使用应用会话统一分配的 Metrics 端口，只在 VPN 为 `.connected` 时请求本地
-/// `/debug/vars`。串行轮询任务随连接状态、端口或视图生命周期自动取消；查询失败时保留
-/// 上一次成功值，等待下一次刷新重试。
+/// `/debug/vars`。连接后给 Metrics 一个短暂的就绪窗口；串行轮询任务随连接状态、端口
+/// 或视图生命周期自动取消。查询失败时保留上一次成功值，连续失败达到阈值后才
+/// 记录错误。
 struct TrafficStatisticsView: View {
     /// 封装本地 Metrics HTTP 请求与 JSON 解析。
     private let xrayService = XrayService()
@@ -46,10 +48,11 @@ struct TrafficStatisticsView: View {
             Text("上行流量: \(formattedByteCount(uplinkBytes))")
         }
         .task(id: pollingContext) {
-            guard pollingContext.shouldPoll else {
+            let context = pollingContext
+            guard let metricsPort = context.resolvedMetricsPort else {
                 return
             }
-            await pollTrafficStatistics()
+            await pollTrafficStatistics(on: metricsPort)
         }
     }
 
@@ -64,22 +67,37 @@ struct TrafficStatisticsView: View {
     }
 
     /// 串行查询 Metrics；连接状态或端口变化时由 SwiftUI 自动取消。
-    private func pollTrafficStatistics() async {
+    private func pollTrafficStatistics(on metricsPort: NWEndpoint.Port) async {
+        do {
+            // Xray 进入 running 后，Metrics HTTP 监听仍可能需要一个很短的就绪窗口。
+            try await Task.sleep(for: .seconds(1))
+        } catch {
+            return
+        }
+
+        var failureTracker = TrafficPollingFailureTracker()
         while !Task.isCancelled {
             do {
                 let statistics = try await xrayService.fetchTrafficStatistics(
-                    on: appSessionState.metricsPort
+                    on: metricsPort
                 )
+                failureTracker.recordSuccess()
                 if downlinkBytes != statistics.downlinkBytes {
                     downlinkBytes = statistics.downlinkBytes
                 }
                 if uplinkBytes != statistics.uplinkBytes {
                     uplinkBytes = statistics.uplinkBytes
                 }
-            } catch is CancellationError {
-                return
             } catch {
-                logger.error("获取流量统计失败: \(error.localizedDescription)")
+                guard !isCancellation(error) else {
+                    return
+                }
+                if failureTracker.recordFailure() {
+                    let failureCount = failureTracker.consecutiveFailureCount
+                    logger.error(
+                        "连续 \(failureCount) 次获取流量统计失败: \(error.localizedDescription)"
+                    )
+                }
             }
 
             do {
@@ -117,14 +135,44 @@ struct TrafficStatisticsView: View {
         let number = value.formatted(.number.precision(.fractionLength(2)))
         return "\(number) \(unit)"
     }
+
+    private func isCancellation(_ error: Error) -> Bool {
+        error is CancellationError || (error as? URLError)?.code == .cancelled
+    }
 }
 
-private struct TrafficPollingContext: Equatable {
+struct TrafficPollingContext: Equatable {
     let isConnected: Bool
     let areLocalPortsReady: Bool
     let metricsPort: UInt16
 
     var shouldPoll: Bool {
         isConnected && areLocalPortsReady && metricsPort != 0
+    }
+
+    var resolvedMetricsPort: NWEndpoint.Port? {
+        guard shouldPoll else {
+            return nil
+        }
+        return NWEndpoint.Port(rawValue: metricsPort)
+    }
+}
+
+struct TrafficPollingFailureTracker {
+    private let reportingThreshold: Int
+    private(set) var consecutiveFailureCount = 0
+
+    init(reportingThreshold: Int = 3) {
+        precondition(reportingThreshold > 0)
+        self.reportingThreshold = reportingThreshold
+    }
+
+    mutating func recordSuccess() {
+        consecutiveFailureCount = 0
+    }
+
+    mutating func recordFailure() -> Bool {
+        consecutiveFailureCount += 1
+        return consecutiveFailureCount == reportingThreshold
     }
 }

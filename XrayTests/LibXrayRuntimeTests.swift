@@ -58,6 +58,17 @@ final class LibXrayRuntimeTests: XCTestCase {
         }
     }
 
+    func testMeasureLatencyRejectsEmptyConfigurationBeforeInvokingLibXray() async {
+        do {
+            _ = try await XrayService().measureLatency(for: "  \n")
+            XCTFail("空配置不应执行延迟测试")
+        } catch let error as XrayServiceError {
+            XCTAssertEqual(error, .missingConfiguration)
+        } catch {
+            XCTFail("应返回缺少配置错误，实际为：\(error)")
+        }
+    }
+
     func testLatencyConfigurationPreservesSendThrough() async throws {
         let sourceJSON = """
         {
