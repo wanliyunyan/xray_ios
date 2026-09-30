@@ -52,6 +52,40 @@ final class AppSessionStateTests: XCTestCase {
     }
 
     @MainActor
+    func testCancelledWaiterDoesNotCancelSharedAllocation() async {
+        let expectedPorts = LocalServicePorts(metricsPort: 31_086)
+        let allocator = LocalPortAllocatorStub(ports: expectedPorts)
+        let state = AppSessionState(
+            portAllocator: allocator,
+            portStore: LocalPortStoreStub(storedPorts: nil)
+        )
+
+        let firstPreparation = Task { @MainActor in
+            await state.prepareLocalPorts(using: .allocateNew)
+        }
+
+        for _ in 0 ..< 20 {
+            if await allocator.allocationCount == 1 {
+                break
+            }
+            await Task.yield()
+        }
+
+        let secondPreparation = Task { @MainActor in
+            await state.prepareLocalPorts(using: .allocateNew)
+        }
+        firstPreparation.cancel()
+
+        await firstPreparation.value
+        await secondPreparation.value
+
+        XCTAssertTrue(state.areLocalPortsReady)
+        XCTAssertEqual(state.localPorts, expectedPorts)
+        let allocationCount = await allocator.allocationCount
+        XCTAssertEqual(allocationCount, 1)
+    }
+
+    @MainActor
     func testPrepareLocalPortsReusesPersistedPortsWithoutAllocation() async {
         let persistedPorts = LocalServicePorts(metricsPort: 31_091)
         let allocator = LocalPortAllocatorStub(ports: .defaultValue)

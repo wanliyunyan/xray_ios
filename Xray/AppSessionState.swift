@@ -5,6 +5,7 @@
 //  Created by pan on 2026/8/17.
 //
 
+import Foundation
 import Network
 import Observation
 
@@ -59,7 +60,13 @@ final class AppSessionState {
     private let portStore: any LocalPortStoring
 
     @ObservationIgnored
-    private var portPreparationTask: Task<LocalServicePorts, Error>?
+    private var portPreparation: PortPreparation?
+
+    private struct PortPreparation {
+        let id = UUID()
+        let task: Task<LocalServicePorts, Error>
+        var waiters: Set<UUID> = []
+    }
 
     private(set) var localPorts = LocalServicePorts.defaultValue
     private(set) var areLocalPortsReady = false
@@ -80,7 +87,7 @@ final class AppSessionState {
 
     /// 根据 VPN 生命周期恢复旧端口或分配并持久化新端口。
     func prepareLocalPorts(using strategy: LocalPortPreparationStrategy) async {
-        guard !areLocalPortsReady else {
+        guard !Task.isCancelled, !areLocalPortsReady else {
             return
         }
 
@@ -92,29 +99,53 @@ final class AppSessionState {
             return
         }
 
-        let preparationTask: Task<LocalServicePorts, Error>
-        if let portPreparationTask {
-            preparationTask = portPreparationTask
-        } else {
+        // 底层同步调用可能无法立即响应取消。保留句柄并等它结束后再重试，
+        // 避免新旧分配同时运行；旧等待者只能清理自己的批次。
+        while let preparation = portPreparation, preparation.task.isCancelled {
+            _ = await preparation.task.result
+            if portPreparation?.id == preparation.id {
+                portPreparation = nil
+                isPreparingLocalPorts = false
+            }
+            guard !Task.isCancelled, !areLocalPortsReady else {
+                return
+            }
+        }
+
+        if portPreparation == nil {
             isPreparingLocalPorts = true
             localPortPreparationError = nil
             let portAllocator = portAllocator
             let newTask = Task {
-                try await portAllocator.allocateLocalPorts()
+                try Task.checkCancellation()
+                let ports = try await portAllocator.allocateLocalPorts()
+                try Task.checkCancellation()
+                return ports
             }
-            portPreparationTask = newTask
-            preparationTask = newTask
+            portPreparation = PortPreparation(task: newTask)
         }
 
-        let preparationResult = await preparationTask.result
-        let wasCancelled = Task.isCancelled
-        portPreparationTask = nil
-        isPreparingLocalPorts = false
+        guard let preparation = portPreparation else { return }
+        let waiterID = UUID()
+        portPreparation?.waiters.insert(waiterID)
+        let preparationResult = await withTaskCancellationHandler {
+            await preparation.task.result
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancelPortPreparationWaiter(waiterID, preparationID: preparation.id)
+            }
+        }
 
-        guard !wasCancelled else {
+        guard portPreparation?.id == preparation.id else {
             return
         }
-        guard !areLocalPortsReady else {
+        portPreparation?.waiters.remove(waiterID)
+        if portPreparation?.waiters.isEmpty == true {
+            portPreparation = nil
+            isPreparingLocalPorts = false
+        }
+
+        guard !Task.isCancelled, !preparation.task.isCancelled, !areLocalPortsReady else {
             return
         }
 
@@ -135,6 +166,14 @@ final class AppSessionState {
             return
         }
         portStore.saveLocalPorts(allocatedPorts)
+    }
+
+    private func cancelPortPreparationWaiter(_ waiterID: UUID, preparationID: UUID) {
+        guard portPreparation?.id == preparationID else { return }
+        portPreparation?.waiters.remove(waiterID)
+        if portPreparation?.waiters.isEmpty == true {
+            portPreparation?.task.cancel()
+        }
     }
 
     @discardableResult
