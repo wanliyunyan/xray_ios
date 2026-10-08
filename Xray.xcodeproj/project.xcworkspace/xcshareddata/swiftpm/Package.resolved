@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/wanliyunyan/LibXray.git",
       "state" : {
-        "revision" : "f74a744fe0e31d36ba237a7b4d89b2e294dc032d",
-        "version" : "26.9.9"
+        "revision" : "5babd55010700c1decd180f75867037eeba28f55",
+        "version" : "26.9.30"
       }
     }
   ],
