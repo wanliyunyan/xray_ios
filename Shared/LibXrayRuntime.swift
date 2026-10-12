@@ -55,7 +55,7 @@ struct LibXrayPingConfiguration: Encodable, Sendable {
 /// 业务代码只调用下面的 endpoint 方法。方法名、payload 键和响应结构由 Codable 模型
 /// 固定在边界内，避免接口变更或拼写错误静默进入运行时。
 enum LibXrayRuntime {
-    /// LibXray 26.9.9 统一调用协议要求的 API 版本。
+    /// LibXray 统一调用协议要求的 API 版本。
     private static let apiVersion = 3
 
     /// 保护 `LibXrayInvoke` 的进程内互斥锁。
